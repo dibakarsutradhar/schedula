@@ -34,38 +34,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Schedula ${{ github.ref_name }}'
-          releaseBody: |
-            # Schedula ${{ github.ref_name }}
-
-            AI-Powered University Timetable Generator
-
-            ## Download
-
-            **macOS**: Download `Schedula-${{ github.ref_name }}.dmg` below
-
-            ## Installation
-
-            1. Mount the DMG file
-            2. Drag Schedula.app to Applications folder
-            3. Launch from Applications
-
-            ## First Login
-
-            - **Username**: `admin`
-            - **Password**: `admin123`
-
-            ⚠️ Change your password immediately in Settings → My Profile
-
-            ## What's New
-
-            See the [commit log](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for details.
-
-            ## Documentation
-
-            Visit [README.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/README.md) for full documentation.
-          releaseDraft: false
-          prerelease: false
 
   build-windows:
     name: Build Windows MSI/NSIS
@@ -95,10 +63,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Schedula ${{ github.ref_name }}'
-          releaseBody: 'See release notes below.'
-          releaseDraft: true
-          prerelease: false
 
   create-release:
     name: Create GitHub Release
