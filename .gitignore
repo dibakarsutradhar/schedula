@@ -1,0 +1,11 @@
+node_modules/
+dist/
+src-tauri/target/
+.DS_Store
+*.db
+
+# Tauri generated
+src-tauri/gen/
+
+# Planning agents output (not source)
+.planning/codebase/
