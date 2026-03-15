@@ -1,0 +1,148 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-macos:
+    name: Build macOS DMG
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Schedula ${{ github.ref_name }}'
+          releaseBody: |
+            # Schedula ${{ github.ref_name }}
+
+            AI-Powered University Timetable Generator
+
+            ## Download
+
+            **macOS**: Download `Schedula-${{ github.ref_name }}.dmg` below
+
+            ## Installation
+
+            1. Mount the DMG file
+            2. Drag Schedula.app to Applications folder
+            3. Launch from Applications
+
+            ## First Login
+
+            - **Username**: `admin`
+            - **Password**: `admin123`
+
+            ⚠️ Change your password immediately in Settings → My Profile
+
+            ## What's New
+
+            See the [commit log](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }}) for details.
+
+            ## Documentation
+
+            Visit [README.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/README.md) for full documentation.
+          releaseDraft: false
+          prerelease: false
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-macos
+    if: always()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get release notes
+        id: release_notes
+        run: |
+          VERSION="${{ github.ref_name }}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create release on GitHub
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: 'Schedula ${{ github.ref_name }}'
+          draft: false
+          prerelease: false
+          body: |
+            # Schedula ${{ github.ref_name }}
+
+            AI-Powered University Timetable Generator
+
+            ## Download
+
+            **macOS**: Download `Schedula-${{ github.ref_name }}.dmg` from the assets below
+
+            ## Installation
+
+            1. **Download** the DMG file from the releases page
+            2. **Mount** the DMG: `open Schedula-*.dmg`
+            3. **Drag** Schedula.app to your Applications folder
+            4. **Launch** from Applications or Spotlight
+
+            ## First Login
+
+            Default credentials:
+            - **Username**: `admin`
+            - **Password**: `admin123`
+
+            ⚠️ **Important**: Change your password immediately in Settings → My Profile
+
+            ## Features
+
+            ✨ Automated conflict-free schedule generation
+            📅 Support for diverse class types (lectures, labs, tutorials)
+            🔄 Biweekly course scheduling
+            📊 Semester calendars with exam/study blocks
+            🎨 Dark/Light theme with custom accent colors
+            💾 JSON backup and CSV export
+            🏢 Multi-organization support with role-based access
+            ⚙️ Comprehensive settings and customization
+
+            ## Documentation
+
+            - [README](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/README.md) — Full guide and troubleshooting
+            - [Usage Guide](#-usage-guide) — Step-by-step setup instructions
+            - [API Reference](#-api-commands-reference) — All available commands
+
+            ## Requirements
+
+            - **macOS** 13.0 or later
+            - **Disk space**: ~200 MB
+
+            ## Support
+
+            - 🐛 [Report issues](https://github.com/${{ github.repository }}/issues)
+            - 💬 [Start a discussion](https://github.com/${{ github.repository }}/discussions)
+
+            ---
+
+            Made with ❤️ for academics worldwide
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
