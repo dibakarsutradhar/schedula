@@ -1479,6 +1479,128 @@ pub fn update_schedule_description(
     Ok(())
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// PASSWORD RECOVERY
+// ══════════════════════════════════════════════════════════════════════════════
+
+fn generate_recovery_code() -> String {
+    use rand::Rng;
+    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let mut rng = rand::thread_rng();
+    (0..32)
+        .map(|_| {
+            let idx = rng.gen_range(0..CHARSET.len());
+            CHARSET[idx] as char
+        })
+        .collect()
+}
+
+#[tauri::command]
+pub fn setup_recovery(
+    db: State<DbState>,
+    session: State<SessionState>,
+    req: SetupRecoveryRequest,
+) -> Result<RecoverySetup, String> {
+    let s = require_super_admin(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+
+    let recovery_code = generate_recovery_code();
+    let code_hash = bcrypt::hash(&recovery_code, bcrypt::DEFAULT_COST).map_err(db_err)?;
+    let answer_hash = bcrypt::hash(req.security_answer.trim().to_lowercase(), bcrypt::DEFAULT_COST).map_err(db_err)?;
+
+    conn.execute(
+        "UPDATE users SET recovery_code_hash=?1, security_question=?2, security_answer_hash=?3 WHERE id=?4",
+        params![code_hash, req.security_question, answer_hash, s.user_id],
+    ).map_err(db_err)?;
+
+    log_audit(&conn, &s, "setup", "recovery", Some(s.user_id), Some("recovery code + security question configured"));
+
+    Ok(RecoverySetup {
+        recovery_code: recovery_code.clone(),
+    })
+}
+
+#[tauri::command]
+pub fn reset_password_with_recovery_code(
+    db: State<DbState>,
+    req: ResetPasswordWithCodeRequest,
+) -> Result<(), String> {
+    if req.new_password.len() < 6 {
+        return Err("Password must be at least 6 characters".into());
+    }
+
+    let conn = db.0.lock().map_err(db_err)?;
+
+    // Find super-admin user
+    let user_result: Result<(i64, Option<String>), _> = conn.query_row(
+        "SELECT id, recovery_code_hash FROM users WHERE role='super_admin'",
+        [],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    );
+
+    let (user_id, code_hash) = match user_result {
+        Ok((id, Some(hash))) => (id, hash),
+        _ => return Err("Recovery code is not set up".into()),
+    };
+
+    // Verify recovery code
+    if !bcrypt::verify(&req.recovery_code, &code_hash).unwrap_or(false) {
+        return Err("Invalid recovery code".into());
+    }
+
+    let new_hash = bcrypt::hash(&req.new_password, bcrypt::DEFAULT_COST).map_err(db_err)?;
+    conn.execute("UPDATE users SET password_hash=?1 WHERE id=?2", params![new_hash, user_id])
+        .map_err(db_err)?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn reset_password_with_security_answer(
+    db: State<DbState>,
+    req: ResetPasswordWithAnswerRequest,
+) -> Result<(), String> {
+    if req.new_password.len() < 6 {
+        return Err("Password must be at least 6 characters".into());
+    }
+
+    let conn = db.0.lock().map_err(db_err)?;
+
+    // Find super-admin user
+    let user_result: Result<(i64, Option<String>), _> = conn.query_row(
+        "SELECT id, security_answer_hash FROM users WHERE role='super_admin'",
+        [],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    );
+
+    let (user_id, answer_hash) = match user_result {
+        Ok((id, Some(hash))) => (id, hash),
+        _ => return Err("Security answer is not set up".into()),
+    };
+
+    // Verify answer (case-insensitive)
+    let answer_lower = req.security_answer.trim().to_lowercase();
+    if !bcrypt::verify(&answer_lower, &answer_hash).unwrap_or(false) {
+        return Err("Incorrect answer".into());
+    }
+
+    let new_hash = bcrypt::hash(&req.new_password, bcrypt::DEFAULT_COST).map_err(db_err)?;
+    conn.execute("UPDATE users SET password_hash=?1 WHERE id=?2", params![new_hash, user_id])
+        .map_err(db_err)?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_security_question(db: State<DbState>) -> Result<String, String> {
+    let conn = db.0.lock().map_err(db_err)?;
+    conn.query_row(
+        "SELECT security_question FROM users WHERE role='super_admin'",
+        [],
+        |r| r.get(0),
+    ).map_err(|_| "Security question not set up".into())
+}
+
 fn count_scoped(conn: &Connection, table: &str, org_id: Option<i64>) -> i64 {
     let sql = match org_id {
         Some(id) => format!("SELECT COUNT(*) FROM {} WHERE org_id={}", table, id),

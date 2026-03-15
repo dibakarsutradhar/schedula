@@ -349,6 +349,31 @@ pub struct AuditEntry {
     pub created_at: String,
 }
 
+// ─── Recovery / Password Reset ────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecoverySetup {
+    pub recovery_code: String,  // displayed once to super-admin, must be written down
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SetupRecoveryRequest {
+    pub security_question: String,
+    pub security_answer: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResetPasswordWithCodeRequest {
+    pub recovery_code: String,
+    pub new_password: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResetPasswordWithAnswerRequest {
+    pub security_answer: String,
+    pub new_password: String,
+}
+
 // ─── Pre-flight / Data-health ─────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

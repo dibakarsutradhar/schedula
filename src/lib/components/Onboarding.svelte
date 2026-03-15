@@ -9,6 +9,7 @@
     updateDisplayName, changePassword,
     getOrganizations, createOrganization, updateOrganization,
     createLecturer, createRoom, createCourse,
+    setupRecovery,
   } from '../api.js'
 
   const dispatch = createEventDispatcher()
@@ -46,10 +47,16 @@
   let courseHours = 3
   let courseClassType = 'lecture'
 
-  // Completion tracking
-  let created = { account: false, org: false, lecturer: false, room: false, course: false }
+  // Step 6 — Recovery Setup (super-admin only)
+  let securityQuestion = 'What is your favorite university city?'
+  let securityAnswer = ''
+  let recoveryCode = ''  // displayed after setup
+  let showRecoveryCode = false
 
-  const TOTAL_FORM_STEPS = 5
+  // Completion tracking
+  let created = { account: false, org: false, lecturer: false, room: false, course: false, recovery: false }
+
+  const TOTAL_FORM_STEPS = 6  // now includes recovery setup
 
   // ── Load existing org on mount ────────────────────────────────────────────────
   onMount(async () => {
@@ -142,6 +149,12 @@
       await createCourse({ code: courseCode.trim(), name: courseName.trim(), hours_per_week: +courseHours, room_type: courseClassType === 'lab' ? 'lab' : 'lecture', class_type: courseClassType, frequency: 'weekly', lecturer_id: null, org_id: $session?.org_id ?? existingOrgId ?? null })
       created.course = true
     }
+    if (s === 6 && isSuperAdmin($session) && securityQuestion.trim() && securityAnswer.trim()) {
+      const result = await setupRecovery({ security_question: securityQuestion.trim(), security_answer: securityAnswer.trim() })
+      recoveryCode = result.recovery_code
+      showRecoveryCode = true
+      created.recovery = true
+    }
   }
 
   function markDone() {
@@ -149,7 +162,7 @@
     dispatch('complete', { navigateTo: 'batches' })
   }
 
-  // Step labels/icons for 1–5
+  // Step labels/icons for 1–6
   const stepMeta = [
     null,
     { num: 1, icon: '👤', title: 'Set up your account'  },
@@ -157,6 +170,7 @@
     { num: 3, icon: '🎓', title: 'Add a lecturer'       },
     { num: 4, icon: '🏛',  title: 'Add a room'           },
     { num: 5, icon: '📚', title: 'Add a course'         },
+    { num: 6, icon: '🔐', title: 'Password recovery'    },
   ]
 </script>
 
@@ -206,8 +220,47 @@
         </div>
       {/key}
 
-    <!-- Step 6: All Done! ────────────────────────────────────────────────────── -->
-    {:else if step === 6}
+    <!-- Step 6: Recovery Setup ───────────────────────────────────────────────── -->
+    {:else if step === 6 && isSuperAdmin($session)}
+      {#key step}
+        <div class="ob-step-body ob-recovery" in:fly={inFx()} out:fly={outFx()}>
+          <p class="ob-hint">
+            Set up password recovery so you can access your account if you forget your password.
+          </p>
+
+          {#if !showRecoveryCode}
+            <div class="form-group">
+              <label class="form-label">Security Question *</label>
+              <input class="form-input" bind:value={securityQuestion} placeholder="e.g. What city were you born in?" autofocus />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Your Answer *</label>
+              <input class="form-input" bind:value={securityAnswer} placeholder="Answer to your question" />
+            </div>
+          {:else}
+            <div class="recovery-code-box">
+              <div class="recovery-header">
+                <span style="font-size:24px">🔐</span>
+                <div>
+                  <strong>Recovery Code Generated</strong>
+                  <p style="font-size:12px;color:var(--text-muted);margin:0">Write this down and keep it safe</p>
+                </div>
+              </div>
+              <div class="recovery-code-display">{recoveryCode}</div>
+              <p style="font-size:12px;color:var(--danger);margin-top:12px">
+                ⚠️ This code will not be shown again. Write it down now.
+              </p>
+            </div>
+          {/if}
+
+          {#if error}
+            <div class="ob-error" in:fly={{ y: -8, duration: 200 }}>{error}</div>
+          {/if}
+        </div>
+      {/key}
+
+    <!-- Step 7: All Done! ────────────────────────────────────────────────────── -->
+    {:else if step === 7}
       {#key step}
         <div class="ob-done" in:fly={inFx()} out:fly={outFx()}>
           <div class="ob-done-icon">🎉</div>
@@ -224,6 +277,7 @@
                 [created.lecturer, '🎓', `Lecturer: ${lecturerName}`],
                 [created.room, '🏛', `Room: ${roomName}`],
                 [created.course, '📚', `Course: ${courseCode} — ${courseName}`],
+                [created.recovery, '🔐', 'Password recovery set up'],
               ] as [done, icon, label]}
                 {#if done}
                   <div class="ob-summary-item">
@@ -402,9 +456,9 @@
             <button
               class="btn btn-primary"
               on:click={goNext}
-              disabled={saving || (step === 1 && !displayName.trim()) || (step === 2 && !orgName.trim())}
+              disabled={saving || (step === 1 && !displayName.trim()) || (step === 2 && !orgName.trim()) || (step === 6 && (!showRecoveryCode || !securityQuestion.trim() || !securityAnswer.trim()))}
             >{saving ? 'Saving…' : 'Continue →'}</button>
-          {:else}
+          {:else if step === TOTAL_FORM_STEPS}
             <button class="btn btn-primary" on:click={finish} disabled={saving}>
               {saving ? 'Saving…' : 'Finish Setup →'}
             </button>
@@ -731,6 +785,35 @@
   @keyframes slideIn {
     from { opacity: 0; transform: translateX(-8px); }
     to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ── Recovery setup ───────────────────────────────────────────────────────── */
+  .ob-recovery { min-height: 320px; }
+  .recovery-code-box {
+    background: rgba(34,197,94,.08);
+    border: 2px solid #4ade80;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .recovery-header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .recovery-header strong { font-size: 14px; display: block; }
+  .recovery-code-display {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: monospace;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    word-break: break-all;
+    color: var(--accent);
+    font-weight: 700;
+    user-select: all;
   }
 
   /* ── Light theme ──────────────────────────────────────────────────────────── */

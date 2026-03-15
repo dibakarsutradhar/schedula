@@ -102,6 +102,11 @@ pub fn run() {
             commands::get_data_health,
             // Schedule notes
             commands::update_schedule_description,
+            // Password recovery
+            commands::setup_recovery,
+            commands::reset_password_with_recovery_code,
+            commands::reset_password_with_security_answer,
+            commands::get_security_question,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

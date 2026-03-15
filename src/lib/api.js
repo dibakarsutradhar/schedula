@@ -94,3 +94,9 @@ export const bulkImportCourses   = (rows) => invoke('bulk_import_courses', { row
 export const getPreflightWarnings     = ()   => invoke('get_preflight_warnings')
 export const getDataHealth            = ()   => invoke('get_data_health')
 export const updateScheduleDescription = (id, description) => invoke('update_schedule_description', { id, description })
+
+// Password recovery
+export const setupRecovery                    = (req) => invoke('setup_recovery', { req })
+export const resetPasswordWithRecoveryCode    = (req) => invoke('reset_password_with_recovery_code', { req })
+export const resetPasswordWithSecurityAnswer  = (req) => invoke('reset_password_with_security_answer', { req })
+export const getSecurityQuestion             = ()    => invoke('get_security_question')

@@ -11,6 +11,7 @@ pub fn open(db_path: &Path) -> Result<Connection> {
     migrate_v5(&conn)?;
     migrate_v6(&conn)?;
     migrate_v7(&conn)?;
+    migrate_v8(&conn)?;
     seed_super_admin(&conn);
     Ok(conn)
 }
@@ -225,6 +226,19 @@ fn migrate_v6(conn: &Connection) -> Result<()> {
 // ─── V7: schedule description/notes ──────────────────────────────────────────
 fn migrate_v7(conn: &Connection) -> Result<()> {
     try_alter(conn, "ALTER TABLE schedules ADD COLUMN description TEXT");
+    Ok(())
+}
+
+// ─── V8: user recovery (recovery code + security question) ─────────────────
+fn migrate_v8(conn: &Connection) -> Result<()> {
+    let alters = [
+        "ALTER TABLE users ADD COLUMN recovery_code_hash TEXT",
+        "ALTER TABLE users ADD COLUMN security_question TEXT",
+        "ALTER TABLE users ADD COLUMN security_answer_hash TEXT",
+    ];
+    for sql in &alters {
+        try_alter(conn, sql);
+    }
     Ok(())
 }
 
