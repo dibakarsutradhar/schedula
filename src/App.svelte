@@ -16,6 +16,7 @@
   import Schedule     from './views/Schedule.svelte'
   import Users        from './views/Users.svelte'
   import Settings     from './views/Settings.svelte'
+  import Import       from './views/Import.svelte'
   import Onboarding   from './lib/components/Onboarding.svelte'
   import { prefs }    from './lib/stores/prefs.js'
 
@@ -85,6 +86,8 @@
         <Users />
       {:else if active === 'settings'}
         <Settings />
+      {:else if active === 'import'}
+        <Import />
       {/if}
     </div>
   </div>

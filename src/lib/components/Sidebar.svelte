@@ -14,6 +14,7 @@
     { id: 'rooms',      label: 'Rooms',            icon: '🏛' },
     { id: 'batches',    label: 'Batches',          icon: '🎓' },
     { id: 'schedule',   label: 'Schedule',         icon: '📅' },
+    { id: 'import',     label: 'Import',           icon: '⬆' },
     { id: 'users',      label: 'Users',            icon: '👥' },
     { id: 'settings',   label: 'Settings',         icon: '⚙️' },
   ]

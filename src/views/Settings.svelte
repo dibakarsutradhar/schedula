@@ -11,6 +11,7 @@
     getSchedulingSettings, upsertSchedulingSettings,
     clearSchedules, backupDatabase, getAppInfo,
     getStats, getMaxAdmins, setMaxAdmins, getAdminCount,
+    getAuditLog,
   } from '../lib/api.js'
 
   let tab = 'appearance'
@@ -216,6 +217,15 @@
     }
   }
 
+  // ── Audit Log ────────────────────────────────────────────────────────────────
+  let auditLog = []
+  let loadingAudit = false
+
+  async function loadAuditLog() {
+    loadingAudit = true
+    try { auditLog = await getAuditLog(200) } catch(e) { toast(e, 'error') } finally { loadingAudit = false }
+  }
+
   // ── About ────────────────────────────────────────────────────────────────────
   let appInfo = null
 
@@ -235,6 +245,7 @@
     if (t === 'org') loadOrgs()
     if (t === 'scheduling') loadSchedSettings()
     if (t === 'system') loadSystemSettings()
+    if (t === 'audit') loadAuditLog()
     if (t === 'about') getAppInfo().then(i => appInfo = i)
   }
 
@@ -264,6 +275,7 @@
         { id: 'scheduling', icon: '⚙️', label: 'Scheduling' },
         { id: 'data',       icon: '💾', label: 'Data' },
         ...(isSuperAdmin($session) ? [{ id: 'system', icon: '🔧', label: 'System' }] : []),
+        { id: 'audit',      icon: '📋', label: 'Audit Log' },
         { id: 'about',      icon: 'ℹ️', label: 'About' },
       ] as t}
         <button class="settings-tab" class:active={tab === t.id} on:click={() => switchTab(t.id)}>
@@ -585,6 +597,47 @@
           </div>
         {/if}
 
+      <!-- ── Audit Log ── -->
+      {:else if tab === 'audit'}
+        <div class="card settings-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <h2 style="margin:0">Audit Log</h2>
+            <button class="btn btn-secondary btn-sm" on:click={loadAuditLog}>↻ Refresh</button>
+          </div>
+          {#if loadingAudit}
+            <div style="color:var(--text-muted);font-size:13px">Loading…</div>
+          {:else if auditLog.length === 0}
+            <div style="color:var(--text-muted);font-size:13px">No audit entries yet.</div>
+          {:else}
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each auditLog as entry}
+                    <tr>
+                      <td style="white-space:nowrap;font-size:11px;color:var(--text-muted)">{entry.created_at.slice(0,16).replace('T',' ')}</td>
+                      <td style="font-size:12px">{entry.username}</td>
+                      <td>
+                        <span class="audit-action audit-{entry.action}">{entry.action}</span>
+                      </td>
+                      <td style="font-size:12px">{entry.entity_type}{entry.entity_id ? ` #${entry.entity_id}` : ''}</td>
+                      <td style="font-size:11px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis">{entry.details_json ?? ''}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </div>
+
       <!-- ── About ── -->
       {:else if tab === 'about'}
         <div class="card settings-section">
@@ -657,3 +710,17 @@
     </div>
   </div>
 {/if}
+
+<style>
+  .audit-action {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+  }
+  .audit-create  { background: rgba(34,197,94,.15);   color: #4ade80; }
+  .audit-update  { background: rgba(251,191,36,.15);  color: #fbbf24; }
+  .audit-delete  { background: rgba(239,68,68,.15);   color: #f87171; }
+  .audit-generate { background: rgba(108,99,255,.15); color: #a5a0ff; }
+  .audit-publish { background: rgba(34,197,94,.15);   color: #4ade80; }
+  .audit-revert  { background: rgba(100,100,120,.2);  color: var(--text-muted); }
+  .audit-import  { background: rgba(6,182,212,.15);   color: #22d3ee; }
+</style>
