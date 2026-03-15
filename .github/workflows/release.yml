@@ -34,6 +34,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
+          releaseName: 'Schedula ${{ github.ref_name }}'
           args: --target aarch64-apple-darwin
 
   build-macos-x86:
@@ -64,6 +65,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
+          releaseName: 'Schedula ${{ github.ref_name }}'
           args: --target x86_64-apple-darwin
 
   build-windows:
@@ -94,6 +96,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
+          releaseName: 'Schedula ${{ github.ref_name }}'
 
   create-release:
     name: Create GitHub Release

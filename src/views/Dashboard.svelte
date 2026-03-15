@@ -57,32 +57,32 @@
       </div>
       <div class="health-items">
         {#if health.courses_without_lecturers > 0}
-          <div class="health-item" on:click={() => navigate('courses')}>
+          <button type="button" class="health-item" on:click={() => navigate('courses')}>
             <span class="health-dot warning"></span>
             {health.courses_without_lecturers} course{health.courses_without_lecturers !== 1 ? 's' : ''} have no lecturer assigned
             <span class="health-link">Fix →</span>
-          </div>
+          </button>
         {/if}
         {#if health.batches_without_courses > 0}
-          <div class="health-item" on:click={() => navigate('batches')}>
+          <button type="button" class="health-item" on:click={() => navigate('batches')}>
             <span class="health-dot error"></span>
             {health.batches_without_courses} batch{health.batches_without_courses !== 1 ? 'es' : ''} have no courses enrolled
             <span class="health-link">Fix →</span>
-          </div>
+          </button>
         {/if}
         {#if health.lecturers_unavailable > 0}
-          <div class="health-item" on:click={() => navigate('lecturers')}>
+          <button type="button" class="health-item" on:click={() => navigate('lecturers')}>
             <span class="health-dot error"></span>
             {health.lecturers_unavailable} lecturer{health.lecturers_unavailable !== 1 ? 's' : ''} have no available days
             <span class="health-link">Fix →</span>
-          </div>
+          </button>
         {/if}
         {#if health.courses_without_matching_rooms > 0}
-          <div class="health-item" on:click={() => navigate('rooms')}>
+          <button type="button" class="health-item" on:click={() => navigate('rooms')}>
             <span class="health-dot error"></span>
             {health.courses_without_matching_rooms} lab course{health.courses_without_matching_rooms !== 1 ? 's' : ''} but no lab rooms exist
             <span class="health-link">Add rooms →</span>
-          </div>
+          </button>
         {/if}
       </div>
     </div>
@@ -144,8 +144,10 @@
     font-size: 12px; color: var(--text-muted);
     cursor: pointer; padding: 6px 8px; border-radius: 6px;
     transition: background .15s;
+    background: none; border: none; font: inherit; text-align: left; width: 100%;
   }
-  .health-item:hover { background: var(--surface2); color: var(--text); }
+  .health-item:hover, .health-item:focus { background: var(--surface2); color: var(--text); outline: none; }
+  .health-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .health-dot {
     width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
   }
