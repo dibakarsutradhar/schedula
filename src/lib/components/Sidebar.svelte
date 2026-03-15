@@ -7,7 +7,7 @@
 
   $: nav = [
     { id: 'dashboard',  label: 'Dashboard',      icon: '⬡' },
-    ...(isSuperAdmin($session) ? [{ id: 'orgs', label: 'Organizations', icon: '🏫' }] : []),
+    ...(isSuperAdmin($session) ? [{ id: 'orgs', label: 'Organization', icon: '🏫' }] : []),
     { id: 'semesters',  label: 'Semesters',       icon: '📆' },
     { id: 'lecturers',  label: 'Lecturers',        icon: '👤' },
     { id: 'courses',    label: 'Courses',          icon: '📚' },

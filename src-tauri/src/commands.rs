@@ -122,8 +122,32 @@ pub fn create_user(
     user: NewUser,
 ) -> Result<i64, String> {
     require_super_admin(&session)?;
-    let hash = bcrypt::hash(&user.password, bcrypt::DEFAULT_COST).map_err(db_err)?;
     let conn = db.0.lock().map_err(db_err)?;
+
+    // Enforce: only one super_admin ever
+    if user.role == "super_admin" {
+        return Err("Only one super admin is allowed per app instance.".into());
+    }
+
+    // Enforce max_admins quota
+    if user.role == "admin" {
+        let max: i64 = conn.query_row(
+            "SELECT CAST(value AS INTEGER) FROM app_settings WHERE key='max_admins'",
+            [], |r| r.get(0),
+        ).unwrap_or(2);
+        let current: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM users WHERE role='admin' AND is_active=1",
+            [], |r| r.get(0),
+        ).unwrap_or(0);
+        if current >= max {
+            return Err(format!(
+                "Admin limit reached ({}/{}). Increase Max Admins in Settings → System.",
+                current, max
+            ).into());
+        }
+    }
+
+    let hash = bcrypt::hash(&user.password, bcrypt::DEFAULT_COST).map_err(db_err)?;
     conn.execute(
         "INSERT INTO users (username, display_name, password_hash, role, org_id) VALUES (?1,?2,?3,?4,?5)",
         params![user.username, user.display_name, hash, user.role, user.org_id],
@@ -190,6 +214,10 @@ pub fn create_organization(
 ) -> Result<i64, String> {
     require_super_admin(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM organizations", [], |r| r.get(0)).map_err(db_err)?;
+    if count > 0 {
+        return Err("Only one organization is allowed per app instance. Edit the existing organization instead.".into());
+    }
     conn.execute(
         "INSERT INTO organizations (name, org_type, address, contact_email) VALUES (?1,?2,?3,?4)",
         params![org.name, org.org_type, org.address, org.contact_email],
@@ -914,6 +942,47 @@ pub fn get_app_info(
         org_count,
         schedule_count,
     })
+}
+
+// ── Admin quota ────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn get_max_admins(db: State<DbState>, session: State<SessionState>) -> Result<i64, String> {
+    require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let max: i64 = conn.query_row(
+        "SELECT CAST(value AS INTEGER) FROM app_settings WHERE key='max_admins'",
+        [], |r| r.get(0),
+    ).unwrap_or(2);
+    Ok(max)
+}
+
+#[tauri::command]
+pub fn set_max_admins(
+    db: State<DbState>,
+    session: State<SessionState>,
+    max: i64,
+) -> Result<(), String> {
+    require_super_admin(&session)?;
+    if max < 1  { return Err("Max admins must be at least 1.".into()); }
+    if max > 50 { return Err("Max admins cannot exceed 50.".into()); }
+    let conn = db.0.lock().map_err(db_err)?;
+    conn.execute(
+        "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('max_admins', ?1)",
+        params![max.to_string()],
+    ).map_err(db_err)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_admin_count(db: State<DbState>, session: State<SessionState>) -> Result<i64, String> {
+    require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM users WHERE role='admin' AND is_active=1",
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+    Ok(count)
 }
 
 fn count_scoped(conn: &Connection, table: &str, org_id: Option<i64>) -> i64 {

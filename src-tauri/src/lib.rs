@@ -81,6 +81,10 @@ pub fn run() {
             commands::clear_schedules,
             commands::backup_database,
             commands::get_app_info,
+            // Admin quota
+            commands::get_max_admins,
+            commands::set_max_admins,
+            commands::get_admin_count,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -7,6 +7,7 @@ pub fn open(db_path: &Path) -> Result<Connection> {
     migrate_v1(&conn)?;
     migrate_v2(&conn)?;
     migrate_v3(&conn)?;
+    migrate_v4(&conn)?;
     seed_super_admin(&conn);
     Ok(conn)
 }
@@ -161,6 +162,22 @@ fn migrate_v3(conn: &Connection) -> Result<()> {
     for sql in &alters {
         try_alter(conn, sql);
     }
+    Ok(())
+}
+
+// ─── V4: app-wide settings (single-org, admin quota) ─────────────────────────
+fn migrate_v4(conn: &Connection) -> Result<()> {
+    conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+    ")?;
+    // Seed default max_admins = 2 (idempotent)
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO app_settings (key, value) VALUES ('max_admins', '2')",
+        [],
+    );
     Ok(())
 }
 

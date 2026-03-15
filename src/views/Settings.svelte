@@ -10,7 +10,7 @@
     getUsers, getOrganizations, updateOrganization,
     getSchedulingSettings, upsertSchedulingSettings,
     clearSchedules, backupDatabase, getAppInfo,
-    getStats,
+    getStats, getMaxAdmins, setMaxAdmins, getAdminCount,
   } from '../lib/api.js'
 
   let tab = 'appearance'
@@ -191,6 +191,31 @@
     }
   }
 
+  // ── System ───────────────────────────────────────────────────────────────────
+  let maxAdmins = 2
+  let adminCount = 0
+  let savingMaxAdmins = false
+
+  async function loadSystemSettings() {
+    const [max, count] = await Promise.all([getMaxAdmins(), getAdminCount()])
+    maxAdmins = max
+    adminCount = count
+  }
+
+  async function saveMaxAdmins() {
+    if (maxAdmins < 1) { toast('Max admins must be at least 1', 'error'); return }
+    savingMaxAdmins = true
+    try {
+      await setMaxAdmins(maxAdmins)
+      toast('Admin limit updated')
+      await loadSystemSettings()
+    } catch (e) {
+      toast(e, 'error')
+    } finally {
+      savingMaxAdmins = false
+    }
+  }
+
   // ── About ────────────────────────────────────────────────────────────────────
   let appInfo = null
 
@@ -201,6 +226,7 @@
     await loadSchedSettings()
     stats = await getStats()
     appInfo = await getAppInfo()
+    if (isSuperAdmin($session)) await loadSystemSettings()
   })
 
   function switchTab(t) {
@@ -208,6 +234,7 @@
     if (t === 'users') loadUsers()
     if (t === 'org') loadOrgs()
     if (t === 'scheduling') loadSchedSettings()
+    if (t === 'system') loadSystemSettings()
     if (t === 'about') getAppInfo().then(i => appInfo = i)
   }
 
@@ -236,6 +263,7 @@
         { id: 'org',        icon: '🏫', label: 'Organization' },
         { id: 'scheduling', icon: '⚙️', label: 'Scheduling' },
         { id: 'data',       icon: '💾', label: 'Data' },
+        ...(isSuperAdmin($session) ? [{ id: 'system', icon: '🔧', label: 'System' }] : []),
         { id: 'about',      icon: 'ℹ️', label: 'About' },
       ] as t}
         <button class="settings-tab" class:active={tab === t.id} on:click={() => switchTab(t.id)}>
@@ -504,6 +532,58 @@
             {clearing ? 'Clearing…' : 'Clear All Schedules'}
           </button>
         </div>
+
+      <!-- ── System ── -->
+      {:else if tab === 'system'}
+        {#if isSuperAdmin($session)}
+          <div class="card settings-section">
+            <h2>Admin Quota</h2>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+              Control how many admin accounts can exist. Current usage: <strong>{adminCount} / {maxAdmins}</strong>.
+            </p>
+            <div class="row" style="align-items:flex-end;max-width:320px">
+              <div class="form-group">
+                <label class="form-label">Max Admins</label>
+                <input
+                  class="form-input"
+                  type="number"
+                  min="1"
+                  max="50"
+                  bind:value={maxAdmins}
+                  style="max-width:100px"
+                />
+              </div>
+              <button class="btn btn-primary" on:click={saveMaxAdmins} disabled={savingMaxAdmins}>
+                {savingMaxAdmins ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            <p style="margin-top:10px;font-size:12px;color:var(--text-muted)">
+              Minimum 1. Super admin does not count toward this limit.
+            </p>
+          </div>
+
+          <div class="card settings-section">
+            <h2>Instance Constraints</h2>
+            <div class="info-grid">
+              <div class="info-item">
+                <div class="info-label">Organizations</div>
+                <div class="info-value">1 (fixed)</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Super Admins</div>
+                <div class="info-value">1 (fixed)</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Max Admins</div>
+                <div class="info-value">{maxAdmins}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Current Admins</div>
+                <div class="info-value" style={adminCount >= maxAdmins ? 'color:var(--danger)' : ''}>{adminCount}</div>
+              </div>
+            </div>
+          </div>
+        {/if}
 
       <!-- ── About ── -->
       {:else if tab === 'about'}
