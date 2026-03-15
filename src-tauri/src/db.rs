@@ -4,16 +4,27 @@ use std::path::Path;
 pub fn open(db_path: &Path) -> Result<Connection> {
     let conn = Connection::open(db_path)?;
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
-    migrate_v1(&conn)?;
-    migrate_v2(&conn)?;
-    migrate_v3(&conn)?;
-    migrate_v4(&conn)?;
-    migrate_v5(&conn)?;
-    migrate_v6(&conn)?;
-    migrate_v7(&conn)?;
-    migrate_v8(&conn)?;
+    run_migrations(&conn)?;
     seed_super_admin(&conn);
     Ok(conn)
+}
+
+/// Run all schema migrations in order. Safe to call multiple times (idempotent).
+pub fn run_migrations(conn: &Connection) -> Result<()> {
+    migrate_v1(conn)?;
+    migrate_v2(conn)?;
+    migrate_v3(conn)?;
+    migrate_v4(conn)?;
+    migrate_v5(conn)?;
+    migrate_v6(conn)?;
+    migrate_v7(conn)?;
+    migrate_v8(conn)?;
+    Ok(())
+}
+
+/// Seed the default super-admin only if the users table is empty.
+pub fn seed_super_admin_if_empty(conn: &Connection) {
+    seed_super_admin(conn);
 }
 
 // ─── V1: original schema ──────────────────────────────────────────────────────

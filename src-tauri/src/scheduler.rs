@@ -322,3 +322,784 @@ pub fn generate(input: &SchedulerInput) -> ScheduleResult {
 
     ScheduleResult { entries, unscheduled }
 }
+
+// ── Public re-exports of helpers for benchmarks ──────────────────────────────
+// (Only compiled when running benchmarks or tests; zero cost in release builds)
+
+/// Public alias for benchmarks — delegates to the private `slot_penalty`.
+pub fn slot_penalty_pub(class_type: &str, slot: i64) -> i64 {
+    slot_penalty(class_type, slot)
+}
+
+/// Public alias for benchmarks — delegates to `preferred_penalty`.
+pub fn preferred_penalty_pub(preferred_json: &Option<String>, day: &str, slot: i64) -> i64 {
+    preferred_penalty(preferred_json, day, slot)
+}
+
+/// Public alias for benchmarks — delegates to `is_blacked_out`.
+pub fn is_blacked_out_pub(blackout_json: &Option<String>, day: &str, slot: i64) -> bool {
+    is_blacked_out(blackout_json, day, slot)
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TESTS
+// ══════════════════════════════════════════════════════════════════════════════
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── Builder helpers ───────────────────────────────────────────────────────
+
+    fn lec(id: i64, days: &str, max_day: i64, max_week: i64) -> Lecturer {
+        Lecturer {
+            id,
+            name: format!("Lec{}", id),
+            email: None,
+            available_days: days.to_string(),
+            max_hours_per_day: max_day,
+            max_hours_per_week: max_week,
+            org_id: Some(1),
+            preferred_slots_json: None,
+            blackout_json: None,
+            max_consecutive_hours: 0,
+        }
+    }
+
+    fn course(id: i64, hours: i64, rtype: &str, ctype: &str, lid: Option<i64>) -> Course {
+        Course {
+            id,
+            code: format!("CS{:03}", id),
+            name: format!("Course {}", id),
+            hours_per_week: hours,
+            room_type: rtype.to_string(),
+            class_type: ctype.to_string(),
+            frequency: "weekly".to_string(),
+            lecturer_id: lid,
+            lecturer_name: None,
+            org_id: Some(1),
+        }
+    }
+
+    fn room(id: i64, cap: i64, rtype: &str) -> Room {
+        Room {
+            id,
+            name: format!("R{}", id),
+            capacity: cap,
+            room_type: rtype.to_string(),
+            available_days: "Mon,Tue,Wed,Thu,Fri".to_string(),
+            org_id: Some(1),
+        }
+    }
+
+    fn batch(id: i64, size: i64, cids: Vec<i64>) -> Batch {
+        Batch {
+            id,
+            name: format!("B{}", id),
+            department: "CS".to_string(),
+            semester: 1,
+            size,
+            course_ids: cids,
+            org_id: Some(1),
+            semester_id: None,
+        }
+    }
+
+    fn simple() -> SchedulerInput {
+        SchedulerInput {
+            courses:   vec![course(1, 2, "lecture", "lecture", Some(1))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:     vec![room(1, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1])],
+        }
+    }
+
+    // Collect all (room, day, slot) occupancies and assert no duplicates
+    fn assert_no_room_conflicts(entries: &[PlacedEntry]) {
+        let mut seen = std::collections::HashSet::new();
+        for e in entries {
+            let key = (e.room_id, e.day.clone(), e.time_slot);
+            assert!(!seen.contains(&key), "Room double-booked: {:?}", key);
+            seen.insert(key);
+        }
+    }
+
+    fn assert_no_lecturer_conflicts(entries: &[PlacedEntry]) {
+        let mut seen = std::collections::HashSet::new();
+        for e in entries {
+            let key = (e.lecturer_id, e.day.clone(), e.time_slot);
+            assert!(!seen.contains(&key), "Lecturer double-booked: {:?}", key);
+            seen.insert(key);
+        }
+    }
+
+    fn assert_no_batch_conflicts(entries: &[PlacedEntry]) {
+        let mut seen = std::collections::HashSet::new();
+        for e in entries {
+            let key = (e.batch_id, e.day.clone(), e.time_slot);
+            assert!(!seen.contains(&key), "Batch double-booked: {:?}", key);
+            seen.insert(key);
+        }
+    }
+
+    // ── slot_penalty ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn slot_penalty_lab_prefers_afternoon() {
+        assert_eq!(slot_penalty("lab", 0), 3);
+        assert_eq!(slot_penalty("lab", 3), 3);
+        assert_eq!(slot_penalty("lab", 4), 0);
+        assert_eq!(slot_penalty("lab", 7), 0);
+    }
+
+    #[test]
+    fn slot_penalty_tutorial_prefers_morning() {
+        assert_eq!(slot_penalty("tutorial", 0), 0);
+        assert_eq!(slot_penalty("tutorial", 3), 0);
+        assert_eq!(slot_penalty("tutorial", 4), 2);
+        assert_eq!(slot_penalty("tutorial", 7), 2);
+    }
+
+    #[test]
+    fn slot_penalty_lecture_neutral_middle_slots() {
+        assert_eq!(slot_penalty("lecture", 0), 1); // very early
+        assert_eq!(slot_penalty("lecture", 7), 1); // very late
+        assert_eq!(slot_penalty("lecture", 3), 0); // fine
+        assert_eq!(slot_penalty("lecture", 4), 0); // fine
+    }
+
+    // ── preferred_penalty ────────────────────────────────────────────────────
+
+    #[test]
+    fn preferred_penalty_morning_met() {
+        let p = Some(r#"{"Mon":"morning"}"#.to_string());
+        assert_eq!(preferred_penalty(&p, "Mon", 2), 0);
+    }
+
+    #[test]
+    fn preferred_penalty_morning_violated() {
+        let p = Some(r#"{"Mon":"morning"}"#.to_string());
+        assert_eq!(preferred_penalty(&p, "Mon", 5), 2);
+    }
+
+    #[test]
+    fn preferred_penalty_afternoon_met() {
+        let p = Some(r#"{"Tue":"afternoon"}"#.to_string());
+        assert_eq!(preferred_penalty(&p, "Tue", 5), 0);
+    }
+
+    #[test]
+    fn preferred_penalty_afternoon_violated() {
+        let p = Some(r#"{"Tue":"afternoon"}"#.to_string());
+        assert_eq!(preferred_penalty(&p, "Tue", 2), 2);
+    }
+
+    #[test]
+    fn preferred_penalty_none_is_zero() {
+        assert_eq!(preferred_penalty(&None, "Mon", 5), 0);
+    }
+
+    #[test]
+    fn preferred_penalty_empty_string_is_zero() {
+        let p = Some("".to_string());
+        assert_eq!(preferred_penalty(&p, "Mon", 5), 0);
+    }
+
+    #[test]
+    fn preferred_penalty_wrong_day_is_zero() {
+        let p = Some(r#"{"Mon":"morning"}"#.to_string());
+        assert_eq!(preferred_penalty(&p, "Fri", 7), 0);
+    }
+
+    // ── is_blacked_out ───────────────────────────────────────────────────────
+
+    #[test]
+    fn blackout_entire_day() {
+        let b = Some(r#"[{"day":"Mon","slot":null}]"#.to_string());
+        assert!(is_blacked_out(&b, "Mon", 0));
+        assert!(is_blacked_out(&b, "Mon", 7));
+        assert!(!is_blacked_out(&b, "Tue", 0));
+    }
+
+    #[test]
+    fn blackout_specific_slot() {
+        let b = Some(r#"[{"day":"Fri","slot":7}]"#.to_string());
+        assert!(is_blacked_out(&b, "Fri", 7));
+        assert!(!is_blacked_out(&b, "Fri", 6));
+        assert!(!is_blacked_out(&b, "Mon", 7));
+    }
+
+    #[test]
+    fn blackout_multiple_entries() {
+        let b = Some(r#"[{"day":"Mon","slot":null},{"day":"Wed","slot":3}]"#.to_string());
+        assert!(is_blacked_out(&b, "Mon", 5));
+        assert!(is_blacked_out(&b, "Wed", 3));
+        assert!(!is_blacked_out(&b, "Wed", 4));
+        assert!(!is_blacked_out(&b, "Thu", 0));
+    }
+
+    #[test]
+    fn blackout_empty_list_never_blocks() {
+        let b = Some("[]".to_string());
+        assert!(!is_blacked_out(&b, "Mon", 0));
+    }
+
+    #[test]
+    fn blackout_none_never_blocks() {
+        assert!(!is_blacked_out(&None, "Mon", 0));
+    }
+
+    // ── would_exceed_consecutive ─────────────────────────────────────────────
+
+    #[test]
+    fn consecutive_basic_exceeds() {
+        // [1,2] + 3 = run of 3; max=2 → exceeds
+        assert!(would_exceed_consecutive(&[1, 2], 3, 2));
+    }
+
+    #[test]
+    fn consecutive_basic_allows_at_max() {
+        // [0,1] + 2 = run of 3; max=3 → exactly at limit, allowed
+        assert!(!would_exceed_consecutive(&[0, 1], 2, 3));
+    }
+
+    #[test]
+    fn consecutive_exceeds_one_above_max() {
+        // [0,1] + 2 = run of 3; max=2 → exceeds
+        assert!(would_exceed_consecutive(&[0, 1], 2, 2));
+    }
+
+    #[test]
+    fn consecutive_lunch_gap_breaks_run() {
+        // Slots 3→4 = lunch gap (11:00–12:00 / 13:00–14:00), NOT consecutive
+        // [1,2,3] + 4 → run of 1,2,3 = 3 and 4 alone; max=3 → no exceed
+        assert!(!would_exceed_consecutive(&[1, 2, 3], 4, 3));
+    }
+
+    #[test]
+    fn consecutive_after_lunch_creates_new_run() {
+        // [3,4,5] → gap between 3 and 4, so runs are [3] and [4,5]
+        // Adding slot 6: run becomes [4,5,6] = 3; max=2 → exceeds
+        assert!(would_exceed_consecutive(&[3, 4, 5], 6, 2));
+    }
+
+    #[test]
+    fn consecutive_max_zero_disabled() {
+        // max_consecutive=0 means unlimited
+        assert!(!would_exceed_consecutive(&[0, 1, 2, 3, 4, 5, 6], 7, 0));
+    }
+
+    #[test]
+    fn consecutive_non_adjacent_slots_never_run() {
+        // [0, 2, 4] are all separated; adding 6 still no runs
+        assert!(!would_exceed_consecutive(&[0, 2, 4], 6, 2));
+    }
+
+    // ── Hard Constraint: room double-booking ─────────────────────────────────
+
+    #[test]
+    fn hard_no_room_double_booking() {
+        // Two batches, two courses, one room — they cannot share (day, slot, room)
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 1, "lecture", "lecture", Some(1)),
+                            course(2, 1, "lecture", "lecture", Some(2))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20),
+                            lec(2, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:     vec![room(1, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1]), batch(2, 25, vec![2])],
+        };
+        let r = generate(&inp);
+        assert_no_room_conflicts(&r.entries);
+    }
+
+    // ── Hard Constraint: lecturer double-booking ─────────────────────────────
+
+    #[test]
+    fn hard_no_lecturer_double_booking() {
+        // Same lecturer, two batches, two rooms
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 5, "lecture", "lecture", Some(1)),
+                            course(2, 5, "lecture", "lecture", Some(1))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 40)],
+            rooms:     vec![room(1, 30, "lecture"), room(2, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1]), batch(2, 25, vec![2])],
+        };
+        let r = generate(&inp);
+        assert_no_lecturer_conflicts(&r.entries);
+    }
+
+    // ── Hard Constraint: batch double-booking ────────────────────────────────
+
+    #[test]
+    fn hard_no_batch_double_booking() {
+        // Single batch, two courses — batch can't be two places at once
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 5, "lecture", "lecture", Some(1)),
+                            course(2, 5, "lecture", "lecture", Some(2))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 40),
+                            lec(2, "Mon,Tue,Wed,Thu,Fri", 8, 40)],
+            rooms:     vec![room(1, 30, "lecture"), room(2, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1, 2])],
+        };
+        let r = generate(&inp);
+        assert_no_batch_conflicts(&r.entries);
+    }
+
+    // ── Hard Constraint: room type matching ──────────────────────────────────
+
+    #[test]
+    fn hard_lab_uses_only_lab_room() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 2, "lab", "lab", Some(1))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:     vec![room(1, 30, "lecture"), room(2, 30, "lab")],
+            batches:   vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 2);
+        for e in &r.entries { assert_eq!(e.room_id, 2, "Lab must use lab room"); }
+    }
+
+    #[test]
+    fn hard_lecture_never_uses_lab_room() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 2, "lecture", "lecture", Some(1))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:     vec![room(1, 30, "lab"), room(2, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 2);
+        for e in &r.entries { assert_eq!(e.room_id, 2, "Lecture must use lecture room"); }
+    }
+
+    #[test]
+    fn hard_no_lab_room_causes_unscheduled() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 2, "lab", "lab", Some(1))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:     vec![room(1, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert!(r.entries.is_empty());
+        assert_eq!(r.unscheduled.len(), 1);
+    }
+
+    // ── Hard Constraint: room capacity ───────────────────────────────────────
+
+    #[test]
+    fn hard_room_capacity_picks_large_enough_room() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 1, "lecture", "lecture", Some(1))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:     vec![room(1, 10, "lecture"), room(2, 60, "lecture")],
+            batches:   vec![batch(1, 50, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 1);
+        assert_eq!(r.entries[0].room_id, 2);
+    }
+
+    #[test]
+    fn hard_room_too_small_unscheduled() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 1, "lecture", "lecture", Some(1))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:     vec![room(1, 10, "lecture")],
+            batches:   vec![batch(1, 100, vec![1])],
+        };
+        let r = generate(&inp);
+        assert!(r.entries.is_empty());
+        assert_eq!(r.unscheduled.len(), 1);
+    }
+
+    // ── Hard Constraint: lecturer availability ───────────────────────────────
+
+    #[test]
+    fn hard_lecturer_only_placed_on_available_days() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 3, "lecture", "lecture", Some(1))],
+            lecturers: vec![Lecturer {
+                id: 1, name: "Mon-only".to_string(), email: None,
+                available_days: "Mon".to_string(),
+                max_hours_per_day: 8, max_hours_per_week: 20,
+                org_id: Some(1), preferred_slots_json: None, blackout_json: None,
+                max_consecutive_hours: 0,
+            }],
+            rooms:   vec![room(1, 30, "lecture")],
+            batches: vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 3);
+        for e in &r.entries { assert_eq!(e.day, "Mon"); }
+    }
+
+    #[test]
+    fn hard_lecturer_no_available_days_unscheduled() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 1, "lecture", "lecture", Some(1))],
+            lecturers: vec![Lecturer {
+                id: 1, name: "Unavailable".to_string(), email: None,
+                available_days: "".to_string(),
+                max_hours_per_day: 8, max_hours_per_week: 20,
+                org_id: Some(1), preferred_slots_json: None, blackout_json: None,
+                max_consecutive_hours: 0,
+            }],
+            rooms:   vec![room(1, 30, "lecture")],
+            batches: vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert!(r.entries.is_empty());
+    }
+
+    // ── Hard Constraint: max_hours_per_day ───────────────────────────────────
+
+    #[test]
+    fn hard_max_hours_per_day_not_exceeded() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 8, "lecture", "lecture", Some(1))],
+            lecturers: vec![Lecturer {
+                id: 1, name: "L".to_string(), email: None,
+                available_days: "Mon,Tue,Wed,Thu,Fri".to_string(),
+                max_hours_per_day: 2,
+                max_hours_per_week: 40,
+                org_id: Some(1), preferred_slots_json: None, blackout_json: None,
+                max_consecutive_hours: 0,
+            }],
+            rooms:   vec![room(1, 30, "lecture")],
+            batches: vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        let mut day_count: std::collections::HashMap<String, i64> = Default::default();
+        for e in &r.entries { *day_count.entry(e.day.clone()).or_insert(0) += 1; }
+        for (day, cnt) in &day_count {
+            assert!(*cnt <= 2, "max_hours_per_day exceeded on {}: {}", day, cnt);
+        }
+    }
+
+    // ── Hard Constraint: max_hours_per_week ──────────────────────────────────
+
+    #[test]
+    fn hard_max_hours_per_week_caps_placement() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 10, "lecture", "lecture", Some(1))],
+            lecturers: vec![Lecturer {
+                id: 1, name: "L".to_string(), email: None,
+                available_days: "Mon,Tue,Wed,Thu,Fri".to_string(),
+                max_hours_per_day: 8,
+                max_hours_per_week: 5,
+                org_id: Some(1), preferred_slots_json: None, blackout_json: None,
+                max_consecutive_hours: 0,
+            }],
+            rooms:   vec![room(1, 30, "lecture")],
+            batches: vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 5, "exactly max_hours_per_week sessions placed");
+        assert_eq!(r.unscheduled.len(), 1);
+        assert!(r.unscheduled[0].reason.contains("weekly max"));
+    }
+
+    // ── Hard Constraint: blackout slots ──────────────────────────────────────
+
+    #[test]
+    fn hard_blackout_days_avoided() {
+        // Blackout Mon–Thu → all sessions must land on Fri
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 3, "lecture", "lecture", Some(1))],
+            lecturers: vec![Lecturer {
+                id: 1, name: "L".to_string(), email: None,
+                available_days: "Mon,Tue,Wed,Thu,Fri".to_string(),
+                max_hours_per_day: 8, max_hours_per_week: 20,
+                org_id: Some(1),
+                preferred_slots_json: None,
+                blackout_json: Some(r#"[
+                    {"day":"Mon","slot":null},{"day":"Tue","slot":null},
+                    {"day":"Wed","slot":null},{"day":"Thu","slot":null}
+                ]"#.to_string()),
+                max_consecutive_hours: 0,
+            }],
+            rooms:   vec![room(1, 30, "lecture")],
+            batches: vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        for e in &r.entries { assert_eq!(e.day, "Fri", "Blackout days must be avoided"); }
+    }
+
+    #[test]
+    fn hard_blackout_specific_slot_avoided() {
+        // Blackout Mon slot 0 only
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 1, "lecture", "lecture", Some(1))],
+            lecturers: vec![Lecturer {
+                id: 1, name: "L".to_string(), email: None,
+                available_days: "Mon".to_string(),
+                max_hours_per_day: 8, max_hours_per_week: 20,
+                org_id: Some(1),
+                preferred_slots_json: None,
+                blackout_json: Some(r#"[{"day":"Mon","slot":0}]"#.to_string()),
+                max_consecutive_hours: 0,
+            }],
+            rooms:   vec![room(1, 30, "lecture")],
+            batches: vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 1);
+        assert_ne!(r.entries[0].time_slot, 0, "Blacked-out slot 0 must not be used");
+    }
+
+    // ── Hard Constraint: max_consecutive_hours ───────────────────────────────
+
+    #[test]
+    fn hard_max_consecutive_hours_not_exceeded() {
+        // Force everything to one day; max_consecutive=2 → no 3-in-a-row
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 6, "lecture", "lecture", Some(1))],
+            lecturers: vec![Lecturer {
+                id: 1, name: "L".to_string(), email: None,
+                available_days: "Mon".to_string(),
+                max_hours_per_day: 8, max_hours_per_week: 40,
+                org_id: Some(1),
+                preferred_slots_json: None, blackout_json: None,
+                max_consecutive_hours: 2,
+            }],
+            rooms:   vec![room(1, 30, "lecture")],
+            batches: vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        let mut slots: Vec<i64> = r.entries.iter()
+            .filter(|e| e.day == "Mon")
+            .map(|e| e.time_slot)
+            .collect();
+        slots.sort_unstable();
+        let mut run = 1i64;
+        for i in 1..slots.len() {
+            let (a, b) = (slots[i-1], slots[i]);
+            if b == a + 1 && !(a == 3 && b == 4) {
+                run += 1;
+                assert!(run <= 2, "Consecutive run {} > max_consecutive_hours=2", run);
+            } else {
+                run = 1;
+            }
+        }
+    }
+
+    #[test]
+    fn hard_lunch_gap_not_treated_as_consecutive() {
+        // Slots 3 and 4 are NOT consecutive (lunch gap)
+        // Ensure would_exceed_consecutive([3], 4, 1) returns false
+        assert!(!would_exceed_consecutive(&[3], 4, 1),
+            "Slots 3 and 4 cross lunch gap and must not be treated as consecutive");
+    }
+
+    // ── Unscheduled reporting ─────────────────────────────────────────────────
+
+    #[test]
+    fn unscheduled_no_lecturer() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 2, "lecture", "lecture", None)],
+            lecturers: vec![],
+            rooms:     vec![room(1, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert!(r.entries.is_empty());
+        assert_eq!(r.unscheduled.len(), 1);
+        assert!(r.unscheduled[0].reason.contains("No lecturer"));
+    }
+
+    #[test]
+    fn unscheduled_missing_lecturer_record() {
+        // Lecturer ID 99 referenced but not provided
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 1, "lecture", "lecture", Some(99))],
+            lecturers: vec![],
+            rooms:     vec![room(1, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert!(r.entries.is_empty());
+        assert_eq!(r.unscheduled.len(), 1);
+        assert!(r.unscheduled[0].reason.contains("not found"));
+    }
+
+    #[test]
+    fn unscheduled_partial_placement_reports_remaining() {
+        // 10 hours needed but weekly cap = 6 → 4 unscheduled hours
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 10, "lecture", "lecture", Some(1))],
+            lecturers: vec![Lecturer {
+                id: 1, name: "L".to_string(), email: None,
+                available_days: "Mon,Tue,Wed,Thu,Fri".to_string(),
+                max_hours_per_day: 8, max_hours_per_week: 6,
+                org_id: Some(1), preferred_slots_json: None, blackout_json: None,
+                max_consecutive_hours: 0,
+            }],
+            rooms:   vec![room(1, 30, "lecture")],
+            batches: vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 6);
+        assert_eq!(r.unscheduled.len(), 1);
+        assert_eq!(r.unscheduled[0].hours_needed, 4,
+            "Should report exactly 4 remaining unscheduled hours");
+    }
+
+    // ── Empty / trivial inputs ────────────────────────────────────────────────
+
+    #[test]
+    fn empty_input_produces_empty_output() {
+        let r = generate(&SchedulerInput {
+            courses: vec![], lecturers: vec![], rooms: vec![], batches: vec![],
+        });
+        assert!(r.entries.is_empty());
+        assert!(r.unscheduled.is_empty());
+    }
+
+    #[test]
+    fn all_sessions_placed_for_trivial_case() {
+        let r = generate(&simple());
+        assert_eq!(r.entries.len(), 2);
+        assert!(r.unscheduled.is_empty());
+    }
+
+    // ── Biweekly ─────────────────────────────────────────────────────────────
+
+    fn biweekly_course(id: i64, hrs: i64, lid: i64) -> Course {
+        Course {
+            id, code: format!("BW{}", id), name: format!("Biweekly {}", id),
+            hours_per_week: hrs, room_type: "lecture".to_string(),
+            class_type: "lecture".to_string(), frequency: "biweekly".to_string(),
+            lecturer_id: Some(lid), lecturer_name: None, org_id: Some(1),
+        }
+    }
+
+    #[test]
+    fn biweekly_places_half_sessions_ceil() {
+        // 4 hrs/week biweekly → ceil(4/2) = 2 sessions
+        let inp = SchedulerInput {
+            courses:   vec![biweekly_course(1, 4, 1)],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 20)],
+            rooms:     vec![room(1, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 2, "biweekly 4hr → 2 sessions placed");
+    }
+
+    #[test]
+    fn biweekly_odd_hours_ceil() {
+        // 3 hrs/week biweekly → ceil(3/2) = 2 sessions
+        let inp = SchedulerInput {
+            courses:   vec![biweekly_course(1, 3, 1)],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 20)],
+            rooms:     vec![room(1, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 2, "ceil(3/2) = 2 sessions");
+    }
+
+    #[test]
+    fn biweekly_entries_have_week_parity_one() {
+        let inp = SchedulerInput {
+            courses:   vec![biweekly_course(1, 2, 1)],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 20)],
+            rooms:     vec![room(1, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        for e in &r.entries {
+            assert_eq!(e.week_parity, 1, "biweekly → week_parity must be 1");
+        }
+    }
+
+    #[test]
+    fn weekly_entries_have_week_parity_zero() {
+        let r = generate(&simple());
+        for e in &r.entries {
+            assert_eq!(e.week_parity, 0, "weekly → week_parity must be 0");
+        }
+    }
+
+    // ── Diversity heuristics ─────────────────────────────────────────────────
+
+    #[test]
+    fn diversity_spreads_batch_across_days() {
+        // 5 independent 1-hr courses for one batch → expect ≥ 3 distinct days
+        let courses: Vec<Course> = (1..=5).map(|i| course(i, 1, "lecture", "lecture", Some(i))).collect();
+        let lecturers: Vec<Lecturer> = (1..=5).map(|i| lec(i, "Mon,Tue,Wed,Thu,Fri", 4, 20)).collect();
+        let rooms: Vec<Room> = (1..=5).map(|i| room(i, 30, "lecture")).collect();
+        let inp = SchedulerInput {
+            courses, lecturers, rooms,
+            batches: vec![batch(1, 25, vec![1, 2, 3, 4, 5])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 5);
+        let days: std::collections::HashSet<String> = r.entries.iter().map(|e| e.day.clone()).collect();
+        assert!(days.len() >= 3, "Diversity: expected ≥3 days, got {:?}", days);
+    }
+
+    #[test]
+    fn labs_prefer_afternoon_slots() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 3, "lab", "lab", Some(1))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:     vec![room(1, 30, "lab")],
+            batches:   vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 3);
+        for e in &r.entries {
+            assert!(e.time_slot >= 4, "Lab should be in afternoon (slot≥4), got {}", e.time_slot);
+        }
+    }
+
+    #[test]
+    fn tutorials_prefer_morning_slots() {
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 3, "lecture", "tutorial", Some(1))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:     vec![room(1, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 3);
+        for e in &r.entries {
+            assert!(e.time_slot < 4, "Tutorial should be in morning (slot<4), got {}", e.time_slot);
+        }
+    }
+
+    // ── Multi-entity consistency ──────────────────────────────────────────────
+
+    #[test]
+    fn multiple_batches_same_course_independent_sessions() {
+        // Two batches both enrolled in course 1 → 4 total sessions (2 per batch)
+        let inp = SchedulerInput {
+            courses:   vec![course(1, 2, "lecture", "lecture", Some(1))],
+            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 40)],
+            rooms:     vec![room(1, 30, "lecture"), room(2, 30, "lecture")],
+            batches:   vec![batch(1, 25, vec![1]), batch(2, 25, vec![1])],
+        };
+        let r = generate(&inp);
+        assert_eq!(r.entries.len(), 4, "2 batches × 2 hrs = 4 entries");
+        assert_no_lecturer_conflicts(&r.entries);
+        assert_no_batch_conflicts(&r.entries);
+    }
+
+    #[test]
+    fn large_dataset_all_hard_constraints_hold() {
+        // 10 lecturers, 20 courses, 10 rooms, 10 batches
+        let lecturers: Vec<Lecturer> = (1..=10).map(|i| lec(i, "Mon,Tue,Wed,Thu,Fri", 4, 20)).collect();
+        let courses: Vec<Course> = (1..=20).map(|i| course(i, 2, "lecture", "lecture", Some((i % 10) + 1))).collect();
+        let rooms: Vec<Room> = (1..=10).map(|i| room(i, 40, "lecture")).collect();
+        let batches: Vec<Batch> = (1..=10).map(|i| {
+            batch(i, 30, vec![(i * 2 - 1).min(20), (i * 2).min(20)])
+        }).collect();
+        let r = generate(&SchedulerInput { courses, lecturers, rooms, batches });
+        assert_no_room_conflicts(&r.entries);
+        assert_no_lecturer_conflicts(&r.entries);
+        assert_no_batch_conflicts(&r.entries);
+    }
+}

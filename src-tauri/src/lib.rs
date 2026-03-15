@@ -1,7 +1,10 @@
 mod commands;
-mod db;
-mod models;
-mod scheduler;
+pub mod db;
+pub mod models;
+pub mod scheduler;
+
+#[cfg(test)]
+mod db_tests;
 
 use commands::{DbState, SessionState};
 use std::sync::Mutex;
