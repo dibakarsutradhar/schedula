@@ -16,15 +16,33 @@
   import Schedule     from './views/Schedule.svelte'
   import Users        from './views/Users.svelte'
   import Settings     from './views/Settings.svelte'
+  import Onboarding   from './lib/components/Onboarding.svelte'
   import { prefs }    from './lib/stores/prefs.js'
 
   let active = 'dashboard'
   let loading = true
+  let showOnboarding = false
+
+  function checkOnboarding(sess) {
+    if (!sess) return false
+    const key = `schedula_onboarded_${sess.user_id}`
+    return !localStorage.getItem(key)
+  }
 
   onMount(async () => {
     await session.restore()
     loading = false
   })
+
+  // Show onboarding whenever a session becomes active and user hasn't completed it
+  $: if (!loading && $session && !showOnboarding) {
+    if (checkOnboarding($session)) showOnboarding = true
+  }
+
+  function handleOnboardingComplete(e) {
+    showOnboarding = false
+    if (e?.detail?.navigateTo) active = e.detail.navigateTo
+  }
 
   function handleKeydown(e) {
     if ((e.metaKey || e.ctrlKey) && e.key === ',') {
@@ -70,6 +88,11 @@
       {/if}
     </div>
   </div>
+{/if}
+
+<!-- Onboarding wizard (first-time users) -->
+{#if $session && showOnboarding}
+  <Onboarding on:complete={handleOnboardingComplete} />
 {/if}
 
 <!-- Toast notifications -->
