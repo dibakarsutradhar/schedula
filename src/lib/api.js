@@ -73,3 +73,7 @@ export const getAppInfo               = ()                    => invoke('get_app
 export const getMaxAdmins   = ()      => invoke('get_max_admins')
 export const setMaxAdmins   = (max)   => invoke('set_max_admins', { max })
 export const getAdminCount  = ()      => invoke('get_admin_count')
+
+// Utilization & editing
+export const getUtilizationReport  = (scheduleId)       => invoke('get_utilization_report', { scheduleId })
+export const updateScheduleEntry   = (entryId, req)     => invoke('update_schedule_entry', { entryId, req })

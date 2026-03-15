@@ -431,9 +431,12 @@ pub fn create_lecturer(db: State<DbState>, session: State<SessionState>, lecture
     require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
-        "INSERT INTO lecturers (name, email, available_days, max_hours_per_day, max_hours_per_week, org_id)
-         VALUES (?1,?2,?3,?4,?5,?6)",
-        params![lecturer.name, lecturer.email, lecturer.available_days, lecturer.max_hours_per_day, lecturer.max_hours_per_week, lecturer.org_id],
+        "INSERT INTO lecturers (name, email, available_days, max_hours_per_day, max_hours_per_week, org_id,
+                                preferred_slots_json, blackout_json, max_consecutive_hours)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+        params![lecturer.name, lecturer.email, lecturer.available_days,
+                lecturer.max_hours_per_day, lecturer.max_hours_per_week, lecturer.org_id,
+                lecturer.preferred_slots_json, lecturer.blackout_json, lecturer.max_consecutive_hours],
     ).map_err(db_err)?;
     Ok(conn.last_insert_rowid())
 }
@@ -443,8 +446,11 @@ pub fn update_lecturer(db: State<DbState>, session: State<SessionState>, id: i64
     require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
-        "UPDATE lecturers SET name=?1, email=?2, available_days=?3, max_hours_per_day=?4, max_hours_per_week=?5, org_id=?6 WHERE id=?7",
-        params![lecturer.name, lecturer.email, lecturer.available_days, lecturer.max_hours_per_day, lecturer.max_hours_per_week, lecturer.org_id, id],
+        "UPDATE lecturers SET name=?1, email=?2, available_days=?3, max_hours_per_day=?4, max_hours_per_week=?5,
+         org_id=?6, preferred_slots_json=?7, blackout_json=?8, max_consecutive_hours=?9 WHERE id=?10",
+        params![lecturer.name, lecturer.email, lecturer.available_days,
+                lecturer.max_hours_per_day, lecturer.max_hours_per_week, lecturer.org_id,
+                lecturer.preferred_slots_json, lecturer.blackout_json, lecturer.max_consecutive_hours, id],
     ).map_err(db_err)?;
     Ok(())
 }
@@ -985,6 +991,138 @@ pub fn get_admin_count(db: State<DbState>, session: State<SessionState>) -> Resu
     Ok(count)
 }
 
+// ── Utilization report ─────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn get_utilization_report(
+    db: State<DbState>,
+    session: State<SessionState>,
+    schedule_id: i64,
+) -> Result<UtilizationReport, String> {
+    require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+
+    let schedule_name: String = conn.query_row(
+        "SELECT name FROM schedules WHERE id=?1", params![schedule_id], |r| r.get(0)
+    ).map_err(|_| "Schedule not found".to_string())?;
+
+    let total_entries: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM schedule_entries WHERE schedule_id=?1", params![schedule_id], |r| r.get(0)
+    ).unwrap_or(0);
+
+    // Room utilization
+    let mut stmt = conn.prepare(
+        "SELECT r.id, r.name, r.room_type, r.capacity, r.available_days,
+                COUNT(se.id) as booked
+         FROM rooms r
+         LEFT JOIN schedule_entries se ON se.room_id=r.id AND se.schedule_id=?1
+         GROUP BY r.id ORDER BY booked DESC"
+    ).map_err(db_err)?;
+    let rooms: Vec<RoomUtilization> = stmt.query_map(params![schedule_id], |row| {
+        let avail: String = row.get(4)?;
+        let days = avail.split(',').count() as i64;
+        let total = days * 8;
+        let booked: i64 = row.get(5)?;
+        let pct = if total > 0 { (booked as f64 / total as f64) * 100.0 } else { 0.0 };
+        Ok(RoomUtilization {
+            room_id: row.get(0)?,
+            room_name: row.get(1)?,
+            room_type: row.get(2)?,
+            capacity: row.get(3)?,
+            booked_slots: booked,
+            total_available_slots: total,
+            utilization_pct: (pct * 10.0).round() / 10.0,
+        })
+    }).map_err(db_err)?.filter_map(|r| r.ok()).collect();
+
+    // Lecturer load
+    let mut stmt2 = conn.prepare(
+        "SELECT l.id, l.name, l.max_hours_per_week,
+                COUNT(se.id) as scheduled
+         FROM lecturers l
+         LEFT JOIN schedule_entries se ON se.lecturer_id=l.id AND se.schedule_id=?1
+         GROUP BY l.id ORDER BY scheduled DESC"
+    ).map_err(db_err)?;
+    let lecturer_loads: Vec<LecturerLoad> = stmt2.query_map(params![schedule_id], |row| {
+        let max_h: i64 = row.get(2)?;
+        let sched: i64 = row.get(3)?;
+        let pct = if max_h > 0 { (sched as f64 / max_h as f64) * 100.0 } else { 0.0 };
+        Ok(LecturerLoad {
+            lecturer_id: row.get(0)?,
+            lecturer_name: row.get(1)?,
+            scheduled_hours: sched,
+            max_hours_per_week: max_h,
+            load_pct: (pct * 10.0).round() / 10.0,
+        })
+    }).map_err(db_err)?.filter_map(|r| r.ok()).collect();
+
+    Ok(UtilizationReport { schedule_id, schedule_name, rooms, lecturer_loads, total_entries })
+}
+
+// ── Manual schedule entry edit ─────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn update_schedule_entry(
+    db: State<DbState>,
+    session: State<SessionState>,
+    entry_id: i64,
+    req: UpdateScheduleEntryReq,
+) -> Result<(), String> {
+    require_session(&session)?;
+    let valid_days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    if !valid_days.contains(&req.day.as_str()) {
+        return Err(format!("Invalid day: {}", req.day));
+    }
+    if req.time_slot < 0 || req.time_slot > 7 {
+        return Err(format!("Invalid time slot: {}", req.time_slot));
+    }
+    let conn = db.0.lock().map_err(db_err)?;
+
+    // Fetch current entry info
+    let (schedule_id, lecturer_id, batch_id, course_room_type): (i64, i64, i64, String) = conn.query_row(
+        "SELECT se.schedule_id, se.lecturer_id, se.batch_id, c.room_type
+         FROM schedule_entries se JOIN courses c ON c.id=se.course_id WHERE se.id=?1",
+        params![entry_id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+    ).map_err(|_| "Entry not found".to_string())?;
+
+    // Validate room type matches course requirement
+    let new_room_type: String = conn.query_row(
+        "SELECT room_type FROM rooms WHERE id=?1", params![req.room_id],
+        |r| r.get(0),
+    ).map_err(|_| "Room not found".to_string())?;
+    if new_room_type != course_room_type {
+        return Err(format!(
+            "Room type mismatch: course needs '{}' room, selected room is '{}'",
+            course_room_type, new_room_type
+        ));
+    }
+
+    let ds_day = &req.day;
+    let ds_slot = req.time_slot;
+
+    // Check for conflicts in the same schedule (excluding this entry)
+    let conflict: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM schedule_entries
+         WHERE schedule_id=?1 AND id!=?2 AND day=?3 AND time_slot=?4
+           AND (lecturer_id=?5 OR batch_id=?6 OR room_id=?7)",
+        params![schedule_id, entry_id, ds_day, ds_slot, lecturer_id, batch_id, req.room_id],
+        |r| r.get(0),
+    ).unwrap_or(0);
+    if conflict > 0 {
+        return Err(format!(
+            "Conflict: another entry at {} slot {} uses the same lecturer, batch, or room",
+            req.day, req.time_slot
+        ));
+    }
+
+    conn.execute(
+        "UPDATE schedule_entries SET day=?1, time_slot=?2, room_id=?3 WHERE id=?4",
+        params![req.day, req.time_slot, req.room_id, entry_id],
+    ).map_err(db_err)?;
+    Ok(())
+}
+
 fn count_scoped(conn: &Connection, table: &str, org_id: Option<i64>) -> i64 {
     let sql = match org_id {
         Some(id) => format!("SELECT COUNT(*) FROM {} WHERE org_id={}", table, id),
@@ -1031,7 +1169,9 @@ fn load_courses_scoped(conn: &Connection, org_id: Option<i64>) -> Result<Vec<Cou
 fn load_lecturers_scoped(conn: &Connection, org_id: Option<i64>) -> Result<Vec<Lecturer>, String> {
     let where_clause = org_id.map_or(String::new(), |id| format!(" WHERE org_id={}", id));
     let sql = format!(
-        "SELECT id, name, email, available_days, max_hours_per_day, max_hours_per_week, org_id FROM lecturers{} ORDER BY name",
+        "SELECT id, name, email, available_days, max_hours_per_day, max_hours_per_week, org_id,
+                preferred_slots_json, blackout_json, max_consecutive_hours
+         FROM lecturers{} ORDER BY name",
         where_clause
     );
     let mut stmt = conn.prepare(&sql).map_err(db_err)?;
@@ -1043,6 +1183,9 @@ fn load_lecturers_scoped(conn: &Connection, org_id: Option<i64>) -> Result<Vec<L
         max_hours_per_day: row.get(4)?,
         max_hours_per_week: row.get(5)?,
         org_id: row.get(6)?,
+        preferred_slots_json: row.get(7)?,
+        blackout_json: row.get(8)?,
+        max_consecutive_hours: row.get::<_, Option<i64>>(9)?.unwrap_or(3),
     })).map_err(db_err)?.collect();
     rows.map_err(db_err)
 }

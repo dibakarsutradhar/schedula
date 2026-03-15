@@ -137,7 +137,13 @@ pub struct Lecturer {
     pub max_hours_per_day: i64,
     pub max_hours_per_week: i64,
     pub org_id: Option<i64>,
+    // Soft constraints (v5)
+    pub preferred_slots_json: Option<String>,   // {"Mon":"morning","Tue":"afternoon",...}
+    pub blackout_json: Option<String>,          // [{"day":"Mon","slot":null},...]
+    pub max_consecutive_hours: i64,
 }
+
+fn default_max_consecutive() -> i64 { 3 }
 
 #[derive(Debug, Deserialize)]
 pub struct NewLecturer {
@@ -147,6 +153,12 @@ pub struct NewLecturer {
     pub max_hours_per_day: i64,
     pub max_hours_per_week: i64,
     pub org_id: Option<i64>,
+    #[serde(default)]
+    pub preferred_slots_json: Option<String>,
+    #[serde(default)]
+    pub blackout_json: Option<String>,
+    #[serde(default = "default_max_consecutive")]
+    pub max_consecutive_hours: i64,
 }
 
 // ─── Room ─────────────────────────────────────────────────────────────────────
@@ -279,4 +291,44 @@ pub struct UnscheduledItem {
     pub course_name: String,
     pub hours_needed: i64,
     pub reason: String,
+}
+
+// ─── Utilization report ───────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RoomUtilization {
+    pub room_id: i64,
+    pub room_name: String,
+    pub room_type: String,
+    pub capacity: i64,
+    pub booked_slots: i64,
+    pub total_available_slots: i64,
+    pub utilization_pct: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LecturerLoad {
+    pub lecturer_id: i64,
+    pub lecturer_name: String,
+    pub scheduled_hours: i64,
+    pub max_hours_per_week: i64,
+    pub load_pct: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UtilizationReport {
+    pub schedule_id: i64,
+    pub schedule_name: String,
+    pub rooms: Vec<RoomUtilization>,
+    pub lecturer_loads: Vec<LecturerLoad>,
+    pub total_entries: i64,
+}
+
+// ─── Manual schedule entry edit ───────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateScheduleEntryReq {
+    pub day: String,
+    pub time_slot: i64,
+    pub room_id: i64,
 }

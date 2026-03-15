@@ -35,7 +35,7 @@
         <input
           class="form-input"
           bind:value={username}
-          placeholder="admin"
+          placeholder="username"
           autocomplete="username"
           autofocus
         />
@@ -55,9 +55,6 @@
       </button>
     </form>
 
-    <div class="login-hint">
-      Default credentials: <code>admin</code> / <code>admin123</code>
-    </div>
   </div>
 </div>
 
@@ -90,11 +87,4 @@
   .login-brand h1 { font-size: 1.8rem; margin-bottom: 6px; }
   .login-brand p { color: var(--text-muted); font-size: 13px; }
   .login-form { display: flex; flex-direction: column; gap: 16px; }
-  .login-hint {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-  code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; font-size: 11px; }
 </style>

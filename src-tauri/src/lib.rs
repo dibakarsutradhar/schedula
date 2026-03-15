@@ -85,6 +85,9 @@ pub fn run() {
             commands::get_max_admins,
             commands::set_max_admins,
             commands::get_admin_count,
+            // Utilization & editing
+            commands::get_utilization_report,
+            commands::update_schedule_entry,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

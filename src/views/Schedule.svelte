@@ -2,10 +2,13 @@
   import { onMount } from 'svelte'
   import Timetable from '../lib/components/Timetable.svelte'
   import SemesterCalendar from '../lib/components/SemesterCalendar.svelte'
+  import Reports from '../lib/components/Reports.svelte'
+  import Modal from '../lib/components/Modal.svelte'
   import {
     generateSchedule, getSchedules, getScheduleEntries,
     activateSchedule, deleteSchedule, exportScheduleCsv,
-    getBatches, getSemesters
+    getBatches, getSemesters, getRooms,
+    getUtilizationReport, updateScheduleEntry,
   } from '../lib/api.js'
   import { toast } from '../lib/toast.js'
 
@@ -13,6 +16,7 @@
   let entries = []
   let batches = []
   let semesters = []
+  let rooms = []
   let selectedId = null
   let selectedSemesterId = null  // for generate
   let filterBatch = null
@@ -20,9 +24,19 @@
   let scheduleName = ''
   let showConflicts = false
   let lastResult = null
-  let tab = 'timetable'   // 'timetable' | 'list' | 'calendar'
+  let tab = 'timetable'   // 'timetable' | 'list' | 'calendar' | 'reports'
   let filterType = 'all'
   let filterLecturer = null
+
+  // Utilization report
+  let report = null
+  let loadingReport = false
+
+  // Edit entry modal
+  let showEditModal = false
+  let editingEntry = null
+  let editForm = { day: 'Mon', time_slot: 0, room_id: null }
+  let savingEdit = false
 
   $: activeSchedule = schedules.find(s => s.id === selectedId)
   $: activeSemester  = semesters.find(s => s.id === activeSchedule?.semester_id) ?? null
@@ -37,7 +51,7 @@
   }
 
   onMount(async () => {
-    ;[schedules, batches, semesters] = await Promise.all([getSchedules(), getBatches(), getSemesters()])
+    ;[schedules, batches, semesters, rooms] = await Promise.all([getSchedules(), getBatches(), getSemesters(), getRooms()])
     const active = schedules.find(s => s.is_active)
     if (active) await selectSchedule(active.id)
   })
@@ -87,6 +101,96 @@
     a.href = url; a.download = `schedule-${selectedId}.csv`; a.click()
     URL.revokeObjectURL(url)
     toast('CSV exported')
+  }
+
+  // Tab switching — load report on demand
+  async function switchTab(t) {
+    tab = t
+    if (t === 'reports' && selectedId && !report) {
+      loadingReport = true
+      try { report = await getUtilizationReport(selectedId) } catch(e) { toast(String(e), 'error') } finally { loadingReport = false }
+    }
+  }
+
+  // Manual entry editing
+  function openEditModal(entry) {
+    editingEntry = entry
+    editForm = { day: entry.day, time_slot: entry.time_slot, room_id: entry.room_id }
+    showEditModal = true
+  }
+
+  async function saveEdit() {
+    savingEdit = true
+    try {
+      await updateScheduleEntry(editingEntry.id, editForm)
+      entries = await getScheduleEntries(selectedId)
+      if (tab === 'reports') report = await getUtilizationReport(selectedId)
+      toast('Entry moved')
+      showEditModal = false
+    } catch (e) {
+      toast(String(e), 'error')
+    } finally {
+      savingEdit = false
+    }
+  }
+
+  $: editableRooms = editingEntry
+    ? rooms.filter(r => r.room_type === (editingEntry.class_type === 'lab' ? 'lab' : 'lecture'))
+    : rooms
+
+  // PDF print
+  function printPdf() {
+    const prev = document.title
+    document.title = activeSchedule?.name ?? 'Schedule'
+    window.print()
+    document.title = prev
+  }
+
+  // iCal export
+  function getMonday(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00')
+    const day = d.getDay()
+    d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
+    return d.toISOString().slice(0, 10)
+  }
+  function addDays(dateStr, n) {
+    const d = new Date(dateStr + 'T00:00:00')
+    d.setDate(d.getDate() + n)
+    return d.toISOString().slice(0, 10)
+  }
+
+  function exportIcal() {
+    if (!selectedId) return
+    const dayMap = { Mon: 'MO', Tue: 'TU', Wed: 'WE', Thu: 'TH', Fri: 'FR' }
+    const slotStartIcal = ['080000','090000','100000','110000','130000','140000','150000','160000']
+    const slotEndIcal   = ['090000','100000','110000','120000','140000','150000','160000','170000']
+    const dayOrder = ['Mon','Tue','Wed','Thu','Fri']
+    const anchor = getMonday(activeSemester?.start_date ?? new Date().toISOString().slice(0, 10))
+    const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Schedula//EN','CALSCALE:GREGORIAN']
+    for (const e of entries) {
+      const off = dayOrder.indexOf(e.day)
+      if (off < 0) continue
+      const dateStr = addDays(anchor, off).replace(/-/g, '')
+      const interval = e.week_parity === 0 ? 1 : 2
+      lines.push('BEGIN:VEVENT')
+      lines.push(`UID:schedula-${e.id}@app`)
+      lines.push(`DTSTART:${dateStr}T${slotStartIcal[e.time_slot]}`)
+      lines.push(`DTEND:${dateStr}T${slotEndIcal[e.time_slot]}`)
+      lines.push(`SUMMARY:${e.course_code} \u2013 ${e.batch_name}`)
+      lines.push(`DESCRIPTION:${e.course_name} | ${e.lecturer_name} | ${e.room_name}`)
+      lines.push(`LOCATION:${e.room_name}`)
+      lines.push(`RRULE:FREQ=WEEKLY;INTERVAL=${interval};BYDAY=${dayMap[e.day]}`)
+      lines.push('END:VEVENT')
+    }
+    lines.push('END:VCALENDAR')
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${(activeSchedule?.name ?? 'schedule').replace(/[^\w\s-]/g, '')}.ics`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast('iCal exported')
   }
 
   const slotStart = ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00']
@@ -177,17 +281,20 @@
       {#if selectedId}
         <div class="tt-toolbar">
           <div class="tab-group">
-            <button class="tab-btn" class:active={tab === 'timetable'} on:click={() => (tab = 'timetable')}>Weekly Grid</button>
-            <button class="tab-btn" class:active={tab === 'list'} on:click={() => (tab = 'list')}>List</button>
+            <button class="tab-btn" class:active={tab === 'timetable'} on:click={() => switchTab('timetable')}>Weekly Grid</button>
+            <button class="tab-btn" class:active={tab === 'list'} on:click={() => switchTab('list')}>List</button>
             {#if activeSemester}
-              <button class="tab-btn" class:active={tab === 'calendar'} on:click={() => (tab = 'calendar')}>
-                📆 Semester Calendar
+              <button class="tab-btn" class:active={tab === 'calendar'} on:click={() => switchTab('calendar')}>
+                📆 Calendar
               </button>
             {/if}
+            <button class="tab-btn" class:active={tab === 'reports'} on:click={() => switchTab('reports')}>
+              📊 Reports
+            </button>
           </div>
 
           <div class="filter-group">
-            {#if tab !== 'calendar'}
+            {#if tab === 'timetable' || tab === 'list'}
               <select class="form-select" style="width:130px" bind:value={filterType} on:change={() => { filterBatch = null; filterLecturer = null }}>
                 <option value="all">All</option>
                 <option value="batch">By Batch</option>
@@ -206,12 +313,14 @@
                 </select>
               {/if}
             {/if}
-            <button class="btn btn-secondary btn-sm" on:click={exportCsv}>⬇ CSV</button>
+            <button class="btn btn-secondary btn-sm" on:click={exportCsv} title="Export CSV">⬇ CSV</button>
+            <button class="btn btn-secondary btn-sm" on:click={exportIcal} title="Export to Google/Outlook Calendar">📅 iCal</button>
+            <button class="btn btn-secondary btn-sm" on:click={printPdf} title="Print / Save as PDF">🖨 Print</button>
           </div>
         </div>
 
         {#if tab === 'timetable'}
-          <Timetable entries={filteredEntries} />
+          <Timetable entries={filteredEntries} editable={true} on:editEntry={e => openEditModal(e.detail)} />
 
         {:else if tab === 'list'}
           <div class="table-wrap">
@@ -242,6 +351,13 @@
 
         {:else if tab === 'calendar'}
           <SemesterCalendar semester={activeSemester} entries={entries} />
+
+        {:else if tab === 'reports'}
+          {#if loadingReport}
+            <div class="empty-state">Loading report…</div>
+          {:else}
+            <Reports report={report} />
+          {/if}
         {/if}
 
       {:else}
@@ -253,6 +369,50 @@
     </div>
   </div>
 </div>
+
+<!-- Edit Entry Modal -->
+{#if showEditModal && editingEntry}
+  <Modal title="Move Entry" onClose={() => (showEditModal = false)}>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+        <strong>{editingEntry.course_code}</strong> — {editingEntry.batch_name}
+        <span style="margin-left:8px;font-size:11px">({editingEntry.class_type})</span>
+      </p>
+      <div class="row">
+        <div class="form-group">
+          <label class="form-label">Day</label>
+          <select class="form-select" bind:value={editForm.day}>
+            {#each ['Mon','Tue','Wed','Thu','Fri'] as d}
+              <option value={d}>{d}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Time Slot</label>
+          <select class="form-select" bind:value={editForm.time_slot}>
+            {#each slotStart as label, i}
+              <option value={i}>{label}–{slotEnd[i]}</option>
+            {/each}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Room</label>
+        <select class="form-select" bind:value={editForm.room_id}>
+          {#each editableRooms as r}
+            <option value={r.id}>{r.name} ({r.capacity} seats)</option>
+          {/each}
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" on:click={() => (showEditModal = false)}>Cancel</button>
+      <button class="btn btn-primary" on:click={saveEdit} disabled={savingEdit || !editForm.room_id}>
+        {savingEdit ? 'Saving…' : 'Move Entry'}
+      </button>
+    </div>
+  </Modal>
+{/if}
 
 <style>
   .gen-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }

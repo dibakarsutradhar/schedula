@@ -8,9 +8,14 @@
 ///   5. Room capacity ≥ batch size
 ///   6. Lecturer available on the given day
 ///   7. Lecturer max_hours_per_day and max_hours_per_week respected
+///   8. Lecturer blackout slots/days respected
+///   9. Lecturer max_consecutive_hours respected
+///
+/// Soft constraints (affect placement priority):
+///   - Preferred time-of-day per day (morning/afternoon)
 ///
 /// Diversity heuristics:
-///   - Candidates sorted by: (batch_day_count, lab_afternoon_penalty, day_index, slot)
+///   - Candidates sorted by: (batch_day_count, slot_penalty+preferred_penalty, day_index, slot)
 ///   - Labs prefer afternoon slots (4–7); tutorials prefer mornings
 ///   - Biweekly courses are placed with week_parity=1 (odd teaching weeks only)
 ///   - Most-hours-first need ordering prevents starvation
@@ -60,6 +65,62 @@ fn slot_penalty(class_type: &str, slot: i64) -> i64 {
     }
 }
 
+/// Penalty for violating lecturer's preferred time-of-day for a given day.
+/// preferred_slots_json: {"Mon":"morning","Tue":"afternoon",...}
+fn preferred_penalty(preferred_json: &Option<String>, day: &str, slot: i64) -> i64 {
+    let json = match preferred_json {
+        Some(s) if !s.is_empty() => s,
+        _ => return 0,
+    };
+    let map: HashMap<String, String> = serde_json::from_str(json).unwrap_or_default();
+    match map.get(day).map(|s| s.as_str()) {
+        Some("morning") if slot >= 4 => 2,
+        Some("afternoon") if slot < 4 => 2,
+        _ => 0,
+    }
+}
+
+/// Returns true if the given (day, slot) is in the lecturer's blackout list.
+/// blackout_json: [{"day":"Mon","slot":null},{"day":"Fri","slot":2},...]
+/// slot: null means the entire day is blacked out for this lecturer.
+fn is_blacked_out(blackout_json: &Option<String>, day: &str, slot: i64) -> bool {
+    let json = match blackout_json {
+        Some(s) if !s.is_empty() => s,
+        _ => return false,
+    };
+    let arr: Vec<serde_json::Value> = serde_json::from_str(json).unwrap_or_default();
+    for item in &arr {
+        let item_day = item["day"].as_str().unwrap_or("");
+        if item_day != day { continue; }
+        // null slot = entire day blocked
+        if item["slot"].is_null() { return true; }
+        if item["slot"].as_i64() == Some(slot) { return true; }
+    }
+    false
+}
+
+/// Returns true if adding new_slot to occupied_slots would create a consecutive
+/// run exceeding max_consecutive. Slots 3→4 are NOT consecutive (lunch gap).
+fn would_exceed_consecutive(occupied: &[i64], new_slot: i64, max_consecutive: i64) -> bool {
+    if max_consecutive <= 0 { return false; }
+    let mut all: Vec<i64> = occupied.to_vec();
+    all.push(new_slot);
+    all.sort_unstable();
+    let mut run = 1i64;
+    for i in 1..all.len() {
+        let a = all[i - 1];
+        let b = all[i];
+        // Slots 3 (11:00) and 4 (13:00) have a lunch gap — not consecutive
+        if b == a + 1 && !(a == 3 && b == 4) {
+            run += 1;
+            if run > max_consecutive { return true; }
+        } else {
+            run = 1;
+        }
+    }
+    false
+}
+
 pub fn generate(input: &SchedulerInput) -> ScheduleResult {
     let courses: HashMap<i64, &Course> = input.courses.iter().map(|c| (c.id, c)).collect();
     let lecturers: HashMap<i64, &Lecturer> = input.lecturers.iter().map(|l| (l.id, l)).collect();
@@ -74,6 +135,8 @@ pub fn generate(input: &SchedulerInput) -> ScheduleResult {
     let mut lecturer_week_load: HashMap<i64, i64> = HashMap::new();
     // For diversity: track how many sessions each (batch, day) already has
     let mut batch_day_count: HashMap<(i64, String), i64> = HashMap::new();
+    // For consecutive-hours check: track which slots are occupied per (lecturer, day)
+    let mut lecturer_day_slots: HashMap<(i64, String), Vec<i64>> = HashMap::new();
 
     // Build needs: (batch_id, course_id, hours_to_place)
     // For biweekly: place ceil(hours/2) sessions (they show every-other-week in calendar)
@@ -82,7 +145,6 @@ pub fn generate(input: &SchedulerInput) -> ScheduleResult {
         for &cid in &batch.course_ids {
             if let Some(course) = courses.get(&cid) {
                 let biweekly = course.frequency == "biweekly";
-                // biweekly courses place half the sessions (rounded up)
                 let hours = if biweekly {
                     (course.hours_per_week + 1) / 2
                 } else {
@@ -148,14 +210,15 @@ pub fn generate(input: &SchedulerInput) -> ScheduleResult {
             .flat_map(|&d| TIME_SLOTS.iter().map(move |&s| (d, s)))
             .collect();
 
-        // Sort candidates: (batch_day_count, slot_penalty, day_idx, slot)
+        // Sort candidates: (batch_day_count, slot_penalty + preferred_penalty, day_idx, slot)
         candidates.sort_by_key(|(day, slot)| {
             let bdc = *batch_day_count
                 .get(&(*batch_id, day.to_string()))
                 .unwrap_or(&0);
             let sp = slot_penalty(class_type, *slot);
+            let pp = preferred_penalty(&lecturer.preferred_slots_json, day, *slot);
             let di = DAYS.iter().position(|&d| d == *day).unwrap_or(0) as i64;
-            (bdc, sp, di, *slot)
+            (bdc, sp + pp, di, *slot)
         });
 
         for (day, slot) in &candidates {
@@ -168,13 +231,16 @@ pub fn generate(input: &SchedulerInput) -> ScheduleResult {
             // 1. Lecturer available on this day?
             if !lec_avail_days.contains(*day) { continue; }
 
-            // 2. Lecturer daily load
+            // 2. Blackout check (hard constraint from soft preferences)
+            if is_blacked_out(&lecturer.blackout_json, day, *slot) { continue; }
+
+            // 3. Lecturer daily load
             let day_load = lecturer_day_load
                 .get(&(lecturer_id, day.to_string()))
                 .copied().unwrap_or(0);
             if day_load >= lecturer.max_hours_per_day { continue; }
 
-            // 3. Lecturer weekly load
+            // 4. Lecturer weekly load
             let week_load = lecturer_week_load.get(&lecturer_id).copied().unwrap_or(0);
             if week_load >= lecturer.max_hours_per_week {
                 unscheduled.push(UnscheduledItem {
@@ -190,13 +256,22 @@ pub fn generate(input: &SchedulerInput) -> ScheduleResult {
                 continue 'need;
             }
 
-            // 4. Lecturer not double-booked
+            // 5. Consecutive hours check
+            let occupied = lecturer_day_slots
+                .get(&(lecturer_id, day.to_string()))
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]);
+            if would_exceed_consecutive(occupied, *slot, lecturer.max_consecutive_hours) {
+                continue;
+            }
+
+            // 6. Lecturer not double-booked
             if lecturer_busy.get(&lecturer_id).map_or(false, |s| s.contains(&ds)) { continue; }
 
-            // 5. Batch not double-booked
+            // 7. Batch not double-booked
             if batch_busy.get(batch_id).map_or(false, |s| s.contains(&ds)) { continue; }
 
-            // 6. Find a suitable room
+            // 8. Find a suitable room
             let room = rooms.iter().find(|r| {
                 r.room_type == course.room_type
                     && r.capacity >= batch.size
@@ -216,6 +291,7 @@ pub fn generate(input: &SchedulerInput) -> ScheduleResult {
             *lecturer_day_load.entry((lecturer_id, day.to_string())).or_insert(0) += 1;
             *lecturer_week_load.entry(lecturer_id).or_insert(0) += 1;
             *batch_day_count.entry((*batch_id, day.to_string())).or_insert(0) += 1;
+            lecturer_day_slots.entry((lecturer_id, day.to_string())).or_default().push(*slot);
 
             entries.push(PlacedEntry {
                 course_id: *course_id,

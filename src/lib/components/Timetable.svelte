@@ -1,6 +1,10 @@
 <script>
+  import { createEventDispatcher } from 'svelte'
   export let entries = []
   export let filterBatch = null  // batch_id or null = all
+  export let editable = false    // when true, clicking an entry fires 'editEntry'
+
+  const dispatch = createEventDispatcher()
 
   const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
   const SLOTS = [0, 1, 2, 3, 4, 5, 6, 7]
@@ -37,10 +41,16 @@
           {#each DAYS as day}
             <td>
               {#each cellEntries(day, slot) as entry}
-                <div class="slot-entry batch-color-{batchColorMap[entry.batch_id]}">
+                <div
+                  class="slot-entry batch-color-{batchColorMap[entry.batch_id]}"
+                  class:slot-editable={editable}
+                  on:click={() => editable && dispatch('editEntry', entry)}
+                  title={editable ? 'Click to move this entry' : ''}
+                >
                   <strong>{entry.course_code}</strong>
                   <span>{entry.batch_name}</span>
                   <span style="color:var(--text-muted);font-size:10px">{entry.room_name}</span>
+                  {#if editable}<span class="edit-hint">✎</span>{/if}
                 </div>
               {/each}
             </td>
@@ -53,4 +63,11 @@
 
 <style>
   .tt-wrap { overflow-x: auto; }
+  .slot-editable { cursor: pointer; position: relative; }
+  .slot-editable:hover { filter: brightness(1.15); }
+  .edit-hint {
+    position: absolute; top: 3px; right: 4px;
+    font-size: 10px; opacity: 0; transition: opacity .15s;
+  }
+  .slot-editable:hover .edit-hint { opacity: 0.7; }
 </style>

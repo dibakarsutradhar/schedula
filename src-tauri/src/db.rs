@@ -8,6 +8,7 @@ pub fn open(db_path: &Path) -> Result<Connection> {
     migrate_v2(&conn)?;
     migrate_v3(&conn)?;
     migrate_v4(&conn)?;
+    migrate_v5(&conn)?;
     seed_super_admin(&conn);
     Ok(conn)
 }
@@ -178,6 +179,19 @@ fn migrate_v4(conn: &Connection) -> Result<()> {
         "INSERT OR IGNORE INTO app_settings (key, value) VALUES ('max_admins', '2')",
         [],
     );
+    Ok(())
+}
+
+// ─── V5: lecturer soft constraints ───────────────────────────────────────────
+fn migrate_v5(conn: &Connection) -> Result<()> {
+    let alters = [
+        "ALTER TABLE lecturers ADD COLUMN preferred_slots_json     TEXT",
+        "ALTER TABLE lecturers ADD COLUMN blackout_json            TEXT",
+        "ALTER TABLE lecturers ADD COLUMN max_consecutive_hours    INTEGER NOT NULL DEFAULT 3",
+    ];
+    for sql in &alters {
+        try_alter(conn, sql);
+    }
     Ok(())
 }
 

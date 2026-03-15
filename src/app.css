@@ -298,3 +298,30 @@ tbody tr:hover { background: var(--surface2); }
 .info-item { background: var(--surface2); border-radius: 8px; padding: 14px; }
 .info-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
 .info-value { font-size: 15px; font-weight: 600; }
+
+/* ── Print styles ─────────────────────────────────────────────────────────── */
+@media print {
+  .sidebar, .page-header, .card.section, .schedule-list,
+  .tt-toolbar, .filter-group, .btn, .gen-bar,
+  .conflict-list, .conflict-item { display: none !important; }
+  .layout { display: block; }
+  .main-content { overflow: visible; }
+  .page { padding: 0; overflow: visible; }
+  .schedule-layout { display: block; }
+  .timetable-panel {
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    color: black !important;
+    overflow: visible;
+  }
+  .timetable { border-collapse: collapse; width: 100%; }
+  .timetable th, .timetable td { border: 1px solid #ccc !important; }
+  .slot-entry {
+    background: #f0f0f0 !important;
+    color: black !important;
+    border: 1px solid #bbb !important;
+    box-shadow: none !important;
+  }
+  body { background: white !important; color: black !important; }
+}
