@@ -31,7 +31,7 @@ jobs:
       - name: Build Tauri app (ARM64)
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TAURI_PAT }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Schedula ${{ github.ref_name }}'
@@ -62,7 +62,7 @@ jobs:
       - name: Build Tauri app (x86_64)
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TAURI_PAT }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Schedula ${{ github.ref_name }}'
@@ -93,7 +93,7 @@ jobs:
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TAURI_PAT }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Schedula ${{ github.ref_name }}'
@@ -192,4 +192,4 @@ jobs:
 
             Made with ❤️ for academics worldwide
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TAURI_PAT }}
