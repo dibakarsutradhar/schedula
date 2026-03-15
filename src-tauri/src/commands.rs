@@ -121,7 +121,7 @@ pub fn create_user(
     session: State<SessionState>,
     user: NewUser,
 ) -> Result<i64, String> {
-    require_super_admin(&session)?;
+    let s = require_super_admin(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
 
     // Enforce: only one super_admin ever
@@ -152,7 +152,9 @@ pub fn create_user(
         "INSERT INTO users (username, display_name, password_hash, role, org_id) VALUES (?1,?2,?3,?4,?5)",
         params![user.username, user.display_name, hash, user.role, user.org_id],
     ).map_err(db_err)?;
-    Ok(conn.last_insert_rowid())
+    let id = conn.last_insert_rowid();
+    log_audit(&conn, &s, "create", "user", Some(id), Some(&user.username));
+    Ok(id)
 }
 
 #[tauri::command]
@@ -161,6 +163,7 @@ pub fn delete_user(db: State<DbState>, session: State<SessionState>, id: i64) ->
     if s.user_id == id { return Err("Cannot delete yourself".into()); }
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute("DELETE FROM users WHERE id=?1", params![id]).map_err(db_err)?;
+    log_audit(&conn, &s, "delete", "user", Some(id), None);
     Ok(())
 }
 
@@ -386,32 +389,36 @@ pub fn get_courses(db: State<DbState>, session: State<SessionState>) -> Result<V
 
 #[tauri::command]
 pub fn create_course(db: State<DbState>, session: State<SessionState>, course: NewCourse) -> Result<i64, String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
         "INSERT INTO courses (code, name, hours_per_week, room_type, class_type, frequency, lecturer_id, org_id)
          VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
         params![course.code, course.name, course.hours_per_week, course.room_type, course.class_type, course.frequency, course.lecturer_id, course.org_id],
     ).map_err(db_err)?;
-    Ok(conn.last_insert_rowid())
+    let id = conn.last_insert_rowid();
+    log_audit(&conn, &s, "create", "course", Some(id), Some(&course.code));
+    Ok(id)
 }
 
 #[tauri::command]
 pub fn update_course(db: State<DbState>, session: State<SessionState>, id: i64, course: NewCourse) -> Result<(), String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
         "UPDATE courses SET code=?1, name=?2, hours_per_week=?3, room_type=?4, class_type=?5, frequency=?6, lecturer_id=?7, org_id=?8 WHERE id=?9",
         params![course.code, course.name, course.hours_per_week, course.room_type, course.class_type, course.frequency, course.lecturer_id, course.org_id, id],
     ).map_err(db_err)?;
+    log_audit(&conn, &s, "update", "course", Some(id), Some(&course.code));
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_course(db: State<DbState>, session: State<SessionState>, id: i64) -> Result<(), String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute("DELETE FROM courses WHERE id=?1", params![id]).map_err(db_err)?;
+    log_audit(&conn, &s, "delete", "course", Some(id), None);
     Ok(())
 }
 
@@ -428,7 +435,7 @@ pub fn get_lecturers(db: State<DbState>, session: State<SessionState>) -> Result
 
 #[tauri::command]
 pub fn create_lecturer(db: State<DbState>, session: State<SessionState>, lecturer: NewLecturer) -> Result<i64, String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
         "INSERT INTO lecturers (name, email, available_days, max_hours_per_day, max_hours_per_week, org_id,
@@ -438,12 +445,14 @@ pub fn create_lecturer(db: State<DbState>, session: State<SessionState>, lecture
                 lecturer.max_hours_per_day, lecturer.max_hours_per_week, lecturer.org_id,
                 lecturer.preferred_slots_json, lecturer.blackout_json, lecturer.max_consecutive_hours],
     ).map_err(db_err)?;
-    Ok(conn.last_insert_rowid())
+    let id = conn.last_insert_rowid();
+    log_audit(&conn, &s, "create", "lecturer", Some(id), Some(&lecturer.name));
+    Ok(id)
 }
 
 #[tauri::command]
 pub fn update_lecturer(db: State<DbState>, session: State<SessionState>, id: i64, lecturer: NewLecturer) -> Result<(), String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
         "UPDATE lecturers SET name=?1, email=?2, available_days=?3, max_hours_per_day=?4, max_hours_per_week=?5,
@@ -452,14 +461,16 @@ pub fn update_lecturer(db: State<DbState>, session: State<SessionState>, id: i64
                 lecturer.max_hours_per_day, lecturer.max_hours_per_week, lecturer.org_id,
                 lecturer.preferred_slots_json, lecturer.blackout_json, lecturer.max_consecutive_hours, id],
     ).map_err(db_err)?;
+    log_audit(&conn, &s, "update", "lecturer", Some(id), Some(&lecturer.name));
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_lecturer(db: State<DbState>, session: State<SessionState>, id: i64) -> Result<(), String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute("DELETE FROM lecturers WHERE id=?1", params![id]).map_err(db_err)?;
+    log_audit(&conn, &s, "delete", "lecturer", Some(id), None);
     Ok(())
 }
 
@@ -476,31 +487,35 @@ pub fn get_rooms(db: State<DbState>, session: State<SessionState>) -> Result<Vec
 
 #[tauri::command]
 pub fn create_room(db: State<DbState>, session: State<SessionState>, room: NewRoom) -> Result<i64, String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
         "INSERT INTO rooms (name, capacity, room_type, available_days, org_id) VALUES (?1,?2,?3,?4,?5)",
         params![room.name, room.capacity, room.room_type, room.available_days, room.org_id],
     ).map_err(db_err)?;
-    Ok(conn.last_insert_rowid())
+    let id = conn.last_insert_rowid();
+    log_audit(&conn, &s, "create", "room", Some(id), Some(&room.name));
+    Ok(id)
 }
 
 #[tauri::command]
 pub fn update_room(db: State<DbState>, session: State<SessionState>, id: i64, room: NewRoom) -> Result<(), String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
         "UPDATE rooms SET name=?1, capacity=?2, room_type=?3, available_days=?4, org_id=?5 WHERE id=?6",
         params![room.name, room.capacity, room.room_type, room.available_days, room.org_id, id],
     ).map_err(db_err)?;
+    log_audit(&conn, &s, "update", "room", Some(id), Some(&room.name));
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_room(db: State<DbState>, session: State<SessionState>, id: i64) -> Result<(), String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute("DELETE FROM rooms WHERE id=?1", params![id]).map_err(db_err)?;
+    log_audit(&conn, &s, "delete", "room", Some(id), None);
     Ok(())
 }
 
@@ -517,7 +532,7 @@ pub fn get_batches(db: State<DbState>, session: State<SessionState>) -> Result<V
 
 #[tauri::command]
 pub fn create_batch(db: State<DbState>, session: State<SessionState>, batch: NewBatch) -> Result<i64, String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
         "INSERT INTO batches (name, department, semester, size, org_id, semester_id) VALUES (?1,?2,?3,?4,?5,?6)",
@@ -530,12 +545,13 @@ pub fn create_batch(db: State<DbState>, session: State<SessionState>, batch: New
             params![id, cid],
         ).map_err(db_err)?;
     }
+    log_audit(&conn, &s, "create", "batch", Some(id), Some(&batch.name));
     Ok(id)
 }
 
 #[tauri::command]
 pub fn update_batch(db: State<DbState>, session: State<SessionState>, id: i64, batch: NewBatch) -> Result<(), String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
         "UPDATE batches SET name=?1, department=?2, semester=?3, size=?4, org_id=?5, semester_id=?6 WHERE id=?7",
@@ -548,14 +564,16 @@ pub fn update_batch(db: State<DbState>, session: State<SessionState>, id: i64, b
             params![id, cid],
         ).map_err(db_err)?;
     }
+    log_audit(&conn, &s, "update", "batch", Some(id), Some(&batch.name));
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_batch(db: State<DbState>, session: State<SessionState>, id: i64) -> Result<(), String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute("DELETE FROM batches WHERE id=?1", params![id]).map_err(db_err)?;
+    log_audit(&conn, &s, "delete", "batch", Some(id), None);
     Ok(())
 }
 
@@ -569,6 +587,7 @@ pub fn generate_schedule(
     session: State<SessionState>,
     schedule_name: String,
     semester_id: Option<i64>,
+    description: Option<String>,
 ) -> Result<Value, String> {
     let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
@@ -589,8 +608,8 @@ pub fn generate_schedule(
     let now = chrono::Local::now().to_rfc3339();
     conn.execute("UPDATE schedules SET is_active=0 WHERE org_id IS ?1 OR org_id=?1", params![s.org_id]).map_err(db_err)?;
     conn.execute(
-        "INSERT INTO schedules (name, created_at, is_active, org_id, semester_id) VALUES (?1,?2,1,?3,?4)",
-        params![schedule_name, now, s.org_id, semester_id],
+        "INSERT INTO schedules (name, created_at, is_active, org_id, semester_id, description) VALUES (?1,?2,1,?3,?4,?5)",
+        params![schedule_name, now, s.org_id, semester_id, description],
     ).map_err(db_err)?;
     let schedule_id = conn.last_insert_rowid();
 
@@ -598,6 +617,7 @@ pub fn generate_schedule(
         (e.course_id, e.lecturer_id, e.room_id, e.batch_id, e.day.as_str(), e.time_slot, e.class_type.as_str(), e.week_parity)
     }).collect();
     crate::db::replace_schedule_entries(&conn, schedule_id, &tuples).map_err(db_err)?;
+    log_audit(&conn, &s, "generate", "schedule", Some(schedule_id), Some(&schedule_name));
 
     Ok(serde_json::json!({
         "schedule_id": schedule_id,
@@ -612,16 +632,16 @@ pub fn get_schedules(db: State<DbState>, session: State<SessionState>) -> Result
     let conn = db.0.lock().map_err(db_err)?;
 
     let sql = if s.role == "super_admin" {
-        "SELECT sch.id, sch.name, sch.created_at, sch.is_active,
+        "SELECT sch.id, sch.name, sch.created_at, sch.is_active, sch.status,
                 (SELECT COUNT(*) FROM schedule_entries WHERE schedule_id=sch.id),
-                sch.semester_id, sem.name
+                sch.semester_id, sem.name, sch.description
          FROM schedules sch LEFT JOIN semesters sem ON sem.id=sch.semester_id
          ORDER BY sch.id DESC".to_string()
     } else {
         format!(
-            "SELECT sch.id, sch.name, sch.created_at, sch.is_active,
+            "SELECT sch.id, sch.name, sch.created_at, sch.is_active, sch.status,
                     (SELECT COUNT(*) FROM schedule_entries WHERE schedule_id=sch.id),
-                    sch.semester_id, sem.name
+                    sch.semester_id, sem.name, sch.description
              FROM schedules sch LEFT JOIN semesters sem ON sem.id=sch.semester_id
              WHERE sch.org_id IS {} OR sch.org_id={}
              ORDER BY sch.id DESC",
@@ -636,9 +656,11 @@ pub fn get_schedules(db: State<DbState>, session: State<SessionState>) -> Result
         name: row.get(1)?,
         created_at: row.get(2)?,
         is_active: row.get::<_,i64>(3)? != 0,
-        entry_count: row.get(4)?,
-        semester_id: row.get(5)?,
-        semester_name: row.get(6)?,
+        status: row.get::<_, Option<String>>(4)?.unwrap_or_else(|| "draft".into()),
+        entry_count: row.get(5)?,
+        semester_id: row.get(6)?,
+        semester_name: row.get(7)?,
+        description: row.get(8)?,
     })).map_err(db_err)?.collect();
     rows.map_err(db_err)
 }
@@ -692,16 +714,37 @@ pub fn get_schedule_entries(
 pub fn activate_schedule(db: State<DbState>, session: State<SessionState>, id: i64) -> Result<(), String> {
     let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
-    conn.execute("UPDATE schedules SET is_active=0 WHERE org_id IS ?1 OR org_id=?1", params![s.org_id]).map_err(db_err)?;
-    conn.execute("UPDATE schedules SET is_active=1 WHERE id=?1", params![id]).map_err(db_err)?;
+    conn.execute("UPDATE schedules SET is_active=0, status='draft' WHERE org_id IS ?1 OR org_id=?1", params![s.org_id]).map_err(db_err)?;
+    conn.execute("UPDATE schedules SET is_active=1, status='published' WHERE id=?1", params![id]).map_err(db_err)?;
+    log_audit(&conn, &s, "publish", "schedule", Some(id), None);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn publish_schedule(db: State<DbState>, session: State<SessionState>, id: i64) -> Result<(), String> {
+    let s = require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    conn.execute("UPDATE schedules SET is_active=0, status='draft' WHERE org_id IS ?1 OR org_id=?1", params![s.org_id]).map_err(db_err)?;
+    conn.execute("UPDATE schedules SET is_active=1, status='published' WHERE id=?1", params![id]).map_err(db_err)?;
+    log_audit(&conn, &s, "publish", "schedule", Some(id), None);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn revert_schedule_to_draft(db: State<DbState>, session: State<SessionState>, id: i64) -> Result<(), String> {
+    let s = require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    conn.execute("UPDATE schedules SET is_active=0, status='draft' WHERE id=?1", params![id]).map_err(db_err)?;
+    log_audit(&conn, &s, "revert", "schedule", Some(id), None);
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_schedule(db: State<DbState>, session: State<SessionState>, id: i64) -> Result<(), String> {
-    require_session(&session)?;
+    let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute("DELETE FROM schedules WHERE id=?1", params![id]).map_err(db_err)?;
+    log_audit(&conn, &s, "delete", "schedule", Some(id), None);
     Ok(())
 }
 
@@ -1120,6 +1163,319 @@ pub fn update_schedule_entry(
         "UPDATE schedule_entries SET day=?1, time_slot=?2, room_id=?3 WHERE id=?4",
         params![req.day, req.time_slot, req.room_id, entry_id],
     ).map_err(db_err)?;
+    Ok(())
+}
+
+// ── Audit log ──────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn get_audit_log(
+    db: State<DbState>,
+    session: State<SessionState>,
+    limit: i64,
+) -> Result<Vec<AuditEntry>, String> {
+    require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let mut stmt = conn.prepare(
+        "SELECT id, user_id, username, action, entity_type, entity_id, details_json, created_at
+         FROM audit_log ORDER BY id DESC LIMIT ?1"
+    ).map_err(db_err)?;
+    let rows: Result<Vec<AuditEntry>, _> = stmt.query_map(params![limit], |row| Ok(AuditEntry {
+        id: row.get(0)?,
+        user_id: row.get(1)?,
+        username: row.get(2)?,
+        action: row.get(3)?,
+        entity_type: row.get(4)?,
+        entity_id: row.get(5)?,
+        details_json: row.get(6)?,
+        created_at: row.get(7)?,
+    })).map_err(db_err)?.collect();
+    rows.map_err(db_err)
+}
+
+// ── Bulk CSV import ─────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn bulk_import_lecturers(
+    db: State<DbState>,
+    session: State<SessionState>,
+    rows: Vec<CsvLecturer>,
+) -> Result<BulkImportResult, String> {
+    let s = require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let mut inserted = 0i64; let mut skipped = 0i64; let mut errors: Vec<String> = vec![];
+    for r in &rows {
+        if r.name.trim().is_empty() { errors.push("Row skipped: name is empty".into()); skipped += 1; continue; }
+        let exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM lecturers WHERE name=?1 AND (org_id=?2 OR org_id IS NULL)",
+            params![r.name.trim(), s.org_id], |row| row.get(0),
+        ).unwrap_or(0);
+        if exists > 0 { skipped += 1; continue; }
+        match conn.execute(
+            "INSERT INTO lecturers (name, email, available_days, max_hours_per_day, max_hours_per_week, org_id)
+             VALUES (?1,?2,?3,?4,?5,?6)",
+            params![r.name.trim(), r.email, r.available_days, r.max_hours_per_day, r.max_hours_per_week, s.org_id],
+        ) {
+            Ok(_) => { inserted += 1; }
+            Err(e) => { errors.push(format!("{}: {}", r.name, e)); }
+        }
+    }
+    if inserted > 0 { log_audit(&conn, &s, "import", "lecturer", None, Some(&format!(r#"{{"count":{}}}"#, inserted))); }
+    Ok(BulkImportResult { inserted, skipped, errors })
+}
+
+#[tauri::command]
+pub fn bulk_import_rooms(
+    db: State<DbState>,
+    session: State<SessionState>,
+    rows: Vec<CsvRoom>,
+) -> Result<BulkImportResult, String> {
+    let s = require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let mut inserted = 0i64; let mut skipped = 0i64; let mut errors: Vec<String> = vec![];
+    for r in &rows {
+        if r.name.trim().is_empty() { errors.push("Row skipped: name is empty".into()); skipped += 1; continue; }
+        let exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM rooms WHERE name=?1 AND (org_id=?2 OR org_id IS NULL)",
+            params![r.name.trim(), s.org_id], |row| row.get(0),
+        ).unwrap_or(0);
+        if exists > 0 { skipped += 1; continue; }
+        match conn.execute(
+            "INSERT INTO rooms (name, capacity, room_type, available_days, org_id) VALUES (?1,?2,?3,?4,?5)",
+            params![r.name.trim(), r.capacity, r.room_type, r.available_days, s.org_id],
+        ) {
+            Ok(_) => { inserted += 1; }
+            Err(e) => { errors.push(format!("{}: {}", r.name, e)); }
+        }
+    }
+    if inserted > 0 { log_audit(&conn, &s, "import", "room", None, Some(&format!(r#"{{"count":{}}}"#, inserted))); }
+    Ok(BulkImportResult { inserted, skipped, errors })
+}
+
+#[tauri::command]
+pub fn bulk_import_courses(
+    db: State<DbState>,
+    session: State<SessionState>,
+    rows: Vec<CsvCourse>,
+) -> Result<BulkImportResult, String> {
+    let s = require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let mut inserted = 0i64; let mut skipped = 0i64; let mut errors: Vec<String> = vec![];
+    for r in &rows {
+        if r.code.trim().is_empty() { errors.push("Row skipped: code is empty".into()); skipped += 1; continue; }
+        let exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM courses WHERE code=?1 AND (org_id=?2 OR org_id IS NULL)",
+            params![r.code.trim(), s.org_id], |row| row.get(0),
+        ).unwrap_or(0);
+        if exists > 0 { skipped += 1; continue; }
+        // Resolve lecturer email to id
+        let lecturer_id: Option<i64> = r.lecturer_email.as_deref().and_then(|email| {
+            conn.query_row(
+                "SELECT id FROM lecturers WHERE email=?1 AND (org_id=?2 OR org_id IS NULL)",
+                params![email, s.org_id], |row| row.get(0),
+            ).ok()
+        });
+        if r.lecturer_email.is_some() && lecturer_id.is_none() {
+            errors.push(format!("{}: lecturer email '{}' not found — imported without lecturer",
+                r.code, r.lecturer_email.as_deref().unwrap_or("")));
+        }
+        match conn.execute(
+            "INSERT INTO courses (code, name, hours_per_week, room_type, class_type, frequency, lecturer_id, org_id)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
+            params![r.code.trim(), r.name, r.hours_per_week, r.room_type, r.class_type, r.frequency, lecturer_id, s.org_id],
+        ) {
+            Ok(_) => { inserted += 1; }
+            Err(e) => { errors.push(format!("{}: {}", r.code, e)); }
+        }
+    }
+    if inserted > 0 { log_audit(&conn, &s, "import", "course", None, Some(&format!(r#"{{"count":{}}}"#, inserted))); }
+    Ok(BulkImportResult { inserted, skipped, errors })
+}
+
+// Fire-and-forget audit insert — never panics, never blocks the caller
+fn log_audit(conn: &Connection, sess: &SessionPayload, action: &str, entity_type: &str, entity_id: Option<i64>, details: Option<&str>) {
+    let _ = conn.execute(
+        "INSERT INTO audit_log (user_id, username, action, entity_type, entity_id, details_json)
+         VALUES (?1,?2,?3,?4,?5,?6)",
+        params![sess.user_id, sess.username, action, entity_type, entity_id, details],
+    );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PRE-FLIGHT / DATA HEALTH
+// ══════════════════════════════════════════════════════════════════════════════
+
+#[tauri::command]
+pub fn get_preflight_warnings(
+    db: State<DbState>,
+    session: State<SessionState>,
+) -> Result<Vec<PreflightWarning>, String> {
+    let s = require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let org = s.org_id_filter();
+    let org_clause = match org {
+        Some(id) => format!("AND org_id={}", id),
+        None => String::new(),
+    };
+
+    let mut warnings = Vec::new();
+
+    // Courses without a lecturer
+    let no_lec: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM courses WHERE lecturer_id IS NULL {}", org_clause),
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+    if no_lec > 0 {
+        warnings.push(PreflightWarning {
+            severity: "warning".into(),
+            category: "courses".into(),
+            message: format!("{} course(s) have no lecturer assigned", no_lec),
+        });
+    }
+
+    // Batches with no courses
+    let no_courses_clause = match org {
+        Some(id) => format!("WHERE b.org_id={} AND bc.batch_id IS NULL", id),
+        None => "WHERE bc.batch_id IS NULL".into(),
+    };
+    let no_courses: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM batches b LEFT JOIN batch_courses bc ON b.id=bc.batch_id {}", no_courses_clause),
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+    if no_courses > 0 {
+        warnings.push(PreflightWarning {
+            severity: "error".into(),
+            category: "batches".into(),
+            message: format!("{} batch(es) have no courses enrolled — they will be skipped", no_courses),
+        });
+    }
+
+    // Lecturers with no available days
+    let no_days: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM lecturers WHERE (available_days='' OR available_days IS NULL) {}", org_clause),
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+    if no_days > 0 {
+        warnings.push(PreflightWarning {
+            severity: "error".into(),
+            category: "lecturers".into(),
+            message: format!("{} lecturer(s) have no available days set — their courses cannot be scheduled", no_days),
+        });
+    }
+
+    // Courses with lab room type but no lab rooms exist
+    let lab_courses: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM courses WHERE room_type='lab' {}", org_clause),
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+    if lab_courses > 0 {
+        let lab_rooms: i64 = conn.query_row(
+            &format!("SELECT COUNT(*) FROM rooms WHERE room_type='lab' {}", org_clause),
+            [], |r| r.get(0),
+        ).unwrap_or(0);
+        if lab_rooms == 0 {
+            warnings.push(PreflightWarning {
+                severity: "error".into(),
+                category: "rooms".into(),
+                message: format!("{} lab course(s) exist but no lab rooms are configured", lab_courses),
+            });
+        }
+    }
+
+    // No rooms at all
+    let total_rooms: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM rooms WHERE 1=1 {}", org_clause),
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+    if total_rooms == 0 {
+        warnings.push(PreflightWarning {
+            severity: "error".into(),
+            category: "rooms".into(),
+            message: "No rooms configured — schedule cannot be generated".into(),
+        });
+    }
+
+    // No batches at all
+    let total_batches: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM batches WHERE 1=1 {}", org_clause),
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+    if total_batches == 0 {
+        warnings.push(PreflightWarning {
+            severity: "error".into(),
+            category: "batches".into(),
+            message: "No batches configured — schedule cannot be generated".into(),
+        });
+    }
+
+    Ok(warnings)
+}
+
+#[tauri::command]
+pub fn get_data_health(
+    db: State<DbState>,
+    session: State<SessionState>,
+) -> Result<DataHealth, String> {
+    let s = require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let org = s.org_id_filter();
+    let org_clause = match org {
+        Some(id) => format!("AND org_id={}", id),
+        None => String::new(),
+    };
+
+    let courses_without_lecturers: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM courses WHERE lecturer_id IS NULL {}", org_clause),
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let lab_courses: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM courses WHERE room_type='lab' {}", org_clause),
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+    let lab_rooms: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM rooms WHERE room_type='lab' {}", org_clause),
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+    let courses_without_matching_rooms = if lab_courses > 0 && lab_rooms == 0 { lab_courses } else { 0 };
+
+    let no_courses_clause = match org {
+        Some(id) => format!("WHERE b.org_id={} AND bc.batch_id IS NULL", id),
+        None => "WHERE bc.batch_id IS NULL".into(),
+    };
+    let batches_without_courses: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM batches b LEFT JOIN batch_courses bc ON b.id=bc.batch_id {}", no_courses_clause),
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let lecturers_unavailable: i64 = conn.query_row(
+        &format!("SELECT COUNT(*) FROM lecturers WHERE (available_days='' OR available_days IS NULL) {}", org_clause),
+        [], |r| r.get(0),
+    ).unwrap_or(0);
+
+    let total_warnings = courses_without_lecturers + courses_without_matching_rooms
+        + batches_without_courses + lecturers_unavailable;
+
+    Ok(DataHealth {
+        courses_without_lecturers,
+        courses_without_matching_rooms,
+        batches_without_courses,
+        lecturers_unavailable,
+        total_warnings,
+    })
+}
+
+#[tauri::command]
+pub fn update_schedule_description(
+    db: State<DbState>,
+    session: State<SessionState>,
+    id: i64,
+    description: Option<String>,
+) -> Result<(), String> {
+    require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    conn.execute("UPDATE schedules SET description=?1 WHERE id=?2", params![description, id])
+        .map_err(db_err)?;
     Ok(())
 }
 

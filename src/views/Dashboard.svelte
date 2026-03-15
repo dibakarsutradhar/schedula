@@ -1,14 +1,15 @@
 <script>
   import { onMount } from 'svelte'
-  import { getStats } from '../lib/api.js'
+  import { getStats, getDataHealth } from '../lib/api.js'
 
   export let navigate = () => {}
 
   let stats = null
+  let health = null
   let loading = true
 
   onMount(async () => {
-    stats = await getStats()
+    ;[stats, health] = await Promise.all([getStats(), getDataHealth()])
     loading = false
   })
 
@@ -44,6 +45,46 @@
           <div class="stat-label">{c.label}</div>
         </button>
       {/each}
+    </div>
+  {/if}
+
+  {#if health && health.total_warnings > 0}
+    <div class="health-panel card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="font-size:16px">⚠</span>
+        <h3 style="margin:0;font-size:14px">Data Health Warnings</h3>
+        <span class="health-badge">{health.total_warnings} issue{health.total_warnings !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="health-items">
+        {#if health.courses_without_lecturers > 0}
+          <div class="health-item" on:click={() => navigate('courses')}>
+            <span class="health-dot warning"></span>
+            {health.courses_without_lecturers} course{health.courses_without_lecturers !== 1 ? 's' : ''} have no lecturer assigned
+            <span class="health-link">Fix →</span>
+          </div>
+        {/if}
+        {#if health.batches_without_courses > 0}
+          <div class="health-item" on:click={() => navigate('batches')}>
+            <span class="health-dot error"></span>
+            {health.batches_without_courses} batch{health.batches_without_courses !== 1 ? 'es' : ''} have no courses enrolled
+            <span class="health-link">Fix →</span>
+          </div>
+        {/if}
+        {#if health.lecturers_unavailable > 0}
+          <div class="health-item" on:click={() => navigate('lecturers')}>
+            <span class="health-dot error"></span>
+            {health.lecturers_unavailable} lecturer{health.lecturers_unavailable !== 1 ? 's' : ''} have no available days
+            <span class="health-link">Fix →</span>
+          </div>
+        {/if}
+        {#if health.courses_without_matching_rooms > 0}
+          <div class="health-item" on:click={() => navigate('rooms')}>
+            <span class="health-dot error"></span>
+            {health.courses_without_matching_rooms} lab course{health.courses_without_matching_rooms !== 1 ? 's' : ''} but no lab rooms exist
+            <span class="health-link">Add rooms →</span>
+          </div>
+        {/if}
+      </div>
     </div>
   {/if}
 
@@ -89,4 +130,29 @@
     line-height: 1.6;
   }
   .steps strong { color: var(--text); }
+
+  /* Data health panel */
+  .health-panel { margin-bottom: 0; }
+  .health-badge {
+    background: rgba(251,191,36,.15); color: #fbbf24;
+    border-radius: 99px; padding: 2px 10px;
+    font-size: 11px; font-weight: 700;
+  }
+  .health-items { display: flex; flex-direction: column; gap: 6px; }
+  .health-item {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--text-muted);
+    cursor: pointer; padding: 6px 8px; border-radius: 6px;
+    transition: background .15s;
+  }
+  .health-item:hover { background: var(--surface2); color: var(--text); }
+  .health-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .health-dot.error   { background: var(--danger); }
+  .health-dot.warning { background: #fbbf24; }
+  .health-link {
+    margin-left: auto; font-size: 11px; color: var(--accent);
+    font-weight: 600;
+  }
 </style>

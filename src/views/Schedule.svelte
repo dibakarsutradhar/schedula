@@ -9,6 +9,8 @@
     activateSchedule, deleteSchedule, exportScheduleCsv,
     getBatches, getSemesters, getRooms,
     getUtilizationReport, updateScheduleEntry,
+    publishSchedule, revertScheduleToDraft,
+    getPreflightWarnings, updateScheduleDescription,
   } from '../lib/api.js'
   import { toast } from '../lib/toast.js'
 
@@ -22,8 +24,14 @@
   let filterBatch = null
   let generating = false
   let scheduleName = ''
+  let scheduleDescription = ''
   let showConflicts = false
   let lastResult = null
+
+  // Pre-flight
+  let preflightWarnings = []
+  let showPreflight = false
+  let loadingPreflight = false
   let tab = 'timetable'   // 'timetable' | 'list' | 'calendar' | 'reports'
   let filterType = 'all'
   let filterLecturer = null
@@ -44,6 +52,29 @@
   $: lecturers = [...new Map(entries.map(e => [e.lecturer_id, { id: e.lecturer_id, name: e.lecturer_name }])).values()]
   $: filteredEntries = applyFilter(entries, filterType, filterBatch, filterLecturer)
 
+  // Conflict detection: find entry ids where lecturer, room, or batch is double-booked at same day+slot
+  $: conflictKeys = (() => {
+    const keys = new Set()
+    const bySlot = {}
+    for (const e of entries) {
+      const k = `${e.day}-${e.time_slot}`
+      if (!bySlot[k]) bySlot[k] = []
+      bySlot[k].push(e)
+    }
+    for (const group of Object.values(bySlot)) {
+      if (group.length < 2) continue
+      const lecIds = group.map(e => e.lecturer_id)
+      const roomIds = group.map(e => e.room_id)
+      const batchIds = group.map(e => e.batch_id)
+      const hasDup = (arr) => arr.length !== new Set(arr).size
+      if (hasDup(lecIds) || hasDup(roomIds) || hasDup(batchIds)) {
+        for (const e of group) keys.add(e.id)
+      }
+    }
+    return keys
+  })()
+  $: conflictCount = conflictKeys.size
+
   function applyFilter(es, type, batchId, lecId) {
     if (type === 'batch' && batchId) return es.filter(e => e.batch_id === batchId)
     if (type === 'lecturer' && lecId) return es.filter(e => e.lecturer_id === lecId)
@@ -61,12 +92,26 @@
     entries = await getScheduleEntries(id)
   }
 
+  async function runPreflight() {
+    loadingPreflight = true
+    try {
+      preflightWarnings = await getPreflightWarnings()
+      showPreflight = true
+    } catch (e) {
+      toast(String(e), 'error')
+    } finally {
+      loadingPreflight = false
+    }
+  }
+
   async function generate() {
     if (!scheduleName.trim()) { toast('Enter a schedule name', 'error'); return }
     generating = true
+    showPreflight = false
     try {
-      lastResult = await generateSchedule(scheduleName.trim(), selectedSemesterId)
+      lastResult = await generateSchedule(scheduleName.trim(), selectedSemesterId, scheduleDescription.trim() || null)
       scheduleName = ''
+      scheduleDescription = ''
       toast(`Schedule generated — ${lastResult.entry_count} slots placed`)
       ;[schedules, semesters] = await Promise.all([getSchedules(), getSemesters()])
       await selectSchedule(lastResult.schedule_id)
@@ -78,10 +123,38 @@
     }
   }
 
+  // Inline notes edit
+  let editingDescription = false
+  let descriptionDraft = ''
+
+  function startEditDescription() {
+    descriptionDraft = activeSchedule?.description ?? ''
+    editingDescription = true
+  }
+
+  async function saveDescription() {
+    await updateScheduleDescription(selectedId, descriptionDraft.trim() || null)
+    schedules = await getSchedules()
+    editingDescription = false
+    toast('Notes saved')
+  }
+
   async function activate(id) {
     await activateSchedule(id)
     schedules = await getSchedules()
     toast('Schedule activated')
+  }
+
+  async function publish(id) {
+    await publishSchedule(id)
+    schedules = await getSchedules()
+    toast('Schedule published')
+  }
+
+  async function revertDraft(id) {
+    await revertScheduleToDraft(id)
+    schedules = await getSchedules()
+    toast('Schedule reverted to draft')
   }
 
   async function remove(id) {
@@ -138,10 +211,18 @@
     ? rooms.filter(r => r.room_type === (editingEntry.class_type === 'lab' ? 'lab' : 'lecture'))
     : rooms
 
-  // PDF print
-  function printPdf() {
+  // PDF print (full or filtered)
+  function printPdf(filtered = false) {
     const prev = document.title
-    document.title = activeSchedule?.name ?? 'Schedule'
+    let suffix = ''
+    if (filtered && filterType === 'batch' && filterBatch) {
+      const b = batches.find(b => b.id === filterBatch)
+      suffix = b ? ` — ${b.name}` : ''
+    } else if (filtered && filterType === 'lecturer' && filterLecturer) {
+      const l = lecturers.find(l => l.id === filterLecturer)
+      suffix = l ? ` — ${l.name}` : ''
+    }
+    document.title = (activeSchedule?.name ?? 'Schedule') + suffix
     window.print()
     document.title = prev
   }
@@ -193,6 +274,66 @@
     toast('iCal exported')
   }
 
+  // HTML timetable export
+  function exportHtml() {
+    if (!selectedId || !entries.length) return
+    const DAYS = ['Mon','Tue','Wed','Thu','Fri']
+    const SLOTS = [0,1,2,3,4,5,6,7]
+    const slotL = ['08:00–09:00','09:00–10:00','10:00–11:00','11:00–12:00','13:00–14:00','14:00–15:00','15:00–16:00','16:00–17:00']
+
+    // Group unique batches
+    const batchSet = [...new Map(entries.map(e => [e.batch_id, e.batch_name])).entries()]
+
+    let tables = ''
+    for (const [batchId, batchName] of batchSet) {
+      const bEntries = entries.filter(e => e.batch_id === batchId)
+      let rows = ''
+      for (const slot of SLOTS) {
+        let cells = `<td style="background:#1a1a2e;color:#888;font-size:11px;padding:6px 10px;white-space:nowrap">${slotL[slot]}</td>`
+        for (const day of DAYS) {
+          const cell = bEntries.filter(e => e.day === day && e.time_slot === slot)
+          if (cell.length) {
+            cells += `<td style="background:#2a2a4a;border:1px solid #333;padding:6px 8px;vertical-align:top">${
+              cell.map(e => `<div style="font-size:12px;font-weight:600;color:#a5a0ff">${e.course_code}</div><div style="font-size:11px;color:#ccc">${e.lecturer_name}</div><div style="font-size:10px;color:#888">${e.room_name}</div>`).join('')
+            }</td>`
+          } else {
+            cells += `<td style="background:#111122;border:1px solid #222"></td>`
+          }
+        }
+        rows += `<tr>${cells}</tr>`
+      }
+      tables += `<div style="margin-bottom:40px">
+        <h2 style="color:#a5a0ff;margin-bottom:12px;font-family:sans-serif">${batchName}</h2>
+        <table style="border-collapse:collapse;width:100%;font-family:sans-serif">
+          <thead><tr>
+            <th style="background:#111;color:#666;padding:8px 10px;font-size:11px;text-align:left">Time</th>
+            ${DAYS.map(d => `<th style="background:#111;color:#aaa;padding:8px 14px;font-size:12px">${d}</th>`).join('')}
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>${activeSchedule?.name ?? 'Schedule'}</title>
+<style>body{background:#0d0d1a;color:#eee;padding:32px;}</style>
+</head><body>
+<h1 style="color:#fff;font-family:sans-serif;margin-bottom:6px">${activeSchedule?.name ?? 'Schedule'}</h1>
+${activeSchedule?.description ? `<p style="color:#888;font-family:sans-serif;margin-bottom:24px">${activeSchedule.description}</p>` : ''}
+<p style="color:#666;font-family:sans-serif;font-size:12px;margin-bottom:32px">Generated: ${activeSchedule?.created_at?.slice(0,10) ?? ''} · ${entries.length} slots</p>
+${tables}
+</body></html>`
+
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${(activeSchedule?.name ?? 'schedule').replace(/[^\w\s-]/g, '')}.html`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast('HTML timetable exported')
+  }
+
   const slotStart = ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00']
   const slotEnd   = ['09:00','10:00','11:00','12:00','14:00','15:00','16:00','17:00']
 
@@ -228,10 +369,45 @@
           <option value={s.id}>{s.name} ({s.org_name})</option>
         {/each}
       </select>
+    </div>
+    <div class="gen-bar" style="margin-top:8px">
+      <input
+        class="form-input"
+        bind:value={scheduleDescription}
+        placeholder="Optional notes (e.g. 'First draft, pending room confirmation')"
+        style="flex:1"
+      />
+      <button class="btn btn-secondary" on:click={runPreflight} disabled={loadingPreflight} title="Check data quality before generating">
+        {loadingPreflight ? '…' : '🔍 Pre-flight'}
+      </button>
       <button class="btn btn-primary" on:click={generate} disabled={generating || !scheduleName.trim()}>
         {generating ? '⏳ Generating…' : '⚡ Generate'}
       </button>
     </div>
+
+    {#if showPreflight && preflightWarnings.length > 0}
+      <div class="preflight-panel" style="margin-top:14px">
+        <div class="preflight-header">
+          {#if preflightWarnings.some(w => w.severity === 'error')}
+            <span style="color:var(--danger);font-weight:700">⛔ {preflightWarnings.filter(w=>w.severity==='error').length} error(s)</span>
+          {/if}
+          {#if preflightWarnings.some(w => w.severity === 'warning')}
+            <span style="color:var(--warning,#fbbf24);font-weight:700;margin-left:12px">⚠ {preflightWarnings.filter(w=>w.severity==='warning').length} warning(s)</span>
+          {/if}
+          <button class="btn-icon" style="margin-left:auto" on:click={() => showPreflight = false}>✕</button>
+        </div>
+        {#each preflightWarnings as w}
+          <div class="preflight-item preflight-{w.severity}">
+            <span class="preflight-badge">{w.category}</span>
+            {w.message}
+          </div>
+        {/each}
+      </div>
+    {:else if showPreflight && preflightWarnings.length === 0}
+      <div class="preflight-panel" style="margin-top:14px">
+        <div style="color:#4ade80;font-size:13px;font-weight:600">✓ All checks passed — ready to generate</div>
+      </div>
+    {/if}
 
     {#if lastResult?.unscheduled?.length > 0}
       <button class="btn btn-secondary btn-sm" style="margin-top:10px" on:click={() => (showConflicts = !showConflicts)}>
@@ -263,9 +439,24 @@
             {#if s.semester_name}
               <div style="font-size:11px;color:var(--accent2)">📆 {s.semester_name}</div>
             {/if}
+            {#if s.description}
+              <div style="font-size:11px;color:var(--text-muted);font-style:italic;line-height:1.4;margin-top:2px">{s.description}</div>
+            {/if}
             <div class="sched-meta">{s.entry_count} slots · {s.created_at.slice(0,10)}</div>
-            {#if s.is_active}<span class="badge badge-active" style="font-size:10px">active</span>{/if}
+            <div style="display:flex;gap:6px;align-items:center;margin-top:3px;flex-wrap:wrap">
+              {#if s.status === 'published'}
+                <span class="badge badge-active" style="font-size:10px">published</span>
+              {:else}
+                <span class="badge" style="font-size:10px;background:rgba(100,100,120,.2);color:var(--text-muted)">draft</span>
+              {/if}
+              {#if s.is_active}<span class="badge badge-active" style="font-size:10px;background:rgba(34,197,94,.15);color:#4ade80">active</span>{/if}
+            </div>
             <div class="sched-actions">
+              {#if s.status === 'draft'}
+                <button class="btn btn-secondary btn-sm" on:click|stopPropagation={() => publish(s.id)}>Publish</button>
+              {:else}
+                <button class="btn btn-secondary btn-sm" on:click|stopPropagation={() => revertDraft(s.id)}>Revert</button>
+              {/if}
               {#if !s.is_active}
                 <button class="btn btn-secondary btn-sm" on:click|stopPropagation={() => activate(s.id)}>Activate</button>
               {/if}
@@ -281,7 +472,10 @@
       {#if selectedId}
         <div class="tt-toolbar">
           <div class="tab-group">
-            <button class="tab-btn" class:active={tab === 'timetable'} on:click={() => switchTab('timetable')}>Weekly Grid</button>
+            <button class="tab-btn" class:active={tab === 'timetable'} on:click={() => switchTab('timetable')}>
+              Weekly Grid
+              {#if conflictCount > 0}<span class="conflict-count">{conflictCount}</span>{/if}
+            </button>
             <button class="tab-btn" class:active={tab === 'list'} on:click={() => switchTab('list')}>List</button>
             {#if activeSemester}
               <button class="tab-btn" class:active={tab === 'calendar'} on:click={() => switchTab('calendar')}>
@@ -315,12 +509,31 @@
             {/if}
             <button class="btn btn-secondary btn-sm" on:click={exportCsv} title="Export CSV">⬇ CSV</button>
             <button class="btn btn-secondary btn-sm" on:click={exportIcal} title="Export to Google/Outlook Calendar">📅 iCal</button>
-            <button class="btn btn-secondary btn-sm" on:click={printPdf} title="Print / Save as PDF">🖨 Print</button>
+            <button class="btn btn-secondary btn-sm" on:click={exportHtml} title="Export shareable HTML timetable">🌐 HTML</button>
+            <button class="btn btn-secondary btn-sm" on:click={() => printPdf(filterType !== 'all')} title="Print / Save as PDF">🖨 Print</button>
           </div>
         </div>
 
+        <!-- Inline description editor -->
+        <div class="desc-row">
+          {#if editingDescription}
+            <input
+              class="form-input desc-input"
+              bind:value={descriptionDraft}
+              placeholder="Add notes about this schedule version…"
+              on:keydown={e => { if (e.key === 'Enter') saveDescription(); if (e.key === 'Escape') editingDescription = false }}
+            />
+            <button class="btn btn-primary btn-sm" on:click={saveDescription}>Save</button>
+            <button class="btn btn-secondary btn-sm" on:click={() => editingDescription = false}>Cancel</button>
+          {:else}
+            <span class="desc-text" on:click={startEditDescription} title="Click to edit notes">
+              {activeSchedule?.description || '+ Add notes…'}
+            </span>
+          {/if}
+        </div>
+
         {#if tab === 'timetable'}
-          <Timetable entries={filteredEntries} editable={true} on:editEntry={e => openEditModal(e.detail)} />
+          <Timetable entries={filteredEntries} editable={true} conflictKeys={conflictKeys} on:editEntry={e => openEditModal(e.detail)} />
 
         {:else if tab === 'list'}
           <div class="table-wrap">
@@ -441,4 +654,46 @@
   .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .filter-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .timetable-panel { display: flex; flex-direction: column; flex: 1; overflow: auto; }
+  .conflict-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--danger); color: #fff;
+    font-size: 10px; font-weight: 700; border-radius: 99px;
+    padding: 1px 5px; margin-left: 5px; line-height: 1.4;
+  }
+
+  /* Pre-flight panel */
+  .preflight-panel {
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; background: var(--surface2);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .preflight-header { display: flex; align-items: center; font-size: 13px; }
+  .preflight-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 12px; padding: 6px 0; border-top: 1px solid var(--border);
+  }
+  .preflight-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    border-radius: 4px; padding: 2px 6px; white-space: nowrap;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+  }
+  .preflight-error  { color: var(--danger); }
+  .preflight-warning { color: #fbbf24; }
+  .btn-icon {
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 14px; padding: 2px 6px;
+  }
+  .btn-icon:hover { color: var(--text); }
+
+  /* Inline description editor */
+  .desc-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 12px; min-height: 28px;
+  }
+  .desc-text {
+    font-size: 12px; color: var(--text-muted); cursor: pointer;
+    font-style: italic; flex: 1;
+  }
+  .desc-text:hover { color: var(--text); }
+  .desc-input { flex: 1; font-size: 12px; padding: 4px 10px; height: 30px; }
 </style>

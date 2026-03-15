@@ -49,7 +49,7 @@ export const updateBatch  = (id, batch)   => invoke('update_batch', { id, batch 
 export const deleteBatch  = (id)          => invoke('delete_batch', { id })
 
 // Scheduler
-export const generateSchedule    = (scheduleName, semesterId = null) => invoke('generate_schedule', { scheduleName, semesterId })
+export const generateSchedule    = (scheduleName, semesterId = null, description = null) => invoke('generate_schedule', { scheduleName, semesterId, description })
 export const getSchedules        = ()              => invoke('get_schedules')
 export const getScheduleEntries  = (scheduleId)   => invoke('get_schedule_entries', { scheduleId })
 export const activateSchedule    = (id)            => invoke('activate_schedule', { id })
@@ -77,3 +77,20 @@ export const getAdminCount  = ()      => invoke('get_admin_count')
 // Utilization & editing
 export const getUtilizationReport  = (scheduleId)       => invoke('get_utilization_report', { scheduleId })
 export const updateScheduleEntry   = (entryId, req)     => invoke('update_schedule_entry', { entryId, req })
+
+// Schedule status
+export const publishSchedule         = (id) => invoke('publish_schedule', { id })
+export const revertScheduleToDraft   = (id) => invoke('revert_schedule_to_draft', { id })
+
+// Audit log
+export const getAuditLog = (limit = 100) => invoke('get_audit_log', { limit })
+
+// Bulk import
+export const bulkImportLecturers = (rows) => invoke('bulk_import_lecturers', { rows })
+export const bulkImportRooms     = (rows) => invoke('bulk_import_rooms', { rows })
+export const bulkImportCourses   = (rows) => invoke('bulk_import_courses', { rows })
+
+// Pre-flight / data health
+export const getPreflightWarnings     = ()   => invoke('get_preflight_warnings')
+export const getDataHealth            = ()   => invoke('get_data_health')
+export const updateScheduleDescription = (id, description) => invoke('update_schedule_description', { id, description })

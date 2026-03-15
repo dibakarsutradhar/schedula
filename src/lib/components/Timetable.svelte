@@ -3,6 +3,7 @@
   export let entries = []
   export let filterBatch = null  // batch_id or null = all
   export let editable = false    // when true, clicking an entry fires 'editEntry'
+  export let conflictKeys = new Set()  // Set of "day-slot-entryId" keys that have conflicts
 
   const dispatch = createEventDispatcher()
 
@@ -44,9 +45,13 @@
                 <div
                   class="slot-entry batch-color-{batchColorMap[entry.batch_id]}"
                   class:slot-editable={editable}
+                  class:slot-conflict={conflictKeys.has(entry.id)}
                   on:click={() => editable && dispatch('editEntry', entry)}
-                  title={editable ? 'Click to move this entry' : ''}
+                  title={conflictKeys.has(entry.id) ? '⚠ Conflict detected' : editable ? 'Click to move this entry' : ''}
                 >
+                  {#if conflictKeys.has(entry.id)}
+                    <span class="conflict-badge">⚠</span>
+                  {/if}
                   <strong>{entry.course_code}</strong>
                   <span>{entry.batch_name}</span>
                   <span style="color:var(--text-muted);font-size:10px">{entry.room_name}</span>
@@ -70,4 +75,12 @@
     font-size: 10px; opacity: 0; transition: opacity .15s;
   }
   .slot-editable:hover .edit-hint { opacity: 0.7; }
+  .slot-conflict {
+    outline: 2px solid var(--danger) !important;
+    outline-offset: -2px;
+  }
+  .conflict-badge {
+    position: absolute; top: 3px; right: 4px;
+    font-size: 10px; color: var(--danger);
+  }
 </style>

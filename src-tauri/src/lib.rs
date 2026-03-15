@@ -88,6 +88,20 @@ pub fn run() {
             // Utilization & editing
             commands::get_utilization_report,
             commands::update_schedule_entry,
+            // Schedule status
+            commands::publish_schedule,
+            commands::revert_schedule_to_draft,
+            // Audit log
+            commands::get_audit_log,
+            // Bulk import
+            commands::bulk_import_lecturers,
+            commands::bulk_import_rooms,
+            commands::bulk_import_courses,
+            // Pre-flight / data health
+            commands::get_preflight_warnings,
+            commands::get_data_health,
+            // Schedule notes
+            commands::update_schedule_description,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

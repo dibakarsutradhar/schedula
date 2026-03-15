@@ -236,9 +236,11 @@ pub struct Schedule {
     pub name: String,
     pub created_at: String,
     pub is_active: bool,
+    pub status: String,          // 'draft' | 'published'
     pub entry_count: i64,
     pub semester_id: Option<i64>,
     pub semester_name: Option<String>,
+    pub description: Option<String>,
 }
 
 // ─── Scheduling constants ─────────────────────────────────────────────────────
@@ -331,4 +333,73 @@ pub struct UpdateScheduleEntryReq {
     pub day: String,
     pub time_slot: i64,
     pub room_id: i64,
+}
+
+// ─── Audit log ────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditEntry {
+    pub id: i64,
+    pub user_id: Option<i64>,
+    pub username: String,
+    pub action: String,        // 'create' | 'update' | 'delete' | 'generate' | 'publish' | 'import'
+    pub entity_type: String,   // 'lecturer' | 'course' | 'room' | 'batch' | 'user' | 'schedule'
+    pub entity_id: Option<i64>,
+    pub details_json: Option<String>,
+    pub created_at: String,
+}
+
+// ─── Pre-flight / Data-health ─────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreflightWarning {
+    pub severity: String,   // "error" | "warning"
+    pub category: String,   // "courses" | "lecturers" | "rooms" | "batches"
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataHealth {
+    pub courses_without_lecturers: i64,
+    pub courses_without_matching_rooms: i64,
+    pub batches_without_courses: i64,
+    pub lecturers_unavailable: i64,   // available_days is empty
+    pub total_warnings: i64,
+}
+
+// ─── Bulk CSV import ──────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct CsvLecturer {
+    pub name: String,
+    pub email: Option<String>,
+    pub available_days: String,
+    pub max_hours_per_day: i64,
+    pub max_hours_per_week: i64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CsvCourse {
+    pub code: String,
+    pub name: String,
+    pub hours_per_week: i64,
+    pub room_type: String,
+    pub class_type: String,
+    pub frequency: String,
+    pub lecturer_email: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CsvRoom {
+    pub name: String,
+    pub capacity: i64,
+    pub room_type: String,
+    pub available_days: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkImportResult {
+    pub inserted: i64,
+    pub skipped: i64,
+    pub errors: Vec<String>,
 }

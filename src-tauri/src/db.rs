@@ -9,6 +9,8 @@ pub fn open(db_path: &Path) -> Result<Connection> {
     migrate_v3(&conn)?;
     migrate_v4(&conn)?;
     migrate_v5(&conn)?;
+    migrate_v6(&conn)?;
+    migrate_v7(&conn)?;
     seed_super_admin(&conn);
     Ok(conn)
 }
@@ -192,6 +194,37 @@ fn migrate_v5(conn: &Connection) -> Result<()> {
     for sql in &alters {
         try_alter(conn, sql);
     }
+    Ok(())
+}
+
+// ─── V6: schedule status (draft/published) + audit log ───────────────────────
+fn migrate_v6(conn: &Connection) -> Result<()> {
+    // Draft/Published states on schedules
+    try_alter(conn, "ALTER TABLE schedules ADD COLUMN status TEXT NOT NULL DEFAULT 'draft'");
+    // Back-fill: published = active, else draft (idempotent)
+    let _ = conn.execute_batch(
+        "UPDATE schedules SET status='published' WHERE is_active=1;
+         UPDATE schedules SET status='draft' WHERE is_active=0;"
+    );
+    // Audit log table
+    conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER,
+            username     TEXT NOT NULL DEFAULT 'system',
+            action       TEXT NOT NULL,
+            entity_type  TEXT NOT NULL,
+            entity_id    INTEGER,
+            details_json TEXT,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+    ")?;
+    Ok(())
+}
+
+// ─── V7: schedule description/notes ──────────────────────────────────────────
+fn migrate_v7(conn: &Connection) -> Result<()> {
+    try_alter(conn, "ALTER TABLE schedules ADD COLUMN description TEXT");
     Ok(())
 }
 
