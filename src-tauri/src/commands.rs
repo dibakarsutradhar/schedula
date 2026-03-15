@@ -91,11 +91,11 @@ pub fn get_users(db: State<DbState>, session: State<SessionState>) -> Result<Vec
     let conn = db.0.lock().map_err(db_err)?;
 
     let sql = if s.role == "super_admin" {
-        "SELECT u.id, u.username, u.display_name, u.role, u.org_id, o.name
+        "SELECT u.id, u.username, u.display_name, u.role, u.org_id, o.name, u.is_active
          FROM users u LEFT JOIN organizations o ON o.id = u.org_id ORDER BY u.username".to_string()
     } else {
         format!(
-            "SELECT u.id, u.username, u.display_name, u.role, u.org_id, o.name
+            "SELECT u.id, u.username, u.display_name, u.role, u.org_id, o.name, u.is_active
              FROM users u LEFT JOIN organizations o ON o.id = u.org_id
              WHERE u.org_id = {} ORDER BY u.username",
             s.org_id.unwrap_or(-1)
@@ -110,6 +110,7 @@ pub fn get_users(db: State<DbState>, session: State<SessionState>) -> Result<Vec
         role: row.get(3)?,
         org_id: row.get(4)?,
         org_name: row.get(5)?,
+        is_active: row.get::<_,i64>(6).unwrap_or(1) != 0,
     })).map_err(db_err)?.collect();
     rows.map_err(db_err)
 }
@@ -169,13 +170,14 @@ pub fn get_organizations(db: State<DbState>, session: State<SessionState>) -> Re
     require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     let mut stmt = conn.prepare(
-        "SELECT id, name, org_type, address FROM organizations ORDER BY name"
+        "SELECT id, name, org_type, address, contact_email FROM organizations ORDER BY name"
     ).map_err(db_err)?;
     let rows: Result<Vec<Organization>, _> = stmt.query_map([], |row| Ok(Organization {
         id: row.get(0)?,
         name: row.get(1)?,
         org_type: row.get(2)?,
         address: row.get(3)?,
+        contact_email: row.get(4)?,
     })).map_err(db_err)?.collect();
     rows.map_err(db_err)
 }
@@ -189,8 +191,8 @@ pub fn create_organization(
     require_super_admin(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
-        "INSERT INTO organizations (name, org_type, address) VALUES (?1,?2,?3)",
-        params![org.name, org.org_type, org.address],
+        "INSERT INTO organizations (name, org_type, address, contact_email) VALUES (?1,?2,?3,?4)",
+        params![org.name, org.org_type, org.address, org.contact_email],
     ).map_err(db_err)?;
     Ok(conn.last_insert_rowid())
 }
@@ -205,8 +207,8 @@ pub fn update_organization(
     require_super_admin(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
     conn.execute(
-        "UPDATE organizations SET name=?1, org_type=?2, address=?3 WHERE id=?4",
-        params![org.name, org.org_type, org.address, id],
+        "UPDATE organizations SET name=?1, org_type=?2, address=?3, contact_email=?4 WHERE id=?5",
+        params![org.name, org.org_type, org.address, org.contact_email, id],
     ).map_err(db_err)?;
     Ok(())
 }
@@ -730,6 +732,188 @@ pub fn get_stats(db: State<DbState>, session: State<SessionState>) -> Result<Val
         "batches": batches, "schedules": schedules, "active_entries": active_entries,
         "organizations": orgs, "semesters": sems,
     }))
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════════════════════════════
+
+#[tauri::command]
+pub fn update_display_name(
+    db: State<DbState>,
+    session: State<SessionState>,
+    new_name: String,
+) -> Result<(), String> {
+    let s = require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    conn.execute("UPDATE users SET display_name=?1 WHERE id=?2", params![new_name, s.user_id]).map_err(db_err)?;
+    // Update session state too
+    let mut sess = session.0.lock().map_err(db_err)?;
+    if let Some(ref mut payload) = *sess {
+        payload.display_name = new_name;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn admin_reset_password(
+    db: State<DbState>,
+    session: State<SessionState>,
+    user_id: i64,
+    new_password: String,
+) -> Result<(), String> {
+    require_super_admin(&session)?;
+    let hash = bcrypt::hash(&new_password, bcrypt::DEFAULT_COST).map_err(db_err)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    conn.execute("UPDATE users SET password_hash=?1 WHERE id=?2", params![hash, user_id]).map_err(db_err)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_user_active(
+    db: State<DbState>,
+    session: State<SessionState>,
+    user_id: i64,
+    active: bool,
+) -> Result<(), String> {
+    let s = require_super_admin(&session)?;
+    if s.user_id == user_id { return Err("Cannot deactivate yourself".into()); }
+    let conn = db.0.lock().map_err(db_err)?;
+    conn.execute("UPDATE users SET is_active=?1 WHERE id=?2", params![active as i64, user_id]).map_err(db_err)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_scheduling_settings(
+    db: State<DbState>,
+    session: State<SessionState>,
+    org_id: i64,
+) -> Result<OrgSchedulingSettings, String> {
+    require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let result = conn.query_row(
+        "SELECT org_id, working_days, day_start_slot, day_end_slot, slot_duration
+         FROM org_scheduling_settings WHERE org_id=?1",
+        params![org_id],
+        |row| Ok(OrgSchedulingSettings {
+            org_id: row.get(0)?,
+            working_days: row.get(1)?,
+            day_start_slot: row.get(2)?,
+            day_end_slot: row.get(3)?,
+            slot_duration: row.get(4)?,
+        }),
+    );
+    match result {
+        Ok(s) => Ok(s),
+        Err(_) => Ok(OrgSchedulingSettings {
+            org_id,
+            working_days: "Mon,Tue,Wed,Thu,Fri".into(),
+            day_start_slot: 0,
+            day_end_slot: 7,
+            slot_duration: 60,
+        }),
+    }
+}
+
+#[tauri::command]
+pub fn upsert_scheduling_settings(
+    db: State<DbState>,
+    session: State<SessionState>,
+    settings: OrgSchedulingSettings,
+) -> Result<(), String> {
+    require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    conn.execute(
+        "INSERT INTO org_scheduling_settings (org_id, working_days, day_start_slot, day_end_slot, slot_duration, updated_at)
+         VALUES (?1,?2,?3,?4,?5,datetime('now'))
+         ON CONFLICT(org_id) DO UPDATE SET
+           working_days=excluded.working_days,
+           day_start_slot=excluded.day_start_slot,
+           day_end_slot=excluded.day_end_slot,
+           slot_duration=excluded.slot_duration,
+           updated_at=datetime('now')",
+        params![settings.org_id, settings.working_days, settings.day_start_slot, settings.day_end_slot, settings.slot_duration],
+    ).map_err(db_err)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn clear_schedules(
+    db: State<DbState>,
+    session: State<SessionState>,
+) -> Result<i64, String> {
+    let s = require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let count: i64 = match s.org_id {
+        Some(oid) => conn.query_row("SELECT COUNT(*) FROM schedules WHERE org_id=?1", params![oid], |r| r.get(0)).unwrap_or(0),
+        None => conn.query_row("SELECT COUNT(*) FROM schedules", [], |r| r.get(0)).unwrap_or(0),
+    };
+    match s.org_id {
+        Some(oid) => conn.execute("DELETE FROM schedules WHERE org_id=?1", params![oid]).map_err(db_err)?,
+        None => conn.execute("DELETE FROM schedules", []).map_err(db_err)?,
+    };
+    Ok(count)
+}
+
+#[tauri::command]
+pub fn backup_database(
+    db: State<DbState>,
+    session: State<SessionState>,
+) -> Result<String, String> {
+    require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    export_json_backup(&conn)
+}
+
+fn export_json_backup(conn: &Connection) -> Result<String, String> {
+    use serde_json::{json, Map, Value};
+    let tables = ["organizations","users","semesters","courses","lecturers","rooms",
+                  "batches","batch_courses","schedules","schedule_entries","org_scheduling_settings"];
+    let mut result = Map::new();
+    for table in &tables {
+        let mut stmt = conn.prepare(&format!("SELECT * FROM {}", table)).map_err(db_err)?;
+        let cols: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
+        let mut rows: Vec<Value> = Vec::new();
+        let _ = stmt.query_map([], |row| {
+            let mut obj = Map::new();
+            for (i, col) in cols.iter().enumerate() {
+                let v: Value = match row.get_ref(i) {
+                    Ok(rusqlite::types::ValueRef::Integer(n)) => json!(n),
+                    Ok(rusqlite::types::ValueRef::Real(f)) => json!(f),
+                    Ok(rusqlite::types::ValueRef::Text(t)) => json!(std::str::from_utf8(t).unwrap_or("")),
+                    _ => Value::Null,
+                };
+                obj.insert(col.clone(), v);
+            }
+            Ok(obj)
+        }).map_err(db_err)?.filter_map(|r| r.ok()).for_each(|row| rows.push(Value::Object(row)));
+        result.insert(table.to_string(), Value::Array(rows));
+    }
+    let json_str = serde_json::to_string_pretty(&Value::Object(result)).map_err(db_err)?;
+    use base64::{Engine as _, engine::general_purpose};
+    Ok(general_purpose::STANDARD.encode(json_str.as_bytes()))
+}
+
+#[tauri::command]
+pub fn get_app_info(
+    db: State<DbState>,
+    session: State<SessionState>,
+) -> Result<AppInfo, String> {
+    require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let user_count: i64     = conn.query_row("SELECT COUNT(*) FROM users", [], |r| r.get(0)).unwrap_or(0);
+    let org_count: i64      = conn.query_row("SELECT COUNT(*) FROM organizations", [], |r| r.get(0)).unwrap_or(0);
+    let schedule_count: i64 = conn.query_row("SELECT COUNT(*) FROM schedules", [], |r| r.get(0)).unwrap_or(0);
+    let page_count: i64 = conn.query_row("PRAGMA page_count", [], |r| r.get(0)).unwrap_or(0);
+    let page_size: i64  = conn.query_row("PRAGMA page_size",  [], |r| r.get(0)).unwrap_or(4096);
+    let db_size: u64 = (page_count * page_size) as u64;
+    Ok(AppInfo {
+        version: "0.1.0".into(),
+        db_size_bytes: db_size,
+        user_count,
+        org_count,
+        schedule_count,
+    })
 }
 
 fn count_scoped(conn: &Connection, table: &str, org_id: Option<i64>) -> i64 {

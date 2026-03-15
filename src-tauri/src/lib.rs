@@ -72,6 +72,15 @@ pub fn run() {
             commands::export_schedule_csv,
             // Dashboard
             commands::get_stats,
+            // Settings
+            commands::update_display_name,
+            commands::admin_reset_password,
+            commands::set_user_active,
+            commands::get_scheduling_settings,
+            commands::upsert_scheduling_settings,
+            commands::clear_schedules,
+            commands::backup_database,
+            commands::get_app_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

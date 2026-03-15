@@ -15,6 +15,7 @@
     { id: 'batches',    label: 'Batches',          icon: '🎓' },
     { id: 'schedule',   label: 'Schedule',         icon: '📅' },
     { id: 'users',      label: 'Users',            icon: '👥' },
+    { id: 'settings',   label: 'Settings',         icon: '⚙️' },
   ]
 
   async function handleLogout() {

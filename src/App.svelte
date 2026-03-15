@@ -15,16 +15,26 @@
   import Batches      from './views/Batches.svelte'
   import Schedule     from './views/Schedule.svelte'
   import Users        from './views/Users.svelte'
+  import Settings     from './views/Settings.svelte'
+  import { prefs }    from './lib/stores/prefs.js'
 
   let active = 'dashboard'
   let loading = true
 
   onMount(async () => {
-    // Restore session from Rust state (syncs with localStorage backup)
     await session.restore()
     loading = false
   })
+
+  function handleKeydown(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+      e.preventDefault()
+      active = 'settings'
+    }
+  }
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 {#if loading}
   <div style="display:flex;align-items:center;justify-content:center;height:100vh;color:var(--text-muted)">Loading…</div>
@@ -55,6 +65,8 @@
         <Schedule />
       {:else if active === 'users'}
         <Users />
+      {:else if active === 'settings'}
+        <Settings />
       {/if}
     </div>
   </div>

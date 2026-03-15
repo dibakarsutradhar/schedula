@@ -8,13 +8,17 @@ pub struct Organization {
     pub name: String,
     pub org_type: String,
     pub address: Option<String>,
+    pub contact_email: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct NewOrganization {
     pub name: String,
     pub org_type: String,
+    #[serde(default)]
     pub address: Option<String>,
+    #[serde(default)]
+    pub contact_email: Option<String>,
 }
 
 // ─── User / Auth ──────────────────────────────────────────────────────────────
@@ -27,6 +31,7 @@ pub struct User {
     pub role: String,
     pub org_id: Option<i64>,
     pub org_name: Option<String>,
+    pub is_active: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -241,6 +246,28 @@ pub fn slot_label(slot: i64) -> &'static str {
         7 => "16:00–17:00",
         _ => "Unknown",
     }
+}
+
+// ─── Scheduling Settings ──────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrgSchedulingSettings {
+    pub org_id: i64,
+    pub working_days: String,
+    pub day_start_slot: i64,
+    pub day_end_slot: i64,
+    pub slot_duration: i64,
+}
+
+// ─── App Info ─────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppInfo {
+    pub version: String,
+    pub db_size_bytes: u64,
+    pub user_count: i64,
+    pub org_count: i64,
+    pub schedule_count: i64,
 }
 
 // ─── Conflict / unscheduled report ───────────────────────────────────────────

@@ -2835,6 +2835,7 @@ dependencies = [
 name = "schedula"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "bcrypt",
  "chrono",
  "csv",

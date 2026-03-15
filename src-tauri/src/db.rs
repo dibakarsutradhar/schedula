@@ -6,6 +6,7 @@ pub fn open(db_path: &Path) -> Result<Connection> {
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
     migrate_v1(&conn)?;
     migrate_v2(&conn)?;
+    migrate_v3(&conn)?;
     seed_super_admin(&conn);
     Ok(conn)
 }
@@ -133,6 +134,29 @@ fn migrate_v2(conn: &Connection) -> Result<()> {
         "ALTER TABLE schedules      ADD COLUMN semester_id INTEGER REFERENCES semesters(id)",
         "ALTER TABLE schedule_entries ADD COLUMN class_type  TEXT NOT NULL DEFAULT 'lecture'",
         "ALTER TABLE schedule_entries ADD COLUMN week_parity INTEGER NOT NULL DEFAULT 0",
+    ];
+    for sql in &alters {
+        try_alter(conn, sql);
+    }
+    Ok(())
+}
+
+// ─── V3: scheduling settings, user active flag, org contact email ─────────────
+fn migrate_v3(conn: &Connection) -> Result<()> {
+    conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS org_scheduling_settings (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            org_id          INTEGER NOT NULL UNIQUE REFERENCES organizations(id) ON DELETE CASCADE,
+            working_days    TEXT    NOT NULL DEFAULT 'Mon,Tue,Wed,Thu,Fri',
+            day_start_slot  INTEGER NOT NULL DEFAULT 0,
+            day_end_slot    INTEGER NOT NULL DEFAULT 7,
+            slot_duration   INTEGER NOT NULL DEFAULT 60,
+            updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+        );
+    ")?;
+    let alters = [
+        "ALTER TABLE users         ADD COLUMN is_active     INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE organizations ADD COLUMN contact_email TEXT",
     ];
     for sql in &alters {
         try_alter(conn, sql);

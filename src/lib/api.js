@@ -58,3 +58,13 @@ export const exportScheduleCsv   = (scheduleId)   => invoke('export_schedule_csv
 
 // Dashboard
 export const getStats = () => invoke('get_stats')
+
+// Settings
+export const updateDisplayName       = (newName)            => invoke('update_display_name', { newName })
+export const adminResetPassword      = (userId, newPassword) => invoke('admin_reset_password', { userId, newPassword })
+export const setUserActive           = (userId, active)     => invoke('set_user_active', { userId, active })
+export const getSchedulingSettings   = (orgId)              => invoke('get_scheduling_settings', { orgId })
+export const upsertSchedulingSettings = (settings)          => invoke('upsert_scheduling_settings', { settings })
+export const clearSchedules          = ()                   => invoke('clear_schedules')
+export const backupDatabase          = ()                   => invoke('backup_database')
+export const getAppInfo              = ()                   => invoke('get_app_info')
