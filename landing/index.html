@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Schedula — University Timetabling, Automated</title>
+  <meta name="description" content="Schedula generates conflict-free academic timetables in seconds. Free, open source desktop app for universities. Runs on Windows and macOS." />
+  <meta property="og:title" content="Schedula — University Timetabling, Automated" />
+  <meta property="og:description" content="Constraint-based scheduler for universities. Free, open source, offline-first." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:        #0b1426;
+      --navy-2:      #101d32;
+      --navy-3:      #162540;
+      --navy-4:      #1d2f50;
+      --blue:        #3b82f6;
+      --blue-dim:    rgba(59,130,246,0.15);
+      --blue-lt:     #93c5fd;
+      --gold:        #f59e0b;
+      --gold-lt:     #fde68a;
+      --cream:       #f7f8fc;
+      --white:       #ffffff;
+      --ink:         #0f172a;
+      --mid:         #475569;
+      --muted:       #94a3b8;
+      --edge-light:  #e2e8f0;
+      --edge-dark:   #1e3050;
+
+      --serif:  'Crimson Pro', Georgia, serif;
+      --sans:   'IBM Plex Sans', system-ui, sans-serif;
+      --mono:   'IBM Plex Mono', 'Courier New', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--sans);
+      background: var(--white);
+      color: var(--ink);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── NAV ──────────────────────────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 1.125rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      transition: background .35s ease, border-color .35s ease, backdrop-filter .35s ease;
+      border-bottom: 1px solid transparent;
+    }
+    nav.scrolled {
+      background: rgba(11,20,38,.92);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom-color: var(--edge-dark);
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: .625rem;
+      text-decoration: none; user-select: none;
+    }
+    .logo-mark {
+      width: 30px; height: 30px;
+      display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
+      gap: 2.5px;
+    }
+    .logo-mark b {
+      border-radius: 2px;
+      background: rgba(147,197,253,.45);
+      transition: background .3s;
+    }
+    .logo-mark b:nth-child(2) { background: var(--blue); opacity:.9; }
+    .logo-mark b:nth-child(5) { background: var(--gold); opacity:.9; }
+    .logo-mark b:nth-child(8) { background: var(--blue); opacity:.7; }
+    .logo-text {
+      font-family: var(--serif); font-size: 1.4375rem; font-weight: 600;
+      color: var(--white); letter-spacing: -.015em;
+    }
+
+    .nav-links {
+      display: flex; align-items: center; gap: 2.25rem; list-style: none;
+    }
+    .nav-links a {
+      font-size: .875rem; color: rgba(255,255,255,.6);
+      text-decoration: none; transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--white); }
+
+    .nav-end { display: flex; align-items: center; gap: .875rem; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: .4375rem;
+      padding: .5625rem 1.1875rem;
+      border-radius: 7px; border: none; cursor: pointer;
+      font-family: var(--sans); font-size: .875rem; font-weight: 500;
+      text-decoration: none; transition: all .2s;
+      white-space: nowrap;
+    }
+    .btn-gold {
+      background: var(--gold); color: #1a0e00;
+    }
+    .btn-gold:hover {
+      background: #fbbf24;
+      box-shadow: 0 4px 20px rgba(245,158,11,.4);
+      transform: translateY(-1px);
+    }
+    .btn-ghost {
+      background: rgba(255,255,255,.07); color: rgba(255,255,255,.8);
+      border: 1px solid rgba(255,255,255,.15);
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,.12);
+      border-color: rgba(255,255,255,.3);
+    }
+    .btn-outline-dark {
+      background: transparent; color: var(--ink);
+      border: 1px solid var(--edge-light);
+    }
+    .btn-outline-dark:hover {
+      background: var(--cream); border-color: #c9d4e8;
+    }
+    .btn-lg { padding: .8125rem 1.625rem; font-size: .9375rem; border-radius: 8px; }
+
+    .hamburger {
+      display: none; flex-direction: column; gap: 5px;
+      background: none; border: none; cursor: pointer; padding: 4px; z-index: 201;
+    }
+    .hamburger span {
+      display: block; width: 22px; height: 2px;
+      background: var(--white); border-radius: 1px; transition: all .3s;
+    }
+    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* ── HERO ─────────────────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      background: var(--navy);
+      display: flex; flex-direction: column;
+      padding-top: 4.5rem;
+      position: relative; overflow: hidden;
+    }
+
+    /* dot-grid texture */
+    .hero-bg {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image: radial-gradient(rgba(59,130,246,.11) 1px, transparent 1px);
+      background-size: 30px 30px;
+      mask-image: radial-gradient(ellipse 85% 85% at 50% 40%, black 30%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 40%, black 30%, transparent 100%);
+    }
+    /* soft glows */
+    .hero-glow-blue {
+      position: absolute; top: -15%; right: -8%; width: 55%; height: 70%;
+      background: radial-gradient(ellipse, rgba(59,130,246,.07) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .hero-glow-gold {
+      position: absolute; bottom: -20%; left: -5%; width: 45%; height: 55%;
+      background: radial-gradient(ellipse, rgba(245,158,11,.045) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      flex: 1;
+      max-width: 1200px; margin: 0 auto; width: 100%;
+      padding: 4.5rem 2rem 3rem;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
+      position: relative; z-index: 1;
+    }
+
+    /* hero left */
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.22);
+      color: var(--blue-lt); font-size: .6875rem; font-weight: 500;
+      padding: .3125rem .875rem; border-radius: 100px;
+      letter-spacing: .055em; text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+    .hero-badge i {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--blue-lt);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    h1 {
+      font-family: var(--serif);
+      font-size: clamp(2.5rem, 4.8vw, 3.875rem);
+      font-weight: 300; line-height: 1.08; letter-spacing: -.025em;
+      color: var(--white); margin-bottom: 1.375rem;
+    }
+    h1 em { font-style: italic; color: var(--gold-lt); }
+
+    .hero-sub {
+      font-size: 1.0625rem; color: rgba(255,255,255,.5); line-height: 1.72;
+      max-width: 470px; margin-bottom: 2.5rem; font-weight: 300;
+    }
+
+    .hero-ctas { display: flex; gap: .875rem; flex-wrap: wrap; }
+
+    .hero-stat-row {
+      margin-top: 3rem;
+      display: flex; align-items: center; gap: 1.75rem; flex-wrap: wrap;
+    }
+    .hero-stat { display: flex; flex-direction: column; }
+    .stat-num {
+      font-family: var(--serif); font-size: 1.625rem; font-weight: 600;
+      color: var(--white); line-height: 1;
+    }
+    .stat-lbl {
+      font-size: .6875rem; color: rgba(255,255,255,.35);
+      letter-spacing: .07em; text-transform: uppercase; margin-top: .2rem;
+    }
+    .stat-divider { width: 1px; height: 30px; background: rgba(255,255,255,.1); }
+
+    /* ── SCHEDULE DEMO ────────────────────────────────────────────────────── */
+    .demo-wrap {
+      background: var(--navy-2);
+      border: 1px solid var(--edge-dark);
+      border-radius: 14px;
+      box-shadow: 0 40px 90px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.03);
+      overflow: hidden;
+    }
+
+    .demo-bar {
+      background: rgba(255,255,255,.035);
+      padding: .8125rem 1rem;
+      display: flex; align-items: center; gap: .75rem;
+      border-bottom: 1px solid var(--edge-dark);
+    }
+    .demo-dots { display: flex; gap: 5.5px; }
+    .demo-dot  { width: 10px; height: 10px; border-radius: 50%; }
+    .demo-dot:nth-child(1) { background: #ff5f57; }
+    .demo-dot:nth-child(2) { background: #febc2e; }
+    .demo-dot:nth-child(3) { background: #28c840; }
+    .demo-win-title {
+      font-family: var(--mono); font-size: .7rem;
+      color: rgba(255,255,255,.28); margin: 0 auto;
+    }
+
+    .demo-body { padding: 1.125rem 1.125rem 1.25rem; }
+
+    .demo-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: .875rem;
+    }
+    .demo-sem {
+      font-family: var(--mono); font-size: .6875rem;
+      color: var(--blue-lt);
+      background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.2);
+      padding: .2rem .5rem; border-radius: 4px;
+    }
+    .demo-status {
+      display: flex; align-items: center; gap: .35rem;
+      font-family: var(--mono); font-size: .6875rem; color: var(--gold);
+    }
+    .demo-status i {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--gold); animation: blink 1.3s ease-in-out infinite;
+    }
+
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 46px repeat(5, 1fr);
+      gap: 3px;
+    }
+    .demo-hdr {
+      font-family: var(--mono); font-size: .62rem;
+      color: rgba(255,255,255,.27); text-align: center; padding: .25rem 0;
+      letter-spacing: .04em;
+    }
+    .demo-t {
+      font-family: var(--mono); font-size: .58rem;
+      color: rgba(255,255,255,.22);
+      display: flex; align-items: center; padding: .25rem;
+    }
+
+    .cell {
+      height: 34px; border-radius: 4px;
+      background: rgba(255,255,255,.035);
+      border: 1px solid rgba(255,255,255,.045);
+    }
+    .cell.on {
+      display: flex; flex-direction: column;
+      justify-content: center; padding: .25rem .4rem;
+      opacity: 0;
+      animation: pop .38s cubic-bezier(.34,1.56,.64,1) forwards;
+    }
+    @keyframes pop {
+      from { opacity:0; transform:scale(.82); }
+      to   { opacity:1; transform:scale(1);   }
+    }
+    .cn { font-family:var(--mono); font-size:.54rem; font-weight:600; letter-spacing:.03em; line-height:1.25; }
+    .cr { font-family:var(--mono); font-size:.49rem; opacity:.55; }
+
+    /* cell color variants */
+    .cb { background:rgba(59,130,246,.22);  border-color:rgba(59,130,246,.38);  } .cb .cn{color:#93c5fd;}
+    .cp { background:rgba(139,92,246,.22);  border-color:rgba(139,92,246,.38);  } .cp .cn{color:#c4b5fd;}
+    .cg { background:rgba(16,185,129,.22);  border-color:rgba(16,185,129,.38);  } .cg .cn{color:#6ee7b7;}
+    .ca { background:rgba(245,158,11,.22);  border-color:rgba(245,158,11,.38);  } .ca .cn{color:#fde68a;}
+    .cr2{ background:rgba(244,63,94,.18);   border-color:rgba(244,63,94,.32);   } .cr2 .cn{color:#fda4af;}
+    .cc { background:rgba(6,182,212,.18);   border-color:rgba(6,182,212,.32);   } .cc .cn{color:#a5f3fc;}
+
+    /* staggered delays */
+    .d1 {animation-delay:.4s}  .d2 {animation-delay:.65s} .d3 {animation-delay:.9s}
+    .d4 {animation-delay:1.15s}.d5 {animation-delay:1.4s} .d6 {animation-delay:1.65s}
+    .d7 {animation-delay:1.9s} .d8 {animation-delay:2.15s}.d9 {animation-delay:2.4s}
+    .d10{animation-delay:2.65s}.d11{animation-delay:2.9s} .d12{animation-delay:3.15s}
+    .d13{animation-delay:3.4s} .d14{animation-delay:3.65s}
+
+    /* demo legend */
+    .demo-legend {
+      display: flex; gap: .625rem; margin-top: .875rem; flex-wrap: wrap;
+    }
+    .demo-chip {
+      display: flex; align-items: center; gap: .3rem;
+      font-family: var(--mono); font-size: .58rem;
+      color: rgba(255,255,255,.35); padding: .2rem .5rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 3px;
+    }
+    .demo-chip span { width:7px; height:7px; border-radius:2px; }
+
+    /* hero scroll hint */
+    .scroll-hint {
+      position: relative; z-index: 1;
+      display: flex; justify-content: center;
+      padding-bottom: 2rem;
+    }
+    .scroll-hint-inner {
+      display: flex; flex-direction: column; align-items: center; gap: .4rem;
+      animation: bob 2.4s ease-in-out infinite;
+    }
+    .scroll-hint-inner span {
+      font-family: var(--mono); font-size: .63rem;
+      color: rgba(255,255,255,.2); letter-spacing: .08em; text-transform: uppercase;
+    }
+    @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(7px)} }
+
+    /* ── SECTION COMMON ───────────────────────────────────────────────────── */
+    section { padding: 6rem 2rem; }
+    .inner { max-width: 1200px; margin: 0 auto; }
+
+    .eyebrow {
+      font-size: .75rem; font-weight: 500; letter-spacing: .1em;
+      text-transform: uppercase; margin-bottom: .875rem;
+    }
+    .eyebrow.on-dark { color: var(--blue-lt); }
+    .eyebrow.on-light { color: var(--blue); }
+
+    h2 {
+      font-family: var(--serif);
+      font-size: clamp(1.875rem, 3.2vw, 2.625rem);
+      font-weight: 300; line-height: 1.14; letter-spacing: -.025em;
+      margin-bottom: 1.125rem;
+    }
+    h2.on-dark { color: var(--white); }
+    h2.on-light { color: var(--ink); }
+
+    .section-sub {
+      font-size: 1rem; line-height: 1.72; max-width: 540px;
+    }
+    .section-sub.on-dark { color: rgba(255,255,255,.45); }
+    .section-sub.on-light { color: var(--mid); }
+
+    /* ── FEATURES ─────────────────────────────────────────────────────────── */
+    #features { background: var(--cream); }
+
+    .feat-header { margin-bottom: 3.5rem; }
+
+    .feat-grid {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 1.5px;
+      background: var(--edge-light);
+      border: 1.5px solid var(--edge-light);
+      border-radius: 13px; overflow: hidden;
+    }
+    .feat-card {
+      background: var(--white); padding: 2rem 1.875rem;
+      transition: background .2s;
+    }
+    .feat-card:hover { background: #fbfcff; }
+
+    .feat-icon {
+      width: 40px; height: 40px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.125rem; margin-bottom: 1.25rem;
+    }
+    .fi-b { background: rgba(59,130,246,.09); }
+    .fi-p { background: rgba(139,92,246,.09); }
+    .fi-g { background: rgba(16,185,129,.09); }
+    .fi-a { background: rgba(245,158,11,.09); }
+    .fi-r { background: rgba(244,63,94,.09);  }
+    .fi-c { background: rgba(6,182,212,.09);  }
+    .fi-s { background: rgba(99,102,241,.09); }
+    .fi-n { background: rgba(236,72,153,.09); }
+
+    .feat-title {
+      font-family: var(--serif); font-size: 1.1875rem; font-weight: 500;
+      color: var(--ink); margin-bottom: .5rem;
+    }
+    .feat-desc {
+      font-size: .875rem; color: var(--mid); line-height: 1.67;
+    }
+
+    /* ── HOW IT WORKS ─────────────────────────────────────────────────────── */
+    #how { background: var(--navy); }
+
+    .steps {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 0; margin-top: 4rem; position: relative;
+    }
+    /* connecting line */
+    .steps::after {
+      content: '';
+      position: absolute; top: 2rem;
+      left: calc(16.667% + 1.5rem); right: calc(16.667% + 1.5rem);
+      height: 1px;
+      background: linear-gradient(90deg, rgba(59,130,246,.5), rgba(59,130,246,.1) 50%, rgba(59,130,246,.5));
+    }
+
+    .step {
+      padding: 0 2rem;
+      display: flex; flex-direction: column;
+    }
+    .step-num {
+      width: 4rem; height: 4rem; border-radius: 50%;
+      background: var(--navy-3); border: 1px solid var(--edge-dark);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--serif); font-size: 1.5rem; font-weight: 300;
+      color: var(--blue-lt); margin-bottom: 1.625rem;
+      position: relative; z-index: 1;
+    }
+    .step-title {
+      font-family: var(--serif); font-size: 1.25rem; font-weight: 400;
+      color: var(--white); margin-bottom: .625rem;
+    }
+    .step-body {
+      font-size: .875rem; color: rgba(255,255,255,.42); line-height: 1.7;
+    }
+    .step-tags {
+      margin-top: 1.375rem;
+      display: flex; flex-direction: column; gap: .375rem;
+    }
+    .step-tag {
+      display: flex; align-items: center; gap: .375rem;
+      font-family: var(--mono); font-size: .68rem; color: rgba(255,255,255,.38);
+    }
+    .step-tag::before { content: '›'; color: var(--blue-lt); font-size: .75rem; }
+
+    /* ── SYNC ─────────────────────────────────────────────────────────────── */
+    #sync { background: var(--white); }
+
+    .sync-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 5rem; align-items: center;
+    }
+
+    /* sync visual */
+    .sync-vis {
+      background: var(--navy);
+      border: 1px solid var(--edge-dark);
+      border-radius: 16px; padding: 2.5rem 2rem;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 1.75rem;
+      position: relative; overflow: hidden;
+    }
+    .sync-vis::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: radial-gradient(rgba(59,130,246,.07) 1px, transparent 1px);
+      background-size: 22px 22px;
+      pointer-events: none;
+    }
+
+    .ws-badge {
+      display: flex; align-items: center; gap: .4rem;
+      background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.22);
+      color: var(--blue-lt);
+      font-family: var(--mono); font-size: .6875rem;
+      padding: .35rem .875rem; border-radius: 100px;
+      position: relative; z-index: 1;
+    }
+    .ws-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #22d3ee; animation: blink 2s ease-in-out infinite;
+    }
+
+    .machines-row {
+      display: flex; align-items: center; gap: 1.25rem;
+      position: relative; z-index: 1;
+    }
+
+    .machine {
+      display: flex; flex-direction: column; align-items: center; gap: .5rem;
+    }
+    .monitor {
+      width: 70px; height: 50px;
+      background: var(--navy-3); border: 1.5px solid var(--edge-dark);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; position: relative;
+    }
+    .monitor.hub-monitor { border-color: rgba(245,158,11,.35); }
+    .mon-screen {
+      width: 86%; display: flex; flex-direction: column; gap: 3px;
+    }
+    .mon-row {
+      height: 5px; border-radius: 2px;
+      background: rgba(59,130,246,.3);
+    }
+    .mon-row:nth-child(2) { background:rgba(245,158,11,.3); width:68%; }
+    .mon-row:nth-child(3) { background:rgba(16,185,129,.3); width:82%; }
+
+    .machine-lbl {
+      font-family: var(--mono); font-size: .63rem; color: rgba(255,255,255,.35);
+    }
+    .hub-badge {
+      font-family: var(--mono); font-size: .58rem;
+      background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.28);
+      color: var(--gold); padding: .15rem .4rem; border-radius: 3px;
+    }
+
+    /* animated arrows */
+    .arrows { display: flex; flex-direction: column; gap: .5rem; align-items: center; }
+
+    .arrow-track {
+      width: 36px; height: 2px; border-radius: 1px;
+      position: relative; overflow: hidden;
+    }
+    .arrow-track.right-to { background: linear-gradient(90deg, var(--blue) ,rgba(59,130,246,.2)); }
+    .arrow-track.left-to  { background: linear-gradient(270deg, var(--gold), rgba(245,158,11,.2)); }
+
+    .arrow-track::after {
+      content: ''; position: absolute; top:0; width:100%; height:100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent);
+      animation: streak 1.6s linear infinite;
+    }
+    .arrow-track.left-to::after { animation: streakL 1.6s linear infinite; }
+
+    @keyframes streak  { from{left:-100%} to{left:100%}  }
+    @keyframes streakL { from{right:-100%} to{right:100%} }
+
+    .machine-row-chips {
+      display: flex; gap: .75rem; position: relative; z-index: 1;
+    }
+    .os-chip {
+      background: var(--navy-3); border: 1px solid var(--edge-dark);
+      border-radius: 7px; padding: .5rem .875rem;
+      display: flex; flex-direction: column; align-items: center; gap: .25rem;
+    }
+    .os-chip-icon { font-size: 1.25rem; }
+    .os-chip-lbl  {
+      font-family: var(--mono); font-size: .58rem; color: rgba(255,255,255,.3);
+    }
+
+    /* sync copy */
+    .sync-points { margin-top: 2rem; display: flex; flex-direction: column; gap: 1.375rem; }
+
+    .sync-point { display: flex; gap: 1rem; align-items: flex-start; }
+    .sp-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: rgba(59,130,246,.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0; margin-top: 1px;
+    }
+    .sp-title {
+      font-size: .9375rem; font-weight: 500; color: var(--ink); margin-bottom: .25rem;
+    }
+    .sp-desc { font-size: .8125rem; color: var(--mid); line-height: 1.65; }
+
+    /* ── OPEN SOURCE ──────────────────────────────────────────────────────── */
+    #oss { background: var(--cream); }
+
+    .oss-card {
+      max-width: 660px; margin: 0 auto;
+      background: var(--white); border: 1.5px solid var(--edge-light);
+      border-radius: 16px; padding: 3rem; text-align: center;
+    }
+    .oss-emoji { font-size: 2.25rem; margin-bottom: 1.125rem; }
+    .oss-title {
+      font-family: var(--serif); font-size: 2rem; font-weight: 300;
+      color: var(--ink); letter-spacing: -.025em; margin-bottom: .875rem;
+    }
+    .oss-body {
+      font-size: .9375rem; color: var(--mid); line-height: 1.72; margin-bottom: 2rem;
+    }
+    .oss-pills {
+      display: flex; justify-content: center; flex-wrap: wrap; gap: .5rem;
+      margin-bottom: 2rem;
+    }
+    .pill {
+      display: flex; align-items: center; gap: .35rem;
+      font-size: .8125rem; color: var(--mid);
+      background: var(--cream); border: 1px solid var(--edge-light);
+      padding: .35rem .875rem; border-radius: 100px;
+    }
+    .pill::before { content: '✓'; color: #10b981; font-weight: 600; }
+    .oss-ctas { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
+
+    /* ── FOOTER ───────────────────────────────────────────────────────────── */
+    footer {
+      background: var(--navy); border-top: 1px solid var(--edge-dark);
+      padding: 2.75rem 2rem;
+    }
+    .foot-inner {
+      max-width: 1200px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1.5rem;
+    }
+    .foot-brand { display: flex; flex-direction: column; gap: .3rem; }
+    .foot-logo {
+      font-family: var(--serif); font-size: 1.25rem; font-weight: 600; color: var(--white);
+    }
+    .foot-sub { font-size: .8125rem; color: rgba(255,255,255,.3); }
+
+    .foot-links { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .foot-links a {
+      font-size: .8125rem; color: rgba(255,255,255,.38);
+      text-decoration: none; transition: color .2s;
+    }
+    .foot-links a:hover { color: rgba(255,255,255,.75); }
+
+    .foot-copy { font-size: .75rem; color: rgba(255,255,255,.18); }
+
+    /* ── FADE-IN ──────────────────────────────────────────────────────────── */
+    .fade-up {
+      opacity: 0; transform: translateY(22px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+    .fade-up.vis { opacity: 1; transform: translateY(0); }
+    .fade-up:nth-child(2) { transition-delay: .1s; }
+    .fade-up:nth-child(3) { transition-delay: .2s; }
+    .fade-up:nth-child(4) { transition-delay: .3s; }
+    .fade-up:nth-child(5) { transition-delay: .4s; }
+    .fade-up:nth-child(6) { transition-delay: .5s; }
+
+    /* ── RESPONSIVE ───────────────────────────────────────────────────────── */
+    @media (max-width: 1024px) {
+      .hero-inner { grid-template-columns: 1fr; }
+      .demo-wrap   { max-width: 480px; margin: 0 auto; }
+      .feat-grid   { grid-template-columns: repeat(2,1fr); }
+      .steps       { grid-template-columns: 1fr; gap: 2.5rem; }
+      .steps::after { display: none; }
+      .step { padding: 0 0 0 2rem; border-left: 1px solid var(--edge-dark); }
+      .sync-grid   { grid-template-columns: 1fr; gap: 3rem; }
+    }
+
+    @media (max-width: 640px) {
+      section        { padding: 4rem 1.25rem; }
+      nav            { padding: 1rem 1.25rem; }
+      .nav-links     { display: none; }
+      .nav-links.open {
+        display: flex; flex-direction: column;
+        position: fixed; inset: 0;
+        background: var(--navy); padding: 5rem 2rem 2rem;
+        align-items: flex-start; gap: 1.75rem; z-index: 200;
+      }
+      .nav-links.open li a { font-size: 1.625rem; color: var(--white); }
+      .hamburger     { display: flex; }
+      .feat-grid     { grid-template-columns: 1fr; }
+      .oss-card      { padding: 2rem 1.5rem; }
+      .hero-stat-row { gap: 1.25rem; }
+      .foot-inner    { flex-direction: column; align-items: flex-start; }
+      .machines-row  { gap: .75rem; }
+      .arrow-track   { width: 24px; }
+      .machine-row-chips { gap: .5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── NAV ──────────────────────────────────────────────────────────────── -->
+<nav id="nav">
+  <a href="#" class="logo" aria-label="Schedula home">
+    <div class="logo-mark" aria-hidden="true">
+      <b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b>
+    </div>
+    <span class="logo-text">Schedula</span>
+  </a>
+
+  <ul class="nav-links" id="nav-links" role="list">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#sync">Sync</a></li>
+    <li><a href="#oss">Download</a></li>
+  </ul>
+
+  <div class="nav-end">
+    <a href="#oss" class="btn btn-gold">Download Free</a>
+    <button class="hamburger" id="ham" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+
+<!-- ─── HERO ─────────────────────────────────────────────────────────────── -->
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="hero-glow-blue" aria-hidden="true"></div>
+  <div class="hero-glow-gold" aria-hidden="true"></div>
+
+  <div class="hero-inner">
+    <!-- copy -->
+    <div class="hero-copy">
+      <div class="hero-badge" role="note">
+        <i aria-hidden="true"></i>
+        Free &amp; Open Source · Desktop App
+      </div>
+
+      <h1 id="hero-heading">
+        University timetabling,<br>
+        <em>finally automated.</em>
+      </h1>
+
+      <p class="hero-sub">
+        Schedula generates conflict-free academic schedules in seconds.
+        Built for universities — handles rooms, lecturers, batches, and
+        constraints with a single click.
+      </p>
+
+      <div class="hero-ctas">
+        <a href="#oss" class="btn btn-gold btn-lg" aria-label="Download Schedula for macOS">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97 14.32 22 13.89 21.18 12.37 21.18 10.84 21.18 10.36 21.95 9.1 22 7.78 22.05 6.8 20.68 5.96 19.47 4.25 17 2.94 12.45 4.7 9.39 5.57 7.87 7.13 6.91 8.82 6.88 10.1 6.86 11.32 7.75 12.11 7.75 12.89 7.75 14.37 6.68 15.92 6.84 16.57 6.87 18.39 7.1 19.56 8.82 19.47 8.88 17.39 10.1 17.41 12.63 17.44 15.65 20.06 16.66 20.09 16.67 20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2 16.07 3.17 15.6 4.35 14.9 5.19 14.21 6.04 13.07 6.7 11.95 6.61 11.8 5.46 12.36 4.26 13 3.5Z"/>
+          </svg>
+          Download for macOS
+        </a>
+        <a href="#oss" class="btn btn-ghost btn-lg" aria-label="Download Schedula for Windows">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M3 5.557 10.144 4.6V11.4H3V5.557ZM10.144 19.4 3 18.443V12.6h7.144V19.4ZM11 4.469 21 3v8.4H11V4.469ZM21 12.6V21L11 19.531V12.6H21Z"/>
+          </svg>
+          Download for Windows
+        </a>
+      </div>
+
+      <div class="hero-stat-row" role="list" aria-label="Quick facts">
+        <div class="hero-stat" role="listitem">
+          <span class="stat-num">100%</span>
+          <span class="stat-lbl">Offline-first</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="hero-stat" role="listitem">
+          <span class="stat-num">50+</span>
+          <span class="stat-lbl">API endpoints</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="hero-stat" role="listitem">
+          <span class="stat-num">&lt;1s</span>
+          <span class="stat-lbl">Schedule gen</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="hero-stat" role="listitem">
+          <span class="stat-num">MIT</span>
+          <span class="stat-lbl">License</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- schedule demo window -->
+    <div class="demo-wrap" role="img" aria-label="Animated preview of Schedula auto-generating a timetable">
+      <div class="demo-bar" aria-hidden="true">
+        <div class="demo-dots">
+          <div class="demo-dot"></div>
+          <div class="demo-dot"></div>
+          <div class="demo-dot"></div>
+        </div>
+        <div class="demo-win-title">Schedula — Autumn 2025</div>
+      </div>
+      <div class="demo-body">
+        <div class="demo-topbar" aria-hidden="true">
+          <span class="demo-sem">SEM_AUT_2025</span>
+          <span class="demo-status"><i></i>Generating…</span>
+        </div>
+        <div class="demo-grid" aria-hidden="true">
+          <!-- col headers -->
+          <div class="demo-hdr"></div>
+          <div class="demo-hdr">MON</div>
+          <div class="demo-hdr">TUE</div>
+          <div class="demo-hdr">WED</div>
+          <div class="demo-hdr">THU</div>
+          <div class="demo-hdr">FRI</div>
+
+          <!-- 09:00 -->
+          <div class="demo-t">09:00</div>
+          <div class="cell on cb d1"><div class="cn">CS101</div><div class="cr">R-204</div></div>
+          <div class="cell"></div>
+          <div class="cell on cp d5"><div class="cn">ENG301</div><div class="cr">R-110</div></div>
+          <div class="cell"></div>
+          <div class="cell on cg d9"><div class="cn">BIO210</div><div class="cr">L-01</div></div>
+
+          <!-- 10:00 -->
+          <div class="demo-t">10:00</div>
+          <div class="cell"></div>
+          <div class="cell on ca d2"><div class="cn">MATH201</div><div class="cr">R-301</div></div>
+          <div class="cell"></div>
+          <div class="cell on cb d6"><div class="cn">CS101</div><div class="cr">R-204</div></div>
+          <div class="cell"></div>
+
+          <!-- 11:00 -->
+          <div class="demo-t">11:00</div>
+          <div class="cell on cr2 d3"><div class="cn">LIT102</div><div class="cr">R-105</div></div>
+          <div class="cell"></div>
+          <div class="cell on ca d7"><div class="cn">MATH201</div><div class="cr">R-301</div></div>
+          <div class="cell"></div>
+          <div class="cell on cc d11"><div class="cn">PHY101</div><div class="cr">L-02</div></div>
+
+          <!-- 12:00 -->
+          <div class="demo-t">12:00</div>
+          <div class="cell"></div>
+          <div class="cell on cg d8"><div class="cn">BIO210</div><div class="cr">L-01</div></div>
+          <div class="cell"></div>
+          <div class="cell on cr2 d10"><div class="cn">LIT102</div><div class="cr">R-105</div></div>
+          <div class="cell"></div>
+
+          <!-- 14:00 -->
+          <div class="demo-t">14:00</div>
+          <div class="cell on cc d12"><div class="cn">PHY101</div><div class="cr">L-02</div></div>
+          <div class="cell"></div>
+          <div class="cell on cp d13"><div class="cn">ENG301</div><div class="cr">R-110</div></div>
+          <div class="cell"></div>
+          <div class="cell on cb d14"><div class="cn">CS101</div><div class="cr">R-204</div></div>
+        </div>
+
+        <div class="demo-legend" aria-hidden="true">
+          <div class="demo-chip"><span style="background:#3b82f6;border-radius:2px"></span>CS</div>
+          <div class="demo-chip"><span style="background:#8b5cf6;border-radius:2px"></span>ENG</div>
+          <div class="demo-chip"><span style="background:#10b981;border-radius:2px"></span>BIO</div>
+          <div class="demo-chip"><span style="background:#f59e0b;border-radius:2px"></span>MATH</div>
+          <div class="demo-chip"><span style="background:#f43f5e;border-radius:2px"></span>LIT</div>
+          <div class="demo-chip"><span style="background:#06b6d4;border-radius:2px"></span>PHY</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-hint" aria-hidden="true">
+    <div class="scroll-hint-inner">
+      <span>scroll</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="rgba(255,255,255,.22)" stroke-width="2">
+        <path d="M12 5v14M5 12l7 7 7-7"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+
+<!-- ─── FEATURES ─────────────────────────────────────────────────────────── -->
+<section id="features" aria-labelledby="features-heading">
+  <div class="inner">
+    <div class="feat-header">
+      <p class="eyebrow on-light">What Schedula does</p>
+      <h2 class="on-light" id="features-heading">
+        Everything your scheduling office needs
+      </h2>
+      <p class="section-sub on-light">
+        From course registration to published timetables — Schedula handles
+        the full lifecycle without spreadsheets or manual conflict resolution.
+      </p>
+    </div>
+
+    <div class="feat-grid">
+      <article class="feat-card fade-up">
+        <div class="feat-icon fi-b" aria-hidden="true">⚡</div>
+        <h3 class="feat-title">Constraint-Based Auto-Scheduler</h3>
+        <p class="feat-desc">
+          Generates complete, conflict-free timetables in under a second.
+          Respects lecturer availability, room capacity, class frequency,
+          and blackout windows — no manual juggling required.
+        </p>
+      </article>
+
+      <article class="feat-card fade-up">
+        <div class="feat-icon fi-p" aria-hidden="true">🏛️</div>
+        <h3 class="feat-title">Multi-Organization Support</h3>
+        <p class="feat-desc">
+          Manage multiple faculties or departments under one installation.
+          Scoped data isolation ensures each organization sees only its
+          own lecturers, rooms, batches, and schedules.
+        </p>
+      </article>
+
+      <article class="feat-card fade-up">
+        <div class="feat-icon fi-g" aria-hidden="true">📋</div>
+        <h3 class="feat-title">Bulk CSV Import</h3>
+        <p class="feat-desc">
+          Import hundreds of lecturers, rooms, and courses at once from CSV.
+          Schedula validates every row and reports errors inline — no silent
+          failures, no data corruption.
+        </p>
+      </article>
+
+      <article class="feat-card fade-up">
+        <div class="feat-icon fi-a" aria-hidden="true">🔄</div>
+        <h3 class="feat-title">Schedule Lifecycle</h3>
+        <p class="feat-desc">
+          Schedules progress through Draft → Published → Active states.
+          Keep refining next semester's draft while the current one is live.
+          Revert to draft at any time.
+        </p>
+      </article>
+
+      <article class="feat-card fade-up">
+        <div class="feat-icon fi-r" aria-hidden="true">🔐</div>
+        <h3 class="feat-title">Role-Based Access &amp; Approvals</h3>
+        <p class="feat-desc">
+          Three-tier hierarchy: Super Admin, Admin, Viewer. The async approval
+          workflow lets admins request password resets or account unlocks
+          without the super admin being physically present.
+        </p>
+      </article>
+
+      <article class="feat-card fade-up">
+        <div class="feat-icon fi-c" aria-hidden="true">📊</div>
+        <h3 class="feat-title">Reports &amp; Audit Log</h3>
+        <p class="feat-desc">
+          Room utilization reports, data health checks, and a full audit log
+          of every change. Know exactly what changed, who changed it, and
+          when — across every entity in the system.
+        </p>
+      </article>
+
+      <article class="feat-card fade-up">
+        <div class="feat-icon fi-s" aria-hidden="true">📡</div>
+        <h3 class="feat-title">Real-Time Multi-Machine Sync</h3>
+        <p class="feat-desc">
+          One hub machine, any number of admin clients. Changes broadcast
+          instantly over WebSocket — no polling, no emailing exports, no
+          "which version is current?" confusion.
+        </p>
+      </article>
+
+      <article class="feat-card fade-up">
+        <div class="feat-icon fi-n" aria-hidden="true">🧭</div>
+        <h3 class="feat-title">Guided Onboarding</h3>
+        <p class="feat-desc">
+          First-time setup wizard walks new admins through organizations,
+          semesters, and settings in minutes. Password recovery via security
+          questions and one-time recovery codes.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+
+<!-- ─── HOW IT WORKS ─────────────────────────────────────────────────────── -->
+<section id="how" aria-labelledby="how-heading">
+  <div class="inner">
+    <p class="eyebrow on-dark">Setup in minutes</p>
+    <h2 class="on-dark" id="how-heading">How it works</h2>
+    <p class="section-sub on-dark">
+      Three steps from installation to a published, conflict-free timetable.
+    </p>
+
+    <div class="steps" role="list">
+      <div class="step fade-up" role="listitem">
+        <div class="step-num" aria-hidden="true">1</div>
+        <h3 class="step-title">Configure your data</h3>
+        <p class="step-body">
+          Add your organizations, semesters, lecturers, courses, rooms, and
+          student batches. Use the guided onboarding wizard or bulk-import
+          everything from CSV in one shot.
+        </p>
+        <div class="step-tags" aria-label="Includes">
+          <span class="step-tag">Organizations &amp; semesters</span>
+          <span class="step-tag">Lecturers with availability windows</span>
+          <span class="step-tag">Rooms with capacity &amp; type</span>
+          <span class="step-tag">Courses with weekly frequency</span>
+        </div>
+      </div>
+
+      <div class="step fade-up" role="listitem">
+        <div class="step-num" aria-hidden="true">2</div>
+        <h3 class="step-title">Generate your timetable</h3>
+        <p class="step-body">
+          Click Generate. The constraint engine fills every time slot,
+          resolves conflicts automatically, and respects hard and soft
+          constraints. Manually adjust any entry if needed.
+        </p>
+        <div class="step-tags" aria-label="Includes">
+          <span class="step-tag">Automatic conflict resolution</span>
+          <span class="step-tag">Blackout period enforcement</span>
+          <span class="step-tag">Room-type matching</span>
+          <span class="step-tag">Soft &amp; hard constraint weighting</span>
+        </div>
+      </div>
+
+      <div class="step fade-up" role="listitem">
+        <div class="step-num" aria-hidden="true">3</div>
+        <h3 class="step-title">Publish &amp; distribute</h3>
+        <p class="step-body">
+          Review the draft, export to CSV, then publish and activate.
+          All connected admin machines see the active schedule immediately.
+          Utilization reports available instantly.
+        </p>
+        <div class="step-tags" aria-label="Includes">
+          <span class="step-tag">CSV export for distribution</span>
+          <span class="step-tag">Draft → Published → Active</span>
+          <span class="step-tag">Real-time sync to all admins</span>
+          <span class="step-tag">Room utilization reporting</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ─── SYNC ─────────────────────────────────────────────────────────────── -->
+<section id="sync" aria-labelledby="sync-heading">
+  <div class="inner">
+    <div class="sync-grid">
+
+      <!-- visual -->
+      <div class="sync-vis" role="img" aria-label="Diagram showing two admin machines syncing through a hub server">
+        <div class="ws-badge" aria-hidden="true">
+          <div class="ws-dot"></div>
+          WebSocket — live sync
+        </div>
+
+        <div class="machines-row" aria-hidden="true">
+          <!-- Admin A -->
+          <div class="machine">
+            <div class="monitor">
+              <div class="mon-screen">
+                <div class="mon-row"></div>
+                <div class="mon-row"></div>
+                <div class="mon-row"></div>
+              </div>
+            </div>
+            <span class="machine-lbl">Admin A</span>
+          </div>
+
+          <!-- arrows left-to-hub -->
+          <div class="arrows">
+            <div style="display:flex;align-items:center;gap:3px">
+              <div class="arrow-track right-to"></div>
+              <svg width="6" height="6" viewBox="0 0 6 6" fill="rgba(147,197,253,.7)"><polygon points="0,0 6,3 0,6"/></svg>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px">
+              <svg width="6" height="6" viewBox="0 0 6 6" fill="rgba(253,230,138,.7)"><polygon points="6,0 0,3 6,6"/></svg>
+              <div class="arrow-track left-to"></div>
+            </div>
+          </div>
+
+          <!-- Hub -->
+          <div class="machine">
+            <div class="monitor hub-monitor">
+              <div class="mon-screen">
+                <div class="mon-row"></div>
+                <div class="mon-row"></div>
+                <div class="mon-row"></div>
+              </div>
+            </div>
+            <span class="machine-lbl">Hub</span>
+            <span class="hub-badge">SERVER</span>
+          </div>
+
+          <!-- arrows hub-to-right -->
+          <div class="arrows">
+            <div style="display:flex;align-items:center;gap:3px">
+              <div class="arrow-track right-to"></div>
+              <svg width="6" height="6" viewBox="0 0 6 6" fill="rgba(147,197,253,.7)"><polygon points="0,0 6,3 0,6"/></svg>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px">
+              <svg width="6" height="6" viewBox="0 0 6 6" fill="rgba(253,230,138,.7)"><polygon points="6,0 0,3 6,6"/></svg>
+              <div class="arrow-track left-to"></div>
+            </div>
+          </div>
+
+          <!-- Admin B -->
+          <div class="machine">
+            <div class="monitor">
+              <div class="mon-screen">
+                <div class="mon-row"></div>
+                <div class="mon-row"></div>
+                <div class="mon-row"></div>
+              </div>
+            </div>
+            <span class="machine-lbl">Admin B</span>
+          </div>
+        </div>
+
+        <div class="machine-row-chips" aria-hidden="true">
+          <div class="os-chip">
+            <div class="os-chip-icon">🪟</div>
+            <div class="os-chip-lbl">Windows</div>
+          </div>
+          <div class="os-chip">
+            <div class="os-chip-icon">🍎</div>
+            <div class="os-chip-lbl">macOS</div>
+          </div>
+          <div class="os-chip">
+            <div class="os-chip-icon">⚡</div>
+            <div class="os-chip-lbl">&lt;5ms</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- copy -->
+      <div class="sync-copy">
+        <p class="eyebrow on-light">Multi-machine sync</p>
+        <h2 class="on-light" id="sync-heading">
+          Your whole team,<br>always in sync
+        </h2>
+        <p class="section-sub on-light">
+          One machine runs the lightweight hub server. Every other admin
+          machine connects and sees changes instantly — no refresh needed,
+          no emailing exports around.
+        </p>
+
+        <div class="sync-points">
+          <div class="sync-point fade-up">
+            <div class="sp-icon" aria-hidden="true">📡</div>
+            <div>
+              <div class="sp-title">Real-time WebSocket broadcast</div>
+              <p class="sp-desc">
+                Every write operation broadcasts an entity-change event to all
+                connected clients. Toast notifications appear automatically on
+                every admin's screen.
+              </p>
+            </div>
+          </div>
+
+          <div class="sync-point fade-up">
+            <div class="sp-icon" aria-hidden="true">🔑</div>
+            <div>
+              <div class="sp-title">JWT authentication, zero config</div>
+              <p class="sp-desc">
+                24-hour tokens, auto-generated server secret. Point each client
+                to the hub URL in Settings → Sync and you're connected within
+                seconds.
+              </p>
+            </div>
+          </div>
+
+          <div class="sync-point fade-up">
+            <div class="sp-icon" aria-hidden="true">💾</div>
+            <div>
+              <div class="sp-title">Standalone mode always available</div>
+              <p class="sp-desc">
+                No hub? No problem. Schedula runs fully offline with a local
+                SQLite database. Switch to server mode whenever your team grows
+                — no data migration required.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ─── OPEN SOURCE / DOWNLOAD ───────────────────────────────────────────── -->
+<section id="oss" aria-labelledby="oss-heading">
+  <div class="inner">
+    <div class="oss-card">
+      <div class="oss-emoji" aria-hidden="true">⚗️</div>
+      <h2 class="oss-title" id="oss-heading">Free, forever.</h2>
+      <p class="oss-body">
+        Schedula is open source under the MIT license and free to use for any
+        university, department, or institution — regardless of size.
+        No seat limits, no subscription, no cloud lock-in.
+        Your data stays on your hardware.
+      </p>
+      <div class="oss-pills" role="list" aria-label="What's included">
+        <span class="pill" role="listitem">Unlimited users</span>
+        <span class="pill" role="listitem">Unlimited schedules</span>
+        <span class="pill" role="listitem">No cloud required</span>
+        <span class="pill" role="listitem">Full source code access</span>
+        <span class="pill" role="listitem">Windows &amp; macOS</span>
+        <span class="pill" role="listitem">Self-hosted hub server</span>
+        <span class="pill" role="listitem">MIT license</span>
+      </div>
+      <div class="oss-ctas">
+        <a href="https://github.com" class="btn btn-gold btn-lg"
+           target="_blank" rel="noopener noreferrer">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.137 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+          </svg>
+          View on GitHub
+        </a>
+        <a href="#" class="btn btn-outline-dark btn-lg">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97 14.32 22 13.89 21.18 12.37 21.18 10.84 21.18 10.36 21.95 9.1 22 7.78 22.05 6.8 20.68 5.96 19.47 4.25 17 2.94 12.45 4.7 9.39 5.57 7.87 7.13 6.91 8.82 6.88 10.1 6.86 11.32 7.75 12.11 7.75 12.89 7.75 14.37 6.68 15.92 6.84 16.57 6.87 18.39 7.1 19.56 8.82 19.47 8.88 17.39 10.1 17.41 12.63 17.44 15.65 20.06 16.66 20.09 16.67 20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2 16.07 3.17 15.6 4.35 14.9 5.19 14.21 6.04 13.07 6.7 11.95 6.61 11.8 5.46 12.36 4.26 13 3.5Z"/>
+          </svg>
+          macOS (.dmg)
+        </a>
+        <a href="#" class="btn btn-outline-dark btn-lg">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M3 5.557 10.144 4.6V11.4H3V5.557ZM10.144 19.4 3 18.443V12.6h7.144V19.4ZM11 4.469 21 3v8.4H11V4.469ZM21 12.6V21L11 19.531V12.6H21Z"/>
+          </svg>
+          Windows (.msi)
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ─── FOOTER ────────────────────────────────────────────────────────────── -->
+<footer role="contentinfo">
+  <div class="foot-inner">
+    <div class="foot-brand">
+      <div class="foot-logo">Schedula</div>
+      <div class="foot-sub">University timetabling, automated.</div>
+    </div>
+
+    <nav class="foot-links" aria-label="Footer navigation">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#sync">Sync</a>
+      <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://github.com" target="_blank" rel="noopener noreferrer">Releases</a>
+      <a href="https://github.com" target="_blank" rel="noopener noreferrer">MIT License</a>
+    </nav>
+
+    <div class="foot-copy">
+      &copy; 2025 Schedula. Open source, free forever.
+    </div>
+  </div>
+</footer>
+
+
+<script>
+  // Nav transparency on scroll
+  const nav = document.getElementById('nav')
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 24)
+  }, { passive: true })
+
+  // Mobile menu
+  const ham = document.getElementById('ham')
+  const links = document.getElementById('nav-links')
+  ham.addEventListener('click', () => {
+    const open = links.classList.toggle('open')
+    ham.classList.toggle('open', open)
+    ham.setAttribute('aria-expanded', open)
+    document.body.style.overflow = open ? 'hidden' : ''
+  })
+  links.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      links.classList.remove('open')
+      ham.classList.remove('open')
+      ham.setAttribute('aria-expanded', 'false')
+      document.body.style.overflow = ''
+    })
+  })
+
+  // Scroll-triggered fade-ins
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('vis'); io.unobserve(e.target) }
+    })
+  }, { threshold: 0.12 })
+  document.querySelectorAll('.fade-up').forEach(el => io.observe(el))
+
+  // Re-trigger schedule demo animation when it scrolls into view
+  const demoWrap = document.querySelector('.demo-wrap')
+  let demoPlayed = false
+  const demoIO = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && !demoPlayed) {
+        demoPlayed = true
+        // cells already animate on load; reset & replay if scrolled away first
+        demoIO.disconnect()
+      }
+    })
+  }, { threshold: 0.3 })
+  if (demoWrap) demoIO.observe(demoWrap)
+</script>
+</body>
+</html>
