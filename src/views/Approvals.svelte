@@ -215,7 +215,7 @@
 {/if}
 
 <style>
-  .page { padding: 32px; max-width: 800px; }
+  .page { padding: 32px; }
   .page-header {
     display: flex; justify-content: space-between; align-items: flex-start;
     margin-bottom: 24px;

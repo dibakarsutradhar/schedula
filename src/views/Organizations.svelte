@@ -76,7 +76,7 @@
   {#if loading}
     <div class="empty-state">Loading…</div>
   {:else}
-    <div class="card" style="max-width: 600px">
+    <div class="card">
       {#if !org}
         <div class="ob-hint" style="margin-bottom:20px">
           No organization is configured yet. Fill in the details below to set up your institution.
