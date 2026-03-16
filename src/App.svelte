@@ -1,6 +1,7 @@
 <script>
   import './app.css'
   import { onMount, onDestroy } from 'svelte'
+  import { fade, fly }          from 'svelte/transition'
   import { toasts }             from './lib/toast.js'
   import { toast }              from './lib/toast.js'
   import { session }            from './lib/stores/session.js'
@@ -94,31 +95,35 @@
     <Sidebar bind:active />
 
     <div class="main-content">
-      {#if active === 'dashboard'}
-        <Dashboard navigate={v => (active = v)} />
-      {:else if active === 'orgs'}
-        <Organizations />
-      {:else if active === 'semesters'}
-        <Semesters />
-      {:else if active === 'lecturers'}
-        <Lecturers />
-      {:else if active === 'courses'}
-        <Courses />
-      {:else if active === 'rooms'}
-        <Rooms />
-      {:else if active === 'batches'}
-        <Batches />
-      {:else if active === 'schedule'}
-        <Schedule />
-      {:else if active === 'users'}
-        <Users />
-      {:else if active === 'settings'}
-        <Settings />
-      {:else if active === 'import'}
-        <Import />
-      {:else if active === 'approvals'}
-        <Approvals />
-      {/if}
+      {#key active}
+        <div in:fly={{ y: 8, duration: 300, delay: 100 }} out:fade={{ duration: 100 }} style="height:100%; display:flex; flex-direction:column;">
+          {#if active === 'dashboard'}
+            <Dashboard navigate={v => (active = v)} />
+          {:else if active === 'orgs'}
+            <Organizations />
+          {:else if active === 'semesters'}
+            <Semesters />
+          {:else if active === 'lecturers'}
+            <Lecturers />
+          {:else if active === 'courses'}
+            <Courses />
+          {:else if active === 'rooms'}
+            <Rooms />
+          {:else if active === 'batches'}
+            <Batches />
+          {:else if active === 'schedule'}
+            <Schedule />
+          {:else if active === 'users'}
+            <Users />
+          {:else if active === 'settings'}
+            <Settings />
+          {:else if active === 'import'}
+            <Import />
+          {:else if active === 'approvals'}
+            <Approvals />
+          {/if}
+        </div>
+      {/key}
     </div>
   </div>
 {/if}
