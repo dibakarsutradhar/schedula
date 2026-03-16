@@ -5,6 +5,8 @@
   import { isSuperAdmin } from '../lib/stores/session.js'
   import { prefs, ACCENT_PRESETS } from '../lib/stores/prefs.js'
   import { toast } from '../lib/toast.js'
+  import { syncMode } from '../lib/stores/syncMode.js'
+  import { wsConnected, pingHub, connectWs, disconnectWs } from '../lib/stores/ws.js'
   import {
     changePassword, updateDisplayName, adminResetPassword, setUserActive,
     getUsers, getOrganizations, updateOrganization,
@@ -15,6 +17,38 @@
   } from '../lib/api.js'
 
   let tab = 'appearance'
+
+  // ── Sync ─────────────────────────────────────────────────────────────────────
+  let syncUrlInput = $syncMode.serverUrl || ''
+  let syncTesting  = false
+  let syncSaving   = false
+  let pingResult   = null   // null | true | false
+
+  async function testConnection() {
+    if (!syncUrlInput.trim()) { toast('Enter a server URL first', 'error'); return }
+    syncTesting = true
+    pingResult  = null
+    try {
+      pingResult = await pingHub(syncUrlInput.trim())
+      if (!pingResult) toast('Could not reach the hub server', 'error')
+      else             toast('Hub server reachable ✓', 'success')
+    } finally {
+      syncTesting = false
+    }
+  }
+
+  function connectToServer() {
+    const url = syncUrlInput.trim()
+    if (!url) { toast('Enter a server URL', 'error'); return }
+    syncMode.setServer(url)
+    toast('Server mode enabled. Please log in again to authenticate with the hub.', 'info')
+  }
+
+  function disconnectFromServer() {
+    disconnectWs()
+    syncMode.setStandalone()
+    toast('Switched to standalone mode')
+  }
 
   // ── Appearance ──────────────────────────────────────────────────────────────
   $: currentTheme = $prefs.theme
@@ -247,6 +281,7 @@
     if (t === 'system') loadSystemSettings()
     if (t === 'audit') loadAuditLog()
     if (t === 'about') getAppInfo().then(i => appInfo = i)
+    if (t === 'sync') syncUrlInput = $syncMode.serverUrl || ''
   }
 
   function fmtBytes(b) {
@@ -274,6 +309,7 @@
         { id: 'org',        icon: '🏫', label: 'Organization' },
         { id: 'scheduling', icon: '⚙️', label: 'Scheduling' },
         { id: 'data',       icon: '💾', label: 'Data' },
+        { id: 'sync',       icon: '🔄', label: 'Sync' },
         ...(isSuperAdmin($session) ? [{ id: 'system', icon: '🔧', label: 'System' }] : []),
         { id: 'audit',      icon: '📋', label: 'Audit Log' },
         { id: 'about',      icon: 'ℹ️', label: 'About' },
@@ -638,6 +674,86 @@
           {/if}
         </div>
 
+      <!-- ── Sync ── -->
+      {:else if tab === 'sync'}
+        <div class="card settings-section">
+          <h2>Real-Time Sync</h2>
+          <p class="section-desc">
+            Connect all admins at your university to a shared <strong>Hub Server</strong> for real-time updates.
+            IT installs <code>schedula-hub</code> on one dedicated machine; all other admins point their app here.
+          </p>
+
+          <div class="sync-status-bar" class:connected={$syncMode.mode === 'server'}>
+            <span class="sync-dot" class:on={$syncMode.mode === 'server' && !!$syncMode.token}></span>
+            {#if $syncMode.mode === 'server' && $syncMode.token}
+              <span>Connected to <strong>{$syncMode.serverUrl}</strong></span>
+              {#if $wsConnected}
+                <span class="ws-badge">● Live</span>
+              {:else}
+                <span class="ws-badge offline">○ Reconnecting…</span>
+              {/if}
+            {:else if $syncMode.mode === 'server'}
+              <span>Server mode set — <em>log in to authenticate</em></span>
+            {:else}
+              <span>Standalone mode (local database)</span>
+            {/if}
+          </div>
+        </div>
+
+        <div class="card settings-section">
+          <h2>Hub Server URL</h2>
+          <p class="section-desc">Enter the hub server address (e.g. <code>http://192.168.1.100:7878</code>)</p>
+          <div class="form-row">
+            <input
+              class="form-input"
+              bind:value={syncUrlInput}
+              placeholder="http://192.168.1.100:7878"
+              style="flex:1"
+            />
+            <button class="btn btn-secondary" disabled={syncTesting} on:click={testConnection}>
+              {syncTesting ? 'Testing…' : 'Test Connection'}
+            </button>
+          </div>
+          {#if pingResult === true}
+            <p class="ping-ok">✓ Hub server is reachable</p>
+          {:else if pingResult === false}
+            <p class="ping-fail">✗ Cannot reach hub server — check the URL and ensure the server is running</p>
+          {/if}
+
+          <div class="sync-actions">
+            {#if $syncMode.mode !== 'server'}
+              <button class="btn btn-primary" on:click={connectToServer}
+                      disabled={!syncUrlInput.trim()}>
+                Connect to Hub
+              </button>
+            {:else}
+              <button class="btn btn-secondary" style="color:var(--danger)" on:click={disconnectFromServer}>
+                Disconnect (switch to standalone)
+              </button>
+            {/if}
+          </div>
+        </div>
+
+        <div class="card settings-section">
+          <h2>Hub Server Setup</h2>
+          <p class="section-desc">
+            Ask IT to install the hub server binary on a dedicated machine:
+          </p>
+          <div class="code-block">
+            <code>schedula-hub --port 7878 --db-path ./schedula.db</code>
+          </div>
+          <p class="section-desc" style="margin-top:12px">
+            The hub server binary is built separately from the main app.<br>
+            Find it in <code>hub-server/</code> of the Schedula source and run <code>cargo build --release</code>.
+          </p>
+          <div class="sync-how">
+            <div class="how-step"><span class="step-num">1</span><span>IT installs &amp; starts <code>schedula-hub</code> on a server machine</span></div>
+            <div class="how-step"><span class="step-num">2</span><span>Each admin opens Settings → Sync and enters the hub URL</span></div>
+            <div class="how-step"><span class="step-num">3</span><span>Admin clicks "Connect to Hub" then logs in</span></div>
+            <div class="how-step"><span class="step-num">4</span><span>All data changes sync in real-time via WebSocket</span></div>
+          </div>
+        </div>
+
       <!-- ── About ── -->
       {:else if tab === 'about'}
         <div class="card settings-section">
@@ -723,4 +839,39 @@
   .audit-publish { background: rgba(34,197,94,.15);   color: #4ade80; }
   .audit-revert  { background: rgba(100,100,120,.2);  color: var(--text-muted); }
   .audit-import  { background: rgba(6,182,212,.15);   color: #22d3ee; }
+
+  /* ── Sync tab ── */
+  .sync-status-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; border-radius: 8px;
+    background: var(--bg); border: 1px solid var(--border);
+    font-size: 13px; color: var(--text-muted);
+  }
+  .sync-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text-muted); flex-shrink: 0;
+  }
+  .sync-dot.on { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+  .ws-badge {
+    margin-left: auto; font-size: 11px; font-weight: 600;
+    color: #2ecc71; background: rgba(46,204,113,.15);
+    padding: 2px 8px; border-radius: 10px;
+  }
+  .ws-badge.offline { color: var(--text-muted); background: transparent; }
+  .form-row { display: flex; gap: 10px; align-items: stretch; }
+  .ping-ok   { font-size: 12px; color: #2ecc71; margin: 8px 0 0; }
+  .ping-fail { font-size: 12px; color: var(--danger); margin: 8px 0 0; }
+  .sync-actions { margin-top: 16px; }
+  .code-block {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 14px; font-family: monospace;
+    font-size: 13px; color: var(--text);
+  }
+  .sync-how { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  .how-step { display: flex; align-items: flex-start; gap: 12px; font-size: 13px; color: var(--text-muted); }
+  .step-num {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(108,99,255,.2); color: var(--accent2);
+    font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
 </style>

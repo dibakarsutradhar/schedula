@@ -1,109 +1,225 @@
-import { invoke } from '@tauri-apps/api/core'
+import { invoke }   from '@tauri-apps/api/core'
+import { get }      from 'svelte/store'
+import { syncMode } from './stores/syncMode.js'
 
-// Auth
-export const login           = (req)                => invoke('login', { req })
-export const logout          = ()                   => invoke('logout')
-export const getSession      = ()                   => invoke('get_session')
-export const hasUsers        = ()                   => invoke('has_users')
-export const changePassword  = (oldPassword, newPassword) => invoke('change_password', { oldPassword, newPassword })
+// ─── Core dispatcher ──────────────────────────────────────────────────────────
+// In standalone mode  → invoke the Tauri command directly.
+// In server mode      → HTTP fetch to the hub server with JWT bearer auth.
 
-// Users
-export const getUsers    = ()          => invoke('get_users')
-export const createUser  = (user)      => invoke('create_user', { user })
-export const deleteUser  = (id)        => invoke('delete_user', { id })
+async function call(tauriCmd, tauriArgs, method, path, body) {
+  const { mode, serverUrl, token } = get(syncMode)
 
-// Organizations
-export const getOrganizations   = ()          => invoke('get_organizations')
-export const createOrganization = (org)       => invoke('create_organization', { org })
-export const updateOrganization = (id, org)   => invoke('update_organization', { id, org })
-export const deleteOrganization = (id)        => invoke('delete_organization', { id })
+  if (mode === 'server' && serverUrl) {
+    const base = serverUrl.replace(/\/$/, '')
+    const headers = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
 
-// Semesters
-export const getSemesters   = (orgIdFilter = null) => invoke('get_semesters', { orgIdFilter })
-export const createSemester = (sem)                => invoke('create_semester', { sem })
-export const updateSemester = (id, sem)            => invoke('update_semester', { id, sem })
-export const deleteSemester = (id)                 => invoke('delete_semester', { id })
+    const res = await fetch(`${base}${path}`, {
+      method,
+      headers,
+      body: (body !== undefined && body !== null) ? JSON.stringify(body) : undefined,
+    })
 
-// Courses
-export const getCourses    = ()           => invoke('get_courses')
-export const createCourse  = (course)     => invoke('create_course', { course })
-export const updateCourse  = (id, course) => invoke('update_course', { id, course })
-export const deleteCourse  = (id)         => invoke('delete_course', { id })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+      throw new Error(err.error || `Request failed: ${res.status}`)
+    }
 
-// Lecturers
-export const getLecturers   = ()              => invoke('get_lecturers')
-export const createLecturer = (lecturer)      => invoke('create_lecturer', { lecturer })
-export const updateLecturer = (id, lecturer)  => invoke('update_lecturer', { id, lecturer })
-export const deleteLecturer = (id)            => invoke('delete_lecturer', { id })
+    const ct = res.headers.get('content-type') || ''
+    if (ct.includes('application/json')) return res.json()
+    if (ct.includes('text/'))            return res.text()
+    return null
+  }
 
-// Rooms
-export const getRooms    = ()         => invoke('get_rooms')
-export const createRoom  = (room)     => invoke('create_room', { room })
-export const updateRoom  = (id, room) => invoke('update_room', { id, room })
-export const deleteRoom  = (id)       => invoke('delete_room', { id })
+  return invoke(tauriCmd, tauriArgs)
+}
 
-// Batches
-export const getBatches   = ()            => invoke('get_batches')
-export const createBatch  = (batch)       => invoke('create_batch', { batch })
-export const updateBatch  = (id, batch)   => invoke('update_batch', { id, batch })
-export const deleteBatch  = (id)          => invoke('delete_batch', { id })
+// ── Auth ──────────────────────────────────────────────────────────────────────
 
-// Scheduler
-export const generateSchedule    = (scheduleName, semesterId = null, description = null) => invoke('generate_schedule', { scheduleName, semesterId, description })
-export const getSchedules        = ()              => invoke('get_schedules')
-export const getScheduleEntries  = (scheduleId)   => invoke('get_schedule_entries', { scheduleId })
-export const activateSchedule    = (id)            => invoke('activate_schedule', { id })
-export const deleteSchedule      = (id)            => invoke('delete_schedule', { id })
-export const exportScheduleCsv   = (scheduleId)   => invoke('export_schedule_csv', { scheduleId })
+export async function login(req) {
+  const { mode, serverUrl } = get(syncMode)
 
-// Dashboard
-export const getStats = () => invoke('get_stats')
+  if (mode === 'server' && serverUrl) {
+    const base = serverUrl.replace(/\/$/, '')
+    const res = await fetch(`${base}/api/auth/login`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(req),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Login failed' }))
+      throw new Error(err.error || 'Login failed')
+    }
+    const data = await res.json()
+    // Persist JWT so subsequent calls are authenticated
+    syncMode.setToken(data.token)
+    return data.session
+  }
 
-// Settings
-export const updateDisplayName        = (newName)             => invoke('update_display_name', { newName })
-export const adminResetPassword       = (userId, newPassword) => invoke('admin_reset_password', { userId, newPassword })
-export const setUserActive            = (userId, active)      => invoke('set_user_active', { userId, active })
-export const getSchedulingSettings    = (orgId)               => invoke('get_scheduling_settings', { orgId })
-export const upsertSchedulingSettings = (settings)            => invoke('upsert_scheduling_settings', { settings })
-export const clearSchedules           = ()                    => invoke('clear_schedules')
-export const backupDatabase           = ()                    => invoke('backup_database')
-export const getAppInfo               = ()                    => invoke('get_app_info')
+  return invoke('login', { req })
+}
 
-// Admin quota
-export const getMaxAdmins   = ()      => invoke('get_max_admins')
-export const setMaxAdmins   = (max)   => invoke('set_max_admins', { max })
-export const getAdminCount  = ()      => invoke('get_admin_count')
+export function logout() {
+  // Clear server token too
+  syncMode.clearToken()
+  return call('logout', {}, 'POST', '/api/auth/logout', null)
+}
 
-// Utilization & editing
-export const getUtilizationReport  = (scheduleId)       => invoke('get_utilization_report', { scheduleId })
-export const updateScheduleEntry   = (entryId, req)     => invoke('update_schedule_entry', { entryId, req })
+export const getSession  = ()  => call('get_session',  {}, 'GET',  '/api/auth/session',    undefined)
+export const hasUsers    = ()  => call('has_users',    {}, 'GET',  '/api/auth/has-users',  undefined)
 
-// Schedule status
-export const publishSchedule         = (id) => invoke('publish_schedule', { id })
-export const revertScheduleToDraft   = (id) => invoke('revert_schedule_to_draft', { id })
+export const changePassword = (oldPassword, newPassword) =>
+  call('change_password', { oldPassword, newPassword }, 'POST', '/api/users/change-password',
+       { old_password: oldPassword, new_password: newPassword })
 
-// Audit log
-export const getAuditLog = (limit = 100) => invoke('get_audit_log', { limit })
+// ── Users ─────────────────────────────────────────────────────────────────────
 
-// Bulk import
-export const bulkImportLecturers = (rows) => invoke('bulk_import_lecturers', { rows })
-export const bulkImportRooms     = (rows) => invoke('bulk_import_rooms', { rows })
-export const bulkImportCourses   = (rows) => invoke('bulk_import_courses', { rows })
+export const getUsers   = ()          => call('get_users',    {},       'GET',    '/api/users',        undefined)
+export const createUser = (user)      => call('create_user',  { user }, 'POST',   '/api/users',        user)
+export const deleteUser = (id)        => call('delete_user',  { id },   'DELETE', `/api/users/${id}`,  undefined)
 
-// Pre-flight / data health
-export const getPreflightWarnings     = ()   => invoke('get_preflight_warnings')
-export const getDataHealth            = ()   => invoke('get_data_health')
-export const updateScheduleDescription = (id, description) => invoke('update_schedule_description', { id, description })
+export const adminResetPassword = (userId, newPassword) =>
+  call('admin_reset_password', { userId, newPassword }, 'POST', `/api/users/${userId}/password`,
+       { new_password: newPassword })
 
-// Password recovery
-export const setupRecovery                    = (req) => invoke('setup_recovery', { req })
-export const resetPasswordWithRecoveryCode    = (req) => invoke('reset_password_with_recovery_code', { req })
-export const resetPasswordWithSecurityAnswer  = (req) => invoke('reset_password_with_security_answer', { req })
-export const getSecurityQuestion             = ()    => invoke('get_security_question')
+export const setUserActive = (userId, active) =>
+  call('set_user_active', { userId, active }, 'PUT', `/api/users/${userId}/active`, { active })
 
-// Approval workflow
-export const createApprovalRequest  = (req)                           => invoke('create_approval_request', { req })
-export const getMyApprovalStatus    = (username)                      => invoke('get_my_approval_status', { username })
-export const getPendingApprovals    = ()                              => invoke('get_pending_approvals')
-export const getApprovalCount       = ()                              => invoke('get_approval_count')
-export const resolveApproval        = (id, approved, rejectionReason) => invoke('resolve_approval', { id, approved, rejectionReason })
+// ── Organizations ─────────────────────────────────────────────────────────────
+
+export const getOrganizations   = ()          => call('get_organizations',   {},       'GET',    '/api/orgs',        undefined)
+export const createOrganization = (org)       => call('create_organization', { org },  'POST',   '/api/orgs',        org)
+export const updateOrganization = (id, org)   => call('update_organization', { id, org }, 'PUT', `/api/orgs/${id}`, org)
+export const deleteOrganization = (id)        => call('delete_organization', { id },   'DELETE', `/api/orgs/${id}`,  undefined)
+
+// ── Semesters ─────────────────────────────────────────────────────────────────
+
+export const getSemesters   = (orgIdFilter = null) =>
+  call('get_semesters', { orgIdFilter }, 'GET',
+       orgIdFilter ? `/api/semesters?org_id=${orgIdFilter}` : '/api/semesters', undefined)
+
+export const createSemester = (sem)       => call('create_semester', { sem },       'POST',   '/api/semesters',      sem)
+export const updateSemester = (id, sem)   => call('update_semester', { id, sem },   'PUT',    `/api/semesters/${id}`, sem)
+export const deleteSemester = (id)        => call('delete_semester', { id },        'DELETE', `/api/semesters/${id}`, undefined)
+
+// ── Courses ───────────────────────────────────────────────────────────────────
+
+export const getCourses   = ()              => call('get_courses',    {},              'GET',    '/api/courses',        undefined)
+export const createCourse = (course)        => call('create_course',  { course },      'POST',   '/api/courses',        course)
+export const updateCourse = (id, course)    => call('update_course',  { id, course },  'PUT',    `/api/courses/${id}`,  course)
+export const deleteCourse = (id)            => call('delete_course',  { id },          'DELETE', `/api/courses/${id}`,  undefined)
+
+// ── Lecturers ─────────────────────────────────────────────────────────────────
+
+export const getLecturers   = ()                  => call('get_lecturers',    {},                 'GET',    '/api/lecturers',        undefined)
+export const createLecturer = (lecturer)          => call('create_lecturer',  { lecturer },       'POST',   '/api/lecturers',        lecturer)
+export const updateLecturer = (id, lecturer)      => call('update_lecturer',  { id, lecturer },   'PUT',    `/api/lecturers/${id}`,  lecturer)
+export const deleteLecturer = (id)                => call('delete_lecturer',  { id },             'DELETE', `/api/lecturers/${id}`,  undefined)
+
+// ── Rooms ─────────────────────────────────────────────────────────────────────
+
+export const getRooms   = ()          => call('get_rooms',    {},           'GET',    '/api/rooms',       undefined)
+export const createRoom = (room)      => call('create_room',  { room },     'POST',   '/api/rooms',       room)
+export const updateRoom = (id, room)  => call('update_room',  { id, room }, 'PUT',    `/api/rooms/${id}`, room)
+export const deleteRoom = (id)        => call('delete_room',  { id },       'DELETE', `/api/rooms/${id}`, undefined)
+
+// ── Batches ───────────────────────────────────────────────────────────────────
+
+export const getBatches   = ()              => call('get_batches',    {},              'GET',    '/api/batches',       undefined)
+export const createBatch  = (batch)         => call('create_batch',   { batch },       'POST',   '/api/batches',       batch)
+export const updateBatch  = (id, batch)     => call('update_batch',   { id, batch },   'PUT',    `/api/batches/${id}`, batch)
+export const deleteBatch  = (id)            => call('delete_batch',   { id },          'DELETE', `/api/batches/${id}`, undefined)
+
+// ── Scheduler ─────────────────────────────────────────────────────────────────
+
+export const generateSchedule   = (scheduleName, semesterId = null, description = null) =>
+  call('generate_schedule', { scheduleName, semesterId, description }, 'POST', '/api/schedules/generate',
+       { schedule_name: scheduleName, semester_id: semesterId, description })
+
+export const getSchedules       = ()             => call('get_schedules',       {},             'GET',    '/api/schedules',                  undefined)
+export const getScheduleEntries = (scheduleId)   => call('get_schedule_entries', { scheduleId }, 'GET',   `/api/schedules/${scheduleId}/entries`, undefined)
+export const activateSchedule   = (id)           => call('activate_schedule',   { id },         'PUT',    `/api/schedules/${id}/activate`,   null)
+export const deleteSchedule     = (id)           => call('delete_schedule',     { id },         'DELETE', `/api/schedules/${id}`,            undefined)
+export const exportScheduleCsv  = (scheduleId)   => call('export_schedule_csv', { scheduleId }, 'GET',   `/api/schedules/${scheduleId}/csv`, undefined)
+export const publishSchedule    = (id)           => call('publish_schedule',    { id },         'PUT',    `/api/schedules/${id}/publish`,    null)
+export const revertScheduleToDraft = (id)        => call('revert_schedule_to_draft', { id },    'PUT',    `/api/schedules/${id}/draft`,      null)
+
+export const updateScheduleDescription = (id, description) =>
+  call('update_schedule_description', { id, description }, 'PUT', `/api/schedules/${id}/description`, { description })
+
+export const updateScheduleEntry = (entryId, req) =>
+  call('update_schedule_entry', { entryId, req }, 'PUT', `/api/schedule-entries/${entryId}`, req)
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
+export const getStats = () => call('get_stats', {}, 'GET', '/api/stats', undefined)
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+
+export const updateDisplayName        = (newName)   =>
+  call('update_display_name',        { newName },   'PUT',  '/api/settings/display-name', { new_name: newName })
+
+export const getSchedulingSettings    = (orgId)     =>
+  call('get_scheduling_settings',    { orgId },     'GET',  `/api/settings/scheduling/${orgId}`, undefined)
+
+export const upsertSchedulingSettings = (settings)  =>
+  call('upsert_scheduling_settings', { settings },  'PUT',  '/api/settings/scheduling', settings)
+
+export const clearSchedules           = ()           =>
+  call('clear_schedules',            {},             'POST', '/api/settings/clear-schedules', null)
+
+export const backupDatabase           = ()           =>
+  call('backup_database',            {},             'GET',  '/api/settings/backup', undefined)
+
+export const getAppInfo               = ()           =>
+  call('get_app_info',               {},             'GET',  '/api/settings/app-info', undefined)
+
+// ── Admin quota ───────────────────────────────────────────────────────────────
+
+export const getMaxAdmins   = ()      => call('get_max_admins',   {},      'GET', '/api/settings/max-admins',   undefined)
+export const setMaxAdmins   = (max)   => call('set_max_admins',   { max }, 'PUT', '/api/settings/max-admins',   { max })
+export const getAdminCount  = ()      => call('get_admin_count',  {},      'GET', '/api/settings/admin-count',  undefined)
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+
+export const getUtilizationReport = (scheduleId) =>
+  call('get_utilization_report', { scheduleId }, 'GET', `/api/reports/utilization/${scheduleId}`, undefined)
+
+export const getAuditLog = (limit = 100) =>
+  call('get_audit_log', { limit }, 'GET', `/api/audit-log?limit=${limit}`, undefined)
+
+// ── Bulk import ───────────────────────────────────────────────────────────────
+
+export const bulkImportLecturers = (rows) => call('bulk_import_lecturers', { rows }, 'POST', '/api/import/lecturers', { rows })
+export const bulkImportRooms     = (rows) => call('bulk_import_rooms',     { rows }, 'POST', '/api/import/rooms',     { rows })
+export const bulkImportCourses   = (rows) => call('bulk_import_courses',   { rows }, 'POST', '/api/import/courses',   { rows })
+
+// ── Pre-flight / data health ──────────────────────────────────────────────────
+
+export const getPreflightWarnings      = ()   => call('get_preflight_warnings',      {}, 'GET', '/api/preflight',   undefined)
+export const getDataHealth             = ()   => call('get_data_health',             {}, 'GET', '/api/data-health', undefined)
+
+// ── Password recovery ─────────────────────────────────────────────────────────
+
+export const setupRecovery                   = (req) => call('setup_recovery',                    { req }, 'POST', '/api/recovery/setup',               req)
+export const resetPasswordWithRecoveryCode   = (req) => call('reset_password_with_recovery_code', { req }, 'POST', '/api/recovery/reset-with-code',      req)
+export const resetPasswordWithSecurityAnswer = (req) => call('reset_password_with_security_answer', { req }, 'POST', '/api/recovery/reset-with-answer', req)
+export const getSecurityQuestion             = ()    => call('get_security_question',              {},      'GET',  '/api/recovery/question',             undefined)
+
+// ── Approval workflow ─────────────────────────────────────────────────────────
+
+export const createApprovalRequest = (req)                            =>
+  call('create_approval_request', { req }, 'POST', '/api/approvals', req)
+
+export const getMyApprovalStatus   = (username)                       =>
+  call('get_my_approval_status', { username }, 'GET', `/api/approvals/my/${username}`, undefined)
+
+export const getPendingApprovals   = ()                               =>
+  call('get_pending_approvals', {}, 'GET', '/api/approvals', undefined)
+
+export const getApprovalCount      = ()                               =>
+  call('get_approval_count', {}, 'GET', '/api/approvals/count', undefined)
+
+export const resolveApproval       = (id, approved, rejectionReason) =>
+  call('resolve_approval', { id, approved, rejectionReason }, 'PUT', `/api/approvals/${id}/resolve`,
+       { approved, rejection_reason: rejectionReason })

@@ -1,8 +1,11 @@
 <script>
   import './app.css'
-  import { onMount } from 'svelte'
-  import { toasts } from './lib/toast.js'
-  import { session } from './lib/stores/session.js'
+  import { onMount, onDestroy } from 'svelte'
+  import { toasts }             from './lib/toast.js'
+  import { toast }              from './lib/toast.js'
+  import { session }            from './lib/stores/session.js'
+  import { syncMode }           from './lib/stores/syncMode.js'
+  import { connectWs, disconnectWs, lastWsEvent, wsConnected } from './lib/stores/ws.js'
 
   import Login        from './views/Login.svelte'
   import Sidebar      from './lib/components/Sidebar.svelte'
@@ -34,7 +37,31 @@
   onMount(async () => {
     await session.restore()
     loading = false
+    // Connect WebSocket if server mode is configured
+    if ($syncMode.mode === 'server' && $syncMode.serverUrl && $syncMode.token) {
+      connectWs()
+    }
   })
+
+  onDestroy(() => disconnectWs())
+
+  // Show a toast when the WS reports a data change from another user
+  const ENTITY_LABELS = {
+    users: 'Users', courses: 'Courses', lecturers: 'Lecturers', rooms: 'Rooms',
+    batches: 'Batches', schedules: 'Schedules', semesters: 'Semesters',
+    approval_request: 'Approvals',
+  }
+  let prevWsTs = 0
+  $: if ($lastWsEvent && $lastWsEvent._ts !== prevWsTs) {
+    prevWsTs = $lastWsEvent._ts
+    const label = ENTITY_LABELS[$lastWsEvent.entity] || $lastWsEvent.entity
+    if ($lastWsEvent.action !== 'login') {
+      toast(`${label} updated by another user — refresh to see changes`, 'info')
+    }
+  }
+
+  // Connect WS when a session becomes active in server mode
+  $: if ($session && $syncMode.mode === 'server') connectWs()
 
   // Show onboarding whenever a session becomes active and user hasn't completed it
   $: if (!loading && $session && !showOnboarding) {
