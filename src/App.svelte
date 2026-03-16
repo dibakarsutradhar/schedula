@@ -17,6 +17,7 @@
   import Users        from './views/Users.svelte'
   import Settings     from './views/Settings.svelte'
   import Import       from './views/Import.svelte'
+  import Approvals    from './views/Approvals.svelte'
   import Onboarding   from './lib/components/Onboarding.svelte'
   import { prefs }    from './lib/stores/prefs.js'
 
@@ -88,6 +89,8 @@
         <Settings />
       {:else if active === 'import'}
         <Import />
+      {:else if active === 'approvals'}
+        <Approvals />
       {/if}
     </div>
   </div>

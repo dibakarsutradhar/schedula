@@ -19,6 +19,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     migrate_v6(conn)?;
     migrate_v7(conn)?;
     migrate_v8(conn)?;
+    migrate_v9(conn)?;
     Ok(())
 }
 
@@ -250,6 +251,29 @@ fn migrate_v8(conn: &Connection) -> Result<()> {
     for sql in &alters {
         try_alter(conn, sql);
     }
+    Ok(())
+}
+
+// ─── V9: approval workflow ────────────────────────────────────────────────────
+fn migrate_v9(conn: &Connection) -> Result<()> {
+    conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS approval_requests (
+            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+            requester_user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            requester_username      TEXT    NOT NULL,
+            requester_display_name  TEXT    NOT NULL DEFAULT '',
+            request_type            TEXT    NOT NULL
+                                    CHECK(request_type IN ('password_reset','account_unlock')),
+            payload_json            TEXT,
+            status                  TEXT    NOT NULL DEFAULT 'pending'
+                                    CHECK(status IN ('pending','approved','rejected','expired')),
+            rejection_reason        TEXT,
+            resolver_user_id        INTEGER REFERENCES users(id),
+            created_at              TEXT    NOT NULL DEFAULT (datetime('now')),
+            resolved_at             TEXT,
+            expires_at              TEXT    NOT NULL DEFAULT (datetime('now', '+48 hours'))
+        );
+    ")?;
     Ok(())
 }
 

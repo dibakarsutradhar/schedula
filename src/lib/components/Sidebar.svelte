@@ -1,9 +1,35 @@
 <script>
   export let active = 'dashboard'
 
+  import { onMount, onDestroy } from 'svelte'
   import { session, isSuperAdmin } from '../stores/session.js'
-  import { logout } from '../api.js'
+  import { logout, getApprovalCount } from '../api.js'
   import { toast } from '../toast.js'
+
+  let pendingApprovals = 0
+  let pollInterval = null
+
+  async function refreshApprovalCount() {
+    if (!isSuperAdmin($session)) return
+    try {
+      pendingApprovals = await getApprovalCount()
+    } catch (_) {
+      pendingApprovals = 0
+    }
+  }
+
+  $: if ($session) {
+    refreshApprovalCount()
+  }
+
+  onMount(() => {
+    refreshApprovalCount()
+    pollInterval = setInterval(refreshApprovalCount, 30000)
+  })
+
+  onDestroy(() => {
+    if (pollInterval) clearInterval(pollInterval)
+  })
 
   $: nav = [
     { id: 'dashboard',  label: 'Dashboard',      icon: '⬡' },
@@ -16,6 +42,7 @@
     { id: 'schedule',   label: 'Schedule',         icon: '📅' },
     { id: 'import',     label: 'Import',           icon: '⬆' },
     { id: 'users',      label: 'Users',            icon: '👥' },
+    ...(isSuperAdmin($session) ? [{ id: 'approvals', label: 'Approvals', icon: '✅', badge: pendingApprovals }] : []),
     { id: 'settings',   label: 'Settings',         icon: '⚙️' },
   ]
 
@@ -37,10 +64,13 @@
       <button
         class="nav-item"
         class:active={active === item.id}
-        on:click={() => (active = item.id)}
+        on:click={() => { active = item.id; refreshApprovalCount() }}
       >
         <span class="nav-icon">{item.icon}</span>
         <span>{item.label}</span>
+        {#if item.badge > 0}
+          <span class="nav-badge">{item.badge}</span>
+        {/if}
       </button>
     {/each}
   </nav>
@@ -97,6 +127,20 @@
   .nav-item:hover { background: var(--surface2); color: var(--text); }
   .nav-item.active { background: rgba(108,99,255,.15); color: var(--accent2); }
   .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+  .nav-badge {
+    margin-left: auto;
+    background: var(--danger, #e05260);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+  }
 
   .sidebar-footer {
     padding: 12px;

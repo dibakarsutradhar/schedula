@@ -30,10 +30,11 @@ Schedula is a desktop application that intelligently generates semester class ro
 
 ### Core Scheduling Engine
 - 🤖 **Constraint-based optimization** with diversity heuristics
-- 📅 **7 hard constraints**: no student conflicts, room capacity, lecturer availability, room type matching, teaching hours, lecturer max loads, class-type time preferences
+- 📅 **9 hard constraints**: no student/room/lecturer conflicts, room capacity, room type matching, lecturer availability, max hours/day, max hours/week, max consecutive hours, blackout slots
 - 🎲 **Diversity sorting** to spread classes throughout the week (Mon–Fri)
 - 🔄 **Biweekly course support** with alternating week placement
 - 📊 **Detailed conflict reports** showing unscheduled items with reasons
+- ⚡ **Fast generation** — schedules generated in <10ms for 200-course datasets
 
 ### User Interface
 - 🎨 **Dark/Light theme toggle** with custom accent colors
@@ -62,10 +63,19 @@ Schedula is a desktop application that intelligently generates semester class ro
 - 💾 **Data management** — JSON backup download, clear all schedules
 - ℹ️ **About** — app version, DB size, entity counts
 
-### Data Management
+### Data Management & Quality
 - 📤 **CSV export** of entire schedules
+- 📋 **HTML export** for student sharing (self-contained, offline-ready)
 - 💾 **JSON backup** of all data (downloadable)
 - 🗑️ **Safe data clearing** with confirmation
+- ✅ **Pre-flight validator** — checks data integrity before generation
+- 📊 **Data health dashboard** — highlights missing assignments, capacity issues
+- 👁️ **Conflict visualization** — shows clashing entries in red
+
+### Security & Recovery
+- 🔐 **Password recovery system** — recovery code + security question for admin locked-out scenarios
+- 📝 **Audit logging** — all user actions tracked with timestamp and entity references
+- 👤 **Role-based access** — super-admin vs admin distinction with proper scoping
 
 ---
 
@@ -110,20 +120,28 @@ Schedula is a desktop application that intelligently generates semester class ro
 
 ### Database Schema
 
-**v3 (Current)**
+**v8 (Current)** — 8 migrations with backward-compatible evolution
 
-Tables:
+**Core tables**:
 - `organizations` — schools, universities, institutes
-- `users` — admin and super_admin accounts with bcrypt passwords
+- `users` — admin and super_admin accounts with bcrypt hashing, recovery code, security question
 - `semesters` — semester definitions with teaching/exam/study blocks
 - `courses` — courses with class type (lecture/lab/tutorial) and frequency (weekly/biweekly)
-- `lecturers` — faculty with availability and load constraints
-- `rooms` — classrooms and labs with capacities
+- `lecturers` — faculty with availability, load constraints, preferred time-of-day, blackout slots, max consecutive hours
+- `rooms` — classrooms and labs with capacities and day availability
 - `batches` — student groups linked to semesters
-- `batch_courses` — courses for each batch
-- `schedules` — generated timetables (active/archived)
+- `batch_courses` — M:N courses for each batch
+
+**Schedule tables**:
+- `schedules` — generated timetables with status (draft/published), description
 - `schedule_entries` — individual class slots with week parity (for biweekly)
+
+**System tables**:
 - `org_scheduling_settings` — per-org scheduling defaults
+- `app_settings` — global config (max admin quota)
+- `audit_log` — all user actions with timestamp and entity reference
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for schema diagram and v1–v8 evolution.
 
 ---
 
@@ -296,6 +314,18 @@ Preferences auto-save to `~/Library/Application Support/Schedula/`
 
 ---
 
+## 📚 Documentation
+
+Comprehensive system documentation is in the [`docs/`](docs/) folder:
+
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** — System design, data model, IPC layer, constraint solver
+- **[SCHEDULER_ALGORITHM.md](docs/SCHEDULER_ALGORITHM.md)** — How the scheduler works, hard/soft constraints, complexity analysis
+- **[DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)** — Complete schema with v1–v8 migration history
+- **[API_REFERENCE.md](docs/API_REFERENCE.md)** — All Tauri commands with params and return types
+- **[TESTING_GUIDE.md](docs/TESTING_GUIDE.md)** — How to run 75+ unit/integration tests and benchmarks
+
+---
+
 ## 🛠️ Development Setup
 
 ### Prerequisites
@@ -327,7 +357,22 @@ npm run tauri dev
 This launches:
 - **Vite dev server** at `http://localhost:5173`
 - **Tauri desktop app** pointing to it
-- **Hot reload** for both frontend and backend changes
+- **Hot reload** for frontend changes
+- **Cargo watch** for backend recompilation
+
+### Running Tests
+
+```bash
+# Run 75 unit + integration tests (4 seconds)
+cargo test
+
+# Run benchmarks (3 profiles: tiny, small, medium, large, stress)
+cargo bench
+
+# Results: tiny (380µs), small (747µs), medium (2.3ms), large (3.9ms), stress (8.2ms)
+```
+
+See [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) for test coverage details.
 
 ### Build Project
 
@@ -342,28 +387,39 @@ npm run tauri build
 
 ```
 schedula/
-├── src/                    # Frontend (Svelte)
-│   ├── App.svelte
-│   ├── app.css            # Dark/light theme system
-│   ├── views/             # Route components
+├── src/                    # Frontend (Svelte, ~25 files)
+│   ├── App.svelte          # Main router
+│   ├── app.css             # Dark/light theme system
+│   ├── views/              # 12 page components (Dashboard, Lecturers, etc.)
 │   ├── lib/
-│   │   ├── api.js         # Tauri invoke wrappers
-│   │   ├── stores/        # Svelte stores (session, prefs)
-│   │   └── components/    # Reusable UI components
+│   │   ├── api.js          # 40+ Tauri invoke wrappers (type-safe)
+│   │   ├── stores/         # Svelte stores (session, preferences)
+│   │   ├── toast.js        # Toast notification system
+│   │   └── components/     # 7 reusable UI components
 │   └── index.html
-├── src-tauri/             # Backend (Rust)
+├── src-tauri/              # Backend (Rust, ~2.9K LOC)
 │   ├── src/
-│   │   ├── main.rs        # App entry (mobile boilerplate)
-│   │   ├── lib.rs         # Tauri setup, command registration
-│   │   ├── commands.rs    # 35+ command handlers
-│   │   ├── db.rs          # Database, migrations
-│   │   ├── models.rs      # Domain types, constants
-│   │   └── scheduler.rs   # Constraint solver
-│   ├── tauri.conf.json    # Tauri config
-│   └── Cargo.toml         # Rust dependencies
-├── vite.config.js         # Vite bundler config
-├── package.json           # Node.js dependencies
-└── README.md              # This file
+│   │   ├── main.rs         # App entry point
+│   │   ├── lib.rs          # Tauri setup, 35+ command registration
+│   │   ├── commands.rs     # 35+ command handlers, auth, CRUD
+│   │   ├── db.rs           # Database init, 8 migrations, seeding
+│   │   ├── models.rs       # 30+ domain types and constants
+│   │   └── scheduler.rs    # Constraint-based scheduler (324 LOC)
+│   ├── benches/            # Criterion benchmarks (5 profile scales)
+│   ├── tauri.conf.json     # Tauri configuration
+│   └── Cargo.toml          # Rust dependencies
+├── docs/                   # System architecture documentation
+│   ├── ARCHITECTURE.md     # System design overview
+│   ├── SCHEDULER_ALGORITHM.md
+│   ├── DATABASE_SCHEMA.md
+│   ├── API_REFERENCE.md
+│   └── TESTING_GUIDE.md
+├── .github/workflows/      # GitHub Actions
+│   └── release.yml         # Automated cross-platform builds
+├── vite.config.js          # Vite bundler config
+├── package.json            # Node.js dependencies
+├── PRODUCTION_AUDIT.md     # Gap analysis & university pitch
+└── README.md               # This file
 ```
 
 ---

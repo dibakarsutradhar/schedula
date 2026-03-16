@@ -110,6 +110,12 @@ pub fn run() {
             commands::reset_password_with_recovery_code,
             commands::reset_password_with_security_answer,
             commands::get_security_question,
+            // Approval workflow
+            commands::create_approval_request,
+            commands::get_my_approval_status,
+            commands::get_pending_approvals,
+            commands::get_approval_count,
+            commands::resolve_approval,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

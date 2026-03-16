@@ -1,5 +1,5 @@
 <script>
-  import { login, getSecurityQuestion, resetPasswordWithRecoveryCode, resetPasswordWithSecurityAnswer } from '../lib/api.js'
+  import { login, getSecurityQuestion, resetPasswordWithRecoveryCode, resetPasswordWithSecurityAnswer, createApprovalRequest, getMyApprovalStatus } from '../lib/api.js'
   import { session } from '../lib/stores/session.js'
   import { toast } from '../lib/toast.js'
 
@@ -9,7 +9,7 @@
 
   // Recovery modal state
   let showRecoveryModal = false
-  let recoveryTab = 'code' // 'code' or 'question'
+  let recoveryTab = 'code' // 'code' | 'question' | 'request'
   let recoveryUsername = ''
   let recoveryCode = ''
   let newPassword = ''
@@ -17,6 +17,13 @@
   let securityQuestion = ''
   let securityAnswer = ''
   let recoveryLoading = false
+
+  // Request admin reset state
+  let requestType = 'password_reset'
+  let requestNewPassword = ''
+  let requestConfirmPassword = ''
+  let requestSubmitted = false
+  let myRequests = []
 
   async function submit() {
     if (!username || !password) return
@@ -40,6 +47,58 @@
     confirmPassword = ''
     securityAnswer = ''
     securityQuestion = ''
+    requestNewPassword = ''
+    requestConfirmPassword = ''
+    requestSubmitted = false
+    myRequests = []
+  }
+
+  async function switchToRequest() {
+    recoveryTab = 'request'
+    if (recoveryUsername) await loadMyRequests()
+  }
+
+  async function loadMyRequests() {
+    if (!recoveryUsername) return
+    try {
+      myRequests = await getMyApprovalStatus(recoveryUsername)
+    } catch (_) {
+      myRequests = []
+    }
+  }
+
+  async function submitAdminRequest() {
+    if (!recoveryUsername) { toast('Please enter your username', 'error'); return }
+    if (requestType === 'password_reset') {
+      if (!requestNewPassword || !requestConfirmPassword) {
+        toast('Please fill all fields', 'error'); return
+      }
+      if (requestNewPassword !== requestConfirmPassword) {
+        toast('Passwords do not match', 'error'); return
+      }
+      if (requestNewPassword.length < 8) {
+        toast('Password must be at least 8 characters', 'error'); return
+      }
+    }
+    try {
+      recoveryLoading = true
+      await createApprovalRequest({
+        username: recoveryUsername,
+        request_type: requestType,
+        new_password: requestType === 'password_reset' ? requestNewPassword : null
+      })
+      requestSubmitted = true
+      myRequests = await getMyApprovalStatus(recoveryUsername)
+      toast('Request submitted. The super admin will review it shortly.', 'success')
+    } catch (e) {
+      toast(e?.toString() ?? 'Failed to submit request', 'error')
+    } finally {
+      recoveryLoading = false
+    }
+  }
+
+  function statusLabel(s) {
+    return s === 'pending' ? '⏳ Pending' : s === 'approved' ? '✅ Approved' : s === 'rejected' ? '❌ Rejected' : s
   }
 
   function closeRecovery() {
@@ -195,6 +254,14 @@
         >
           Security Question
         </button>
+        <button
+          type="button"
+          class="tab-btn"
+          class:active={recoveryTab === 'request'}
+          on:click={switchToRequest}
+        >
+          Request Reset
+        </button>
       </div>
 
       <div class="recovery-content">
@@ -301,6 +368,84 @@
             <p style="color: var(--text-muted); text-align: center; padding: 20px 0;">
               Loading security question…
             </p>
+          {/if}
+        {/if}
+
+        {#if recoveryTab === 'request'}
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input
+              class="form-input"
+              bind:value={recoveryUsername}
+              placeholder="Enter your username"
+              on:change={loadMyRequests}
+            />
+          </div>
+
+          {#if !requestSubmitted}
+            <div class="form-group">
+              <label class="form-label">Request Type</label>
+              <select class="form-input" bind:value={requestType}>
+                <option value="password_reset">Password Reset</option>
+                <option value="account_unlock">Account Unlock</option>
+              </select>
+            </div>
+
+            {#if requestType === 'password_reset'}
+              <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input
+                  class="form-input"
+                  type="password"
+                  bind:value={requestNewPassword}
+                  placeholder="••••••••"
+                />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Confirm Password</label>
+                <input
+                  class="form-input"
+                  type="password"
+                  bind:value={requestConfirmPassword}
+                  placeholder="••••••••"
+                />
+              </div>
+            {/if}
+
+            <div class="request-note">
+              Your request will be reviewed by the super admin.
+              You will be notified on your next login once it's resolved.
+            </div>
+
+            <button
+              type="button"
+              class="btn btn-primary"
+              style="width:100%;justify-content:center;padding:10px"
+              disabled={recoveryLoading || !recoveryUsername}
+              on:click={submitAdminRequest}
+            >
+              {recoveryLoading ? 'Submitting…' : 'Submit Request'}
+            </button>
+          {:else}
+            <div class="request-success">
+              ✅ Request submitted successfully.<br>
+              Please wait for the super admin to approve it.
+            </div>
+          {/if}
+
+          {#if myRequests.length > 0}
+            <div class="my-requests">
+              <p class="my-requests-title">Recent requests</p>
+              {#each myRequests as r (r.id)}
+                <div class="request-row">
+                  <span class="req-type">{r.request_type === 'password_reset' ? 'Password Reset' : 'Account Unlock'}</span>
+                  <span class="req-status req-status-{r.status}">{statusLabel(r.status)}</span>
+                  {#if r.rejection_reason}
+                    <span class="req-reason">"{r.rejection_reason}"</span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
           {/if}
         {/if}
       </div>
@@ -437,5 +582,67 @@
     padding: 12px;
     font-size: 13px;
     color: var(--text);
+  }
+
+  .request-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    line-height: 1.5;
+  }
+
+  .request-success {
+    text-align: center;
+    padding: 16px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+    background: rgba(46,204,113,.1);
+    border: 1px solid rgba(46,204,113,.3);
+    border-radius: 8px;
+  }
+
+  .my-requests {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .my-requests-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: .05em;
+    margin: 0 0 4px;
+  }
+  .request-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .req-type {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .req-status {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .req-status-pending  { background: rgba(250,200,80,.2);  color: #e8a800; }
+  .req-status-approved { background: rgba(60,200,100,.2);  color: #2ecc71; }
+  .req-status-rejected { background: rgba(224,82,96,.2);   color: #e05260; }
+  .req-reason {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
   }
 </style>

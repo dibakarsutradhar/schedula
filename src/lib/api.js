@@ -100,3 +100,10 @@ export const setupRecovery                    = (req) => invoke('setup_recovery'
 export const resetPasswordWithRecoveryCode    = (req) => invoke('reset_password_with_recovery_code', { req })
 export const resetPasswordWithSecurityAnswer  = (req) => invoke('reset_password_with_security_answer', { req })
 export const getSecurityQuestion             = ()    => invoke('get_security_question')
+
+// Approval workflow
+export const createApprovalRequest  = (req)                           => invoke('create_approval_request', { req })
+export const getMyApprovalStatus    = (username)                      => invoke('get_my_approval_status', { username })
+export const getPendingApprovals    = ()                              => invoke('get_pending_approvals')
+export const getApprovalCount       = ()                              => invoke('get_approval_count')
+export const resolveApproval        = (id, approved, rejectionReason) => invoke('resolve_approval', { id, approved, rejectionReason })

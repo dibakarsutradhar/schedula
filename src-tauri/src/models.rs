@@ -392,6 +392,30 @@ pub struct DataHealth {
     pub total_warnings: i64,
 }
 
+// ─── Approval Requests ────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApprovalRequest {
+    pub id: i64,
+    pub requester_user_id: Option<i64>,
+    pub requester_username: String,
+    pub requester_display_name: String,
+    pub request_type: String,              // 'password_reset' | 'account_unlock'
+    pub status: String,                    // 'pending' | 'approved' | 'rejected' | 'expired'
+    pub rejection_reason: Option<String>,
+    pub resolver_display_name: Option<String>,
+    pub created_at: String,
+    pub resolved_at: Option<String>,
+    pub expires_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateApprovalReq {
+    pub username: String,
+    pub request_type: String,
+    pub new_password: Option<String>,      // required for 'password_reset'
+}
+
 // ─── Bulk CSV import ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Deserialize)]

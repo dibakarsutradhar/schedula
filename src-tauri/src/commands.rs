@@ -1601,6 +1601,184 @@ pub fn get_security_question(db: State<DbState>) -> Result<String, String> {
     ).map_err(|_| "Security question not set up".into())
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// APPROVAL REQUESTS
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// Create a password-reset or account-unlock request. Callable without login.
+#[tauri::command]
+pub fn create_approval_request(
+    db: State<DbState>,
+    req: CreateApprovalReq,
+) -> Result<i64, String> {
+    let conn = db.0.lock().map_err(db_err)?;
+    let (user_id, display_name): (i64, String) = conn.query_row(
+        "SELECT id, display_name FROM users WHERE username=?1",
+        params![req.username],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    ).map_err(|_| "User not found".to_string())?;
+
+    let existing: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM approval_requests WHERE requester_user_id=?1 AND request_type=?2 AND status='pending'",
+        params![user_id, req.request_type],
+        |r| r.get(0),
+    ).unwrap_or(0);
+    if existing > 0 {
+        return Err("A pending request of this type already exists. Please wait for super admin approval.".into());
+    }
+
+    let payload = if req.request_type == "password_reset" {
+        let pw = req.new_password.as_deref().unwrap_or("");
+        if pw.len() < 8 { return Err("Password must be at least 8 characters".into()); }
+        let hash = bcrypt::hash(pw, bcrypt::DEFAULT_COST).map_err(db_err)?;
+        Some(serde_json::json!({"new_password_hash": hash}).to_string())
+    } else {
+        None
+    };
+
+    conn.execute(
+        "INSERT INTO approval_requests
+         (requester_user_id, requester_username, requester_display_name, request_type, payload_json)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![user_id, req.username, display_name, req.request_type, payload],
+    ).map_err(db_err)?;
+    Ok(conn.last_insert_rowid())
+}
+
+/// Check status of a user's recent approval requests (no login required).
+#[tauri::command]
+pub fn get_my_approval_status(
+    db: State<DbState>,
+    username: String,
+) -> Result<Vec<ApprovalRequest>, String> {
+    let conn = db.0.lock().map_err(db_err)?;
+    let mut stmt = conn.prepare(
+        "SELECT ar.id, ar.requester_user_id, ar.requester_username, ar.requester_display_name,
+                ar.request_type, ar.status, ar.rejection_reason,
+                u2.display_name,
+                ar.created_at, ar.resolved_at, ar.expires_at
+         FROM approval_requests ar
+         LEFT JOIN users u2 ON u2.id = ar.resolver_user_id
+         WHERE ar.requester_username=?1
+         ORDER BY ar.created_at DESC LIMIT 10"
+    ).map_err(db_err)?;
+    let rows: Result<Vec<ApprovalRequest>, _> = stmt.query_map(params![username], |row| Ok(ApprovalRequest {
+        id: row.get(0)?,
+        requester_user_id: row.get(1)?,
+        requester_username: row.get(2)?,
+        requester_display_name: row.get(3)?,
+        request_type: row.get(4)?,
+        status: row.get(5)?,
+        rejection_reason: row.get(6)?,
+        resolver_display_name: row.get(7)?,
+        created_at: row.get(8)?,
+        resolved_at: row.get(9)?,
+        expires_at: row.get(10)?,
+    })).map_err(db_err)?.collect();
+    rows.map_err(db_err)
+}
+
+/// Get all approval requests — super admin only.
+#[tauri::command]
+pub fn get_pending_approvals(
+    db: State<DbState>,
+    session: State<SessionState>,
+) -> Result<Vec<ApprovalRequest>, String> {
+    require_super_admin(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let mut stmt = conn.prepare(
+        "SELECT ar.id, ar.requester_user_id, ar.requester_username, ar.requester_display_name,
+                ar.request_type, ar.status, ar.rejection_reason,
+                u2.display_name,
+                ar.created_at, ar.resolved_at, ar.expires_at
+         FROM approval_requests ar
+         LEFT JOIN users u2 ON u2.id = ar.resolver_user_id
+         ORDER BY ar.created_at DESC"
+    ).map_err(db_err)?;
+    let rows: Result<Vec<ApprovalRequest>, _> = stmt.query_map([], |row| Ok(ApprovalRequest {
+        id: row.get(0)?,
+        requester_user_id: row.get(1)?,
+        requester_username: row.get(2)?,
+        requester_display_name: row.get(3)?,
+        request_type: row.get(4)?,
+        status: row.get(5)?,
+        rejection_reason: row.get(6)?,
+        resolver_display_name: row.get(7)?,
+        created_at: row.get(8)?,
+        resolved_at: row.get(9)?,
+        expires_at: row.get(10)?,
+    })).map_err(db_err)?.collect();
+    rows.map_err(db_err)
+}
+
+/// Count pending approvals for sidebar badge — super admin only.
+#[tauri::command]
+pub fn get_approval_count(
+    db: State<DbState>,
+    session: State<SessionState>,
+) -> Result<i64, String> {
+    require_super_admin(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    conn.query_row(
+        "SELECT COUNT(*) FROM approval_requests WHERE status='pending'",
+        [], |r| r.get(0),
+    ).map_err(db_err)
+}
+
+/// Approve or reject a request — super admin only.
+#[tauri::command]
+pub fn resolve_approval(
+    db: State<DbState>,
+    session: State<SessionState>,
+    id: i64,
+    approved: bool,
+    rejection_reason: Option<String>,
+) -> Result<(), String> {
+    let s = require_super_admin(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let (request_type, payload_json, requester_user_id): (String, Option<String>, Option<i64>) =
+        conn.query_row(
+            "SELECT request_type, payload_json, requester_user_id FROM approval_requests WHERE id=?1 AND status='pending'",
+            params![id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        ).map_err(|_| "Request not found or already resolved".to_string())?;
+
+    if approved {
+        if let Some(uid) = requester_user_id {
+            match request_type.as_str() {
+                "password_reset" => {
+                    if let Some(payload) = &payload_json {
+                        let v: Value = serde_json::from_str(payload).map_err(db_err)?;
+                        if let Some(hash) = v["new_password_hash"].as_str() {
+                            conn.execute(
+                                "UPDATE users SET password_hash=?1 WHERE id=?2",
+                                params![hash, uid],
+                            ).map_err(db_err)?;
+                        }
+                    }
+                }
+                "account_unlock" => {
+                    conn.execute("UPDATE users SET is_active=1 WHERE id=?1", params![uid])
+                        .map_err(db_err)?;
+                }
+                _ => {}
+            }
+        }
+        conn.execute(
+            "UPDATE approval_requests SET status='approved', resolver_user_id=?1, resolved_at=datetime('now') WHERE id=?2",
+            params![s.user_id, id],
+        ).map_err(db_err)?;
+        log_audit(&conn, &s, "approve", "approval_request", Some(id), Some(&request_type));
+    } else {
+        conn.execute(
+            "UPDATE approval_requests SET status='rejected', resolver_user_id=?1, resolved_at=datetime('now'), rejection_reason=?2 WHERE id=?3",
+            params![s.user_id, rejection_reason, id],
+        ).map_err(db_err)?;
+        log_audit(&conn, &s, "reject", "approval_request", Some(id), Some(&request_type));
+    }
+    Ok(())
+}
+
 fn count_scoped(conn: &Connection, table: &str, org_id: Option<i64>) -> i64 {
     let sql = match org_id {
         Some(id) => format!("SELECT COUNT(*) FROM {} WHERE org_id={}", table, id),
