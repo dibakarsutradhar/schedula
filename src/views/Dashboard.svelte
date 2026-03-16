@@ -114,12 +114,24 @@
   .stat-btn {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px 20px 16px;
-    transition: border-color .15s;
+    border-radius: 14px;
+    padding: 24px 20px 20px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: var(--glass-blur);
+    position: relative;
+    overflow: hidden;
   }
-  .stat-btn:hover { border-color: var(--accent); }
-  .stat-icon { font-size: 20px; margin-bottom: 8px; }
+  .stat-btn::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  }
+  .stat-btn:hover { 
+    border-color: var(--accent); 
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px -10px var(--border-glow);
+  }
+  .stat-icon { font-size: 24px; margin-bottom: 12px; transition: transform 0.3s ease; }
+  .stat-btn:hover .stat-icon { transform: scale(1.1) rotate(-5deg); }
 
   .steps {
     display: flex;

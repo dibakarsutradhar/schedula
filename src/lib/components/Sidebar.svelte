@@ -91,6 +91,7 @@
     width: var(--sidebar-w);
     background: var(--surface);
     border-right: 1px solid var(--border);
+    backdrop-filter: var(--glass-blur);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
@@ -101,32 +102,41 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 20px 16px 16px;
+    padding: 24px 20px 20px;
     border-bottom: 1px solid var(--border);
-    margin-bottom: 8px;
+    margin-bottom: 12px;
   }
-  .brand-icon { font-size: 22px; color: var(--accent); }
-  .brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+  .brand-icon { font-size: 24px; color: var(--accent); text-shadow: var(--shadow-glow); }
+  .brand-name { font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
 
   .nav {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    padding: 0 8px;
+    gap: 4px;
+    padding: 0 12px;
     flex: 1;
     overflow-y: auto;
   }
 
   .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 12px; border-radius: 8px; border: none;
-    background: none; color: var(--text-muted);
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 10px; border: none;
+    background: transparent; color: var(--text-muted);
     font-size: 13px; font-weight: 500; cursor: pointer;
-    text-align: left; width: 100%; transition: all .15s;
+    text-align: left; width: 100%; transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
   }
-  .nav-item:hover { background: var(--surface2); color: var(--text); }
-  .nav-item.active { background: rgba(108,99,255,.15); color: var(--accent2); }
-  .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+  .nav-item::before {
+    content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 0; background: var(--accent); border-radius: 0 4px 4px 0;
+    transition: height 0.25s ease;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.03); color: var(--text); }
+  .nav-item.active { background: rgba(108,99,255,.1); color: var(--accent2); }
+  .nav-item.active::before { height: 60%; box-shadow: var(--shadow-glow); }
+  .nav-icon { font-size: 16px; width: 22px; text-align: center; transition: transform 0.25s ease; }
+  .nav-item:hover .nav-icon { transform: scale(1.1); }
   .nav-badge {
     margin-left: auto;
     background: var(--danger, #e05260);

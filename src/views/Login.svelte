@@ -1,4 +1,6 @@
 <script>
+  import { fade, fly } from 'svelte/transition'
+  import { backOut } from 'svelte/easing'
   import { login, getSecurityQuestion, resetPasswordWithRecoveryCode, resetPasswordWithSecurityAnswer, createApprovalRequest, getMyApprovalStatus } from '../lib/api.js'
   import { session } from '../lib/stores/session.js'
   import { toast } from '../lib/toast.js'
@@ -187,7 +189,7 @@
 </script>
 
 <div class="login-page">
-  <div class="login-card">
+  <div class="login-card" in:fly={{ y: 20, duration: 600, delay: 150, easing: backOut }}>
     <div class="login-brand">
       <span class="login-icon">◈</span>
       <h1>Schedula</h1>
@@ -459,15 +461,25 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--bg);
+    background: linear-gradient(-45deg, #0f111a, #1a1d27, #21253a, #0f111a);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
   }
+  
+  @keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
   .login-card {
-    width: 380px;
+    width: 400px;
     background: var(--surface);
     border: 1px solid var(--border);
+    backdrop-filter: var(--glass-blur);
     border-radius: 20px;
-    padding: 40px 36px 32px;
-    box-shadow: 0 24px 80px rgba(0,0,0,.4);
+    padding: 48px 40px 40px;
+    box-shadow: var(--shadow-lg), 0 0 24px rgba(108, 99, 255, 0.1);
   }
   .login-brand {
     text-align: center;
