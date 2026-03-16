@@ -805,7 +805,13 @@
 
 <!-- Password Reset Modal -->
 {#if showResetModal}
-  <div class="modal-backdrop" on:click|self={() => showResetModal = false}>
+  <div
+    class="modal-backdrop"
+    on:click|self={() => showResetModal = false}
+    on:keydown|self={(e) => { if (e.key === 'Enter' || e.key === ' ') showResetModal = false; }}
+    role="button"
+    tabindex="-1"
+  >
     <div class="modal">
       <div class="modal-header">
         <h2>Reset Password</h2>

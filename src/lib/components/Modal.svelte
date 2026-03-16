@@ -9,7 +9,13 @@
 
 <svelte:window on:keydown={handleKey} />
 
-<div class="modal-backdrop" on:click|self={onClose}>
+<div
+  class="modal-backdrop"
+  on:click|self={onClose}
+  on:keydown|self={(e) => { if (e.key === 'Enter' || e.key === ' ') onClose(); }}
+  role="button"
+  tabindex="-1"
+>
   <div class="modal">
     <div class="modal-header">
       <h2>{title}</h2>

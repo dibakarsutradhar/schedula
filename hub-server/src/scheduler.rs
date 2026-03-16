@@ -28,6 +28,9 @@ pub struct SchedulerInput {
     pub lecturers: Vec<Lecturer>,
     pub rooms: Vec<Room>,
     pub batches: Vec<Batch>,
+    /// Days the organization schedules on, in desired column order.
+    /// Defaults to Mon–Fri if empty.
+    pub working_days: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -122,6 +125,18 @@ fn would_exceed_consecutive(occupied: &[i64], new_slot: i64, max_consecutive: i6
 }
 
 pub fn generate(input: &SchedulerInput) -> ScheduleResult {
+    // Resolve working days: use org config or fall back to Mon–Fri
+    let default_days = vec![
+        "Mon".to_string(), "Tue".to_string(), "Wed".to_string(),
+        "Thu".to_string(), "Fri".to_string(),
+    ];
+    let org_days_owned: &Vec<String> = if input.working_days.is_empty() {
+        &default_days
+    } else {
+        &input.working_days
+    };
+    let working_days: Vec<&str> = org_days_owned.iter().map(|s| s.as_str()).collect();
+
     let courses: HashMap<i64, &Course> = input.courses.iter().map(|c| (c.id, c)).collect();
     let lecturers: HashMap<i64, &Lecturer> = input.lecturers.iter().map(|l| (l.id, l)).collect();
     let rooms: Vec<&Room> = input.rooms.iter().collect();
@@ -205,7 +220,7 @@ pub fn generate(input: &SchedulerInput) -> ScheduleResult {
         let mut placed = 0i64;
 
         // Build candidate (day, slot) list sorted by diversity score
-        let mut candidates: Vec<(&str, i64)> = DAYS
+        let mut candidates: Vec<(&str, i64)> = working_days
             .iter()
             .flat_map(|&d| TIME_SLOTS.iter().map(move |&s| (d, s)))
             .collect();
@@ -217,7 +232,7 @@ pub fn generate(input: &SchedulerInput) -> ScheduleResult {
                 .unwrap_or(&0);
             let sp = slot_penalty(class_type, *slot);
             let pp = preferred_penalty(&lecturer.preferred_slots_json, day, *slot);
-            let di = DAYS.iter().position(|&d| d == *day).unwrap_or(0) as i64;
+            let di = working_days.iter().position(|&d| d == *day).unwrap_or(0) as i64;
             (bdc, sp + pp, di, *slot)
         });
 

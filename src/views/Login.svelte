@@ -232,7 +232,13 @@
 
 <!-- Password Recovery Modal -->
 {#if showRecoveryModal}
-  <div class="modal-backdrop" on:click|self={closeRecovery}>
+  <div
+    class="modal-backdrop"
+    on:click|self={closeRecovery}
+    on:keydown|self={(e) => { if (e.key === 'Enter' || e.key === ' ') closeRecovery(); }}
+    role="button"
+    tabindex="-1"
+  >
     <div class="modal-card">
       <div class="modal-header">
         <h2>Recover Password</h2>

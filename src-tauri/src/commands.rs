@@ -602,7 +602,19 @@ pub fn generate_schedule(
         load_batches_scoped(&conn, org_filter)?
     };
 
-    let input = SchedulerInput { courses, lecturers, rooms, batches };
+    let working_days: Vec<String> = if let Some(org_id) = s.org_id {
+        conn.query_row(
+            "SELECT working_days FROM org_scheduling_settings WHERE org_id=?1",
+            params![org_id],
+            |row| row.get::<_, String>(0),
+        )
+        .unwrap_or_else(|_| "Mon,Tue,Wed,Thu,Fri".into())
+        .split(',').map(|d| d.trim().to_string()).collect()
+    } else {
+        vec!["Mon".into(),"Tue".into(),"Wed".into(),"Thu".into(),"Fri".into()]
+    };
+
+    let input = SchedulerInput { courses, lecturers, rooms, batches, working_days };
     let result = scheduler::generate(&input);
 
     let now = chrono::Local::now().to_rfc3339();
@@ -1112,7 +1124,7 @@ pub fn update_schedule_entry(
     req: UpdateScheduleEntryReq,
 ) -> Result<(), String> {
     require_session(&session)?;
-    let valid_days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    let valid_days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     if !valid_days.contains(&req.day.as_str()) {
         return Err(format!("Invalid day: {}", req.day));
     }

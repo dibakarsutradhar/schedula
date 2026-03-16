@@ -7,7 +7,25 @@
 
   const dispatch = createEventDispatcher()
 
-  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+  // Canonical day order used for sorting columns
+  const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+  // Optional prop: comma-separated working days from org settings.
+  // When provided, shows exactly those columns; otherwise shows all days
+  // that appear in entries (always includes Mon–Fri as baseline).
+  export let workingDays = ''
+
+  $: DAYS = (() => {
+    if (workingDays) {
+      return workingDays.split(',').map(d => d.trim()).filter(d => DAY_ORDER.includes(d))
+        .sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b))
+    }
+    const present = new Set(entries.map(e => e.day))
+    return DAY_ORDER.filter(d =>
+      ['Mon','Tue','Wed','Thu','Fri'].includes(d) || present.has(d)
+    )
+  })()
+
   const SLOTS = [0, 1, 2, 3, 4, 5, 6, 7]
   const SLOT_LABELS = [
     '08:00–09:00', '09:00–10:00', '10:00–11:00', '11:00–12:00',

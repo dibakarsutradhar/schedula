@@ -179,7 +179,13 @@
 
 <!-- Reject modal -->
 {#if rejectModal}
-  <div class="modal-backdrop" on:click|self={() => rejectModal = null}>
+  <div
+    class="modal-backdrop"
+    on:click|self={() => rejectModal = null}
+    on:keydown|self={(e) => { if (e.key === 'Enter' || e.key === ' ') rejectModal = null; }}
+    role="button"
+    tabindex="-1"
+  >
     <div class="modal-card">
       <div class="modal-header">
         <h2>Reject Request</h2>
@@ -191,8 +197,9 @@
           from <strong>@{rejectModal.requester_username}</strong>.
         </p>
         <div class="form-group">
-          <label class="form-label">Reason (required)</label>
+          <label class="form-label" for="rejection-reason">Reason (required)</label>
           <textarea
+            id="rejection-reason"
             class="form-input"
             rows="3"
             placeholder="Explain why this request is being rejected…"

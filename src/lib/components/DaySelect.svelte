@@ -2,7 +2,7 @@
 <script>
   export let value = 'Mon,Tue,Wed,Thu,Fri'
 
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
   $: selected = new Set(value ? value.split(',').map(d => d.trim()).filter(Boolean) : [])
 

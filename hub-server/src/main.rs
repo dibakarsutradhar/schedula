@@ -19,18 +19,25 @@ use serde_json::json;
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
+    sync::atomic::{AtomicUsize, Ordering},
+    time::Instant,
 };
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
 use tower_http::cors::CorsLayer;
 use clap::Parser;
 
+const HUB_UI: &str = include_str!("../ui/index.html");
+
 #[derive(Clone)]
 struct AppState {
-    db: Arc<Mutex<Connection>>,
+    db:         Arc<Mutex<Connection>>,
     jwt_secret: String,
-    tx: broadcast::Sender<String>,
-    db_path: PathBuf,
+    tx:         broadcast::Sender<String>,
+    db_path:    PathBuf,
+    ws_count:   Arc<AtomicUsize>,
+    start_time: Arc<Instant>,
+    listen_addr: String,
 }
 
 #[derive(Parser)]
@@ -86,6 +93,7 @@ async fn auth_middleware(
 async fn ws_handler(State(state): State<AppState>, ws: WebSocketUpgrade) -> Response {
     ws.on_upgrade(move |socket| async move {
         use axum::extract::ws::Message;
+        state.ws_count.fetch_add(1, Ordering::Relaxed);
         let mut rx = state.tx.subscribe();
         let (mut sender, _) = socket.split();
         while let Ok(msg) = rx.recv().await {
@@ -93,7 +101,38 @@ async fn ws_handler(State(state): State<AppState>, ws: WebSocketUpgrade) -> Resp
                 break;
             }
         }
+        state.ws_count.fetch_sub(1, Ordering::Relaxed);
     })
+}
+
+async fn ui_handler() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        [("content-type", "text/html; charset=utf-8")],
+        HUB_UI,
+    )
+}
+
+#[derive(serde::Serialize)]
+struct ServerStatus {
+    version:     &'static str,
+    uptime_secs: u64,
+    ws_clients:  usize,
+    listen_addr: String,
+    db_path:     String,
+    ws_endpoint: String,
+}
+
+async fn server_status_handler(State(state): State<AppState>) -> Response {
+    let uptime = state.start_time.elapsed().as_secs();
+    Json(ServerStatus {
+        version:     env!("CARGO_PKG_VERSION"),
+        uptime_secs: uptime,
+        ws_clients:  state.ws_count.load(Ordering::Relaxed),
+        listen_addr: state.listen_addr.clone(),
+        db_path:     state.db_path.display().to_string(),
+        ws_endpoint: format!("ws://{}/ws", state.listen_addr),
+    }).into_response()
 }
 
 // ─── Auth handlers ────────────────────────────────────────────────────────────
@@ -886,16 +925,23 @@ async fn main() {
     let db_path = PathBuf::from(&args.db_path);
     let conn = db::open(&db_path).expect("Failed to open database");
     let (tx, _) = broadcast::channel(64);
+    let listen_addr = format!("0.0.0.0:{}", args.port);
 
     let state = AppState {
         db: Arc::new(Mutex::new(conn)),
         jwt_secret,
         tx,
         db_path,
+        ws_count:    Arc::new(AtomicUsize::new(0)),
+        start_time:  Arc::new(Instant::now()),
+        listen_addr: listen_addr.clone(),
     };
 
     // Public routes (no auth required)
     let public_routes = Router::new()
+        .route("/",          get(ui_handler))
+        .route("/admin",     get(ui_handler))
+        .route("/api/server/status", get(server_status_handler))
         .route("/api/auth/login", post(login_handler))
         .route("/api/auth/logout", post(logout_handler))
         .route("/api/auth/has-users", get(has_users_handler))
@@ -994,12 +1040,12 @@ async fn main() {
         .layer(CorsLayer::very_permissive())
         .with_state(state);
 
-    let addr = format!("0.0.0.0:{}", args.port);
-    println!("Schedula Hub Server v0.1.0");
-    println!("Listening on http://{}", addr);
-    println!("Database: {}", args.db_path);
-    println!("WebSocket: ws://{}/ws", addr);
+    println!("Schedula Hub Server v{}", env!("CARGO_PKG_VERSION"));
+    println!("Listening on  http://{}", listen_addr);
+    println!("Admin UI      http://{}/", listen_addr);
+    println!("Database:     {}", args.db_path);
+    println!("WebSocket:    ws://{}/ws", listen_addr);
 
-    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&listen_addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

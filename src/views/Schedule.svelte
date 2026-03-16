@@ -11,7 +11,9 @@
     getUtilizationReport, updateScheduleEntry,
     publishSchedule, revertScheduleToDraft,
     getPreflightWarnings, updateScheduleDescription,
+    getSchedulingSettings,
   } from '../lib/api.js'
+  import { session } from '../lib/stores/session.js'
   import { toast } from '../lib/toast.js'
 
   let schedules = []
@@ -45,6 +47,8 @@
   let editingEntry = null
   let editForm = { day: 'Mon', time_slot: 0, room_id: null }
   let savingEdit = false
+
+  let workingDays = ''   // comma-separated from org scheduling settings
 
   $: activeSchedule = schedules.find(s => s.id === selectedId)
   $: activeSemester  = semesters.find(s => s.id === activeSchedule?.semester_id) ?? null
@@ -85,6 +89,13 @@
     ;[schedules, batches, semesters, rooms] = await Promise.all([getSchedules(), getBatches(), getSemesters(), getRooms()])
     const active = schedules.find(s => s.is_active)
     if (active) await selectSchedule(active.id)
+    const orgId = $session?.org_id
+    if (orgId) {
+      try {
+        const s = await getSchedulingSettings(orgId)
+        workingDays = s.working_days || ''
+      } catch { /* leave empty — Timetable will derive from entries */ }
+    }
   })
 
   async function selectSchedule(id) {
@@ -277,7 +288,14 @@
   // HTML timetable export
   function exportHtml() {
     if (!selectedId || !entries.length) return
-    const DAYS = ['Mon','Tue','Wed','Thu','Fri']
+    const DAY_ORDER = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+    const DAYS = workingDays
+      ? workingDays.split(',').map(d => d.trim()).filter(d => DAY_ORDER.includes(d))
+          .sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b))
+      : (() => {
+          const present = new Set(entries.map(e => e.day))
+          return DAY_ORDER.filter(d => ['Mon','Tue','Wed','Thu','Fri'].includes(d) || present.has(d))
+        })()
     const SLOTS = [0,1,2,3,4,5,6,7]
     const slotL = ['08:00–09:00','09:00–10:00','10:00–11:00','11:00–12:00','13:00–14:00','14:00–15:00','15:00–16:00','16:00–17:00']
 
@@ -526,14 +544,21 @@ ${tables}
             <button class="btn btn-primary btn-sm" on:click={saveDescription}>Save</button>
             <button class="btn btn-secondary btn-sm" on:click={() => editingDescription = false}>Cancel</button>
           {:else}
-            <span class="desc-text" on:click={startEditDescription} title="Click to edit notes">
+            <span
+              class="desc-text"
+              on:click={startEditDescription}
+              on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditDescription(); }}
+              role="button"
+              tabindex="0"
+              title="Click to edit notes"
+            >
               {activeSchedule?.description || '+ Add notes…'}
             </span>
           {/if}
         </div>
 
         {#if tab === 'timetable'}
-          <Timetable entries={filteredEntries} editable={true} conflictKeys={conflictKeys} on:editEntry={e => openEditModal(e.detail)} />
+          <Timetable entries={filteredEntries} editable={true} conflictKeys={conflictKeys} {workingDays} on:editEntry={e => openEditModal(e.detail)} />
 
         {:else if tab === 'list'}
           <div class="table-wrap">

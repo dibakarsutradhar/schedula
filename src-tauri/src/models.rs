@@ -245,7 +245,7 @@ pub struct Schedule {
 
 // ─── Scheduling constants ─────────────────────────────────────────────────────
 
-pub const DAYS: &[&str] = &["Mon", "Tue", "Wed", "Thu", "Fri"];
+pub const DAYS: &[&str] = &["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 pub const TIME_SLOTS: &[i64] = &[0, 1, 2, 3, 4, 5, 6, 7];
 
 pub fn slot_label(slot: i64) -> &'static str {
