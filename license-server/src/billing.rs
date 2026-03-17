@@ -314,9 +314,9 @@ pub async fn success_handler() -> impl IntoResponse {
   <div class="card">
     <div class="icon">✓</div>
     <h1>You're all set!</h1>
-    <p>Your Schedula subscription is now active. Check your email — your license key will arrive shortly.</p>
-    <p>Once you receive it, paste it into your Hub admin panel under<br>
-       <code>Settings → License → Activate License</code></p>
+    <p>Your Schedula subscription is now active. Check your email — your activation code will arrive shortly.</p>
+    <p>Once you receive it, open the Schedula app on your hub machine and go to<br>
+       <code>Settings → Sync → License → Enter activation code</code></p>
     <p style="margin-top:2rem"><a href="/">← Back to Schedula</a></p>
   </div>
 </body>
@@ -365,40 +365,37 @@ async fn handle_subscription_active(
         return;
     }
 
-    // Issue license JWT valid until period_end + 7-day buffer
+    // Generate a single-use activation code (30-min TTL).
+    // The JWT itself is never sent via email — the hub redeems the code server-to-server.
     let expiry_days = {
-        let now  = Utc::now().timestamp();
-        let end  = period_end + 7 * 86400;
+        let now = Utc::now().timestamp();
+        let end = period_end + 7 * 86400;
         ((end - now) / 86400).max(1)
     };
 
-    let result = {
+    let code = crate::generate_activation_code();
+    let store_result = {
         let conn = state.db.lock().unwrap();
-        crate::issue_license_core(&conn, &state.encoding_key, &plan,
-                                  Some(email.as_str()), Some(expiry_days))
+        crate::store_activation_code(
+            &conn, &code, &email, &plan,
+            None, // org_name — customer hasn't provided one at checkout
+            Some(expiry_days),
+        )
     };
 
-    match result {
-        Ok((token, jti)) => {
-            {
-                let conn = state.db.lock().unwrap();
-                conn.execute(
-                    "UPDATE customers SET jti=?1 WHERE stripe_customer_id=?2",
-                    params![jti, customer_id],
-                ).ok();
-            }
-
+    match store_result {
+        Ok(()) => {
             let is_new   = event_type == "customer.subscription.created";
             let is_trial = status == "trialing";
 
             if is_new && is_trial {
-                send_trial_started_email(state, &email, &token,
+                send_trial_started_email(state, &email, &code,
                                          trial_end_str.as_deref()).await;
             } else {
-                send_license_email(state, &email, &token, &plan, &period_end_str).await;
+                send_activation_code_email(state, &email, &code, &plan, &period_end_str).await;
             }
         }
-        Err(e) => tracing::error!("Failed to issue license for {}: {}", email, e),
+        Err(e) => tracing::error!("Failed to store activation code for {}: {}", email, e),
     }
 }
 
@@ -532,32 +529,35 @@ fn verify_stripe_signature(payload: &[u8], sig_header: &str, secret: &str) -> bo
 
 // ─── Email senders ────────────────────────────────────────────────────────────
 
-async fn send_license_email(
+async fn send_activation_code_email(
     state:      &crate::AppState,
     to:         &str,
-    token:      &str,
+    code:       &str,
     plan:       &str,
     period_end: &str,
 ) {
     let label = plan_label(plan);
-    let subject = format!("Your Schedula {label} License Key");
+    let subject = format!("Activate your Schedula {label} subscription");
     let body = format!(
 "Hello,
 
 Thank you for subscribing to Schedula {label}!
 
-Your license key is:
+Your activation code is:
 
-{token}
+  {code}
 
-To activate it, open your Schedula Hub admin panel and go to:
-  Settings → License → Activate License
+To activate, open the Schedula app on your hub machine and go to:
+  Settings → Sync → License → Enter activation code
 
-Paste the key into the text field and click Activate.
+Type or paste the code above and click Activate. The hub will contact
+our servers directly to verify your subscription — no copy-pasting of
+long tokens required.
+
+This code expires in 30 minutes. If it expires before you use it,
+reply to this email and we will send a new one.
 
 Your subscription is active until {period_end}.
-
-If you have questions, just reply to this email.
 
 — The Schedula Team"
     );
@@ -567,7 +567,7 @@ If you have questions, just reply to this email.
 async fn send_trial_started_email(
     state:     &crate::AppState,
     to:        &str,
-    token:     &str,
+    code:      &str,
     trial_end: Option<&str>,
 ) {
     let trial_info = trial_end
@@ -583,12 +583,15 @@ Welcome to Schedula Pro! Your 14-day free trial is now active.
 
 {trial_info}
 
-Your trial license key is:
+Your activation code is:
 
-{token}
+  {code}
 
-To activate it, open your Schedula Hub admin panel and go to:
-  Settings → License → Activate License
+To activate, open the Schedula app on your hub machine and go to:
+  Settings → Sync → License → Enter activation code
+
+Type or paste the code above and click Activate. This code expires
+in 30 minutes — if it expires, reply to this email for a new one.
 
 After your trial, your card on file will be charged automatically.
 You can manage or cancel your subscription at any time:

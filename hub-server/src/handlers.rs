@@ -40,18 +40,14 @@ pub fn get_license(conn: &Connection) -> Result<LicenseInfo, String> {
     Ok(crate::license::get_license_info(conn))
 }
 
-pub fn activate_license(conn: &Connection, req: ActivateLicenseReq) -> Result<LicenseInfo, String> {
-    let token = req.token.trim().to_string();
+/// Direct-token activation (used by admin tooling / invoice flow).
+/// Code-based activation is handled asynchronously in the route handler itself.
+pub fn activate_license_with_token(conn: &Connection, token: &str) -> Result<LicenseInfo, String> {
     if token.is_empty() {
         return Err("License token is required".into());
     }
-
-    // Validate JWT signature + expiry with embedded public key
-    let claims = crate::license::validate_token(&token)?;
-
-    // Store in DB (expires old licenses)
-    crate::license::store_license(conn, &claims, &token)?;
-
+    let claims = crate::license::validate_token(token)?;
+    crate::license::store_license(conn, &claims, token)?;
     Ok(crate::license::get_license_info(conn))
 }
 

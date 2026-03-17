@@ -168,14 +168,37 @@ async fn get_license_handler(State(state): State<AppState>) -> Response {
 
 async fn activate_license_handler(
     State(state): State<AppState>,
-    Extension(sess): Extension<SessionPayload>,
     Json(body): Json<models::ActivateLicenseReq>,
 ) -> Response {
-    if sess.role != "super_admin" {
-        return (axum::http::StatusCode::FORBIDDEN, "Super admin access required").into_response();
-    }
-    let conn = state.db.lock().unwrap();
-    let result = handlers::activate_license(&conn, body);
+    // Resolve the JWT: either redeem an activation code (new flow) or accept a
+    // raw JWT directly (legacy / admin-issued tokens).
+    let (claims, token) = match (&body.code, &body.token) {
+        (Some(code), _) => {
+            // Code path: hub calls license server, gets JWT back server-to-server
+            match license::activate_with_code(code.trim()).await {
+                Ok(ct) => ct,
+                Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({"error": e}))).into_response(),
+            }
+        }
+        (None, Some(token)) => {
+            // Legacy path: caller supplied a raw JWT (admin tooling / invoice flow)
+            match license::validate_token(token.trim()) {
+                Ok(c)  => (c, token.trim().to_string()),
+                Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({"error": e}))).into_response(),
+            }
+        }
+        (None, None) => {
+            return (StatusCode::BAD_REQUEST,
+                    Json(json!({"error": "Provide either 'code' or 'token'"}))).into_response();
+        }
+    };
+
+    let result = {
+        let conn = state.db.lock().unwrap();
+        license::store_license(&conn, &claims, &token)
+            .map(|_| license::get_license_info(&conn))
+    };
+
     if result.is_ok() {
         broadcast_change(&state.tx, "license", "activate");
     }

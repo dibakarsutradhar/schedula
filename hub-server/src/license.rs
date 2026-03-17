@@ -353,6 +353,59 @@ async fn do_refresh(
     }
 }
 
+// ─── Activation code redemption ───────────────────────────────────────────────
+
+#[derive(serde::Deserialize)]
+struct ActivateCodeResponse {
+    token: String,
+}
+
+/// Redeem a single-use activation code with the license server.
+/// Returns the validated `LicenseClaims` on success.
+///
+/// The flow:
+///   hub  →  POST {license_url}/v1/activate { code }
+///   hub  ←  { token, jti, plan, … }
+///   hub validates RS256 signature locally (paranoia check)
+///   hub stores JWT in SQLite
+pub async fn activate_with_code(code: &str) -> Result<(LicenseClaims, String), String> {
+    let license_url = std::env::var("SCHEDULA_LICENSE_URL")
+        .unwrap_or_else(|_| DEFAULT_LICENSE_URL.to_string());
+    let url = format!("{}/v1/activate", license_url);
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let resp = client
+        .post(&url)
+        .json(&serde_json::json!({ "code": code }))
+        .send()
+        .await
+        .map_err(|e| format!("Could not reach license server: {e}"))?;
+
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Err("Invalid activation code — check for typos and try again.".into());
+    }
+    if resp.status() == reqwest::StatusCode::GONE {
+        let body: serde_json::Value = resp.json().await.unwrap_or_default();
+        return Err(body["error"].as_str().unwrap_or("Activation code is expired or already used.").to_string());
+    }
+    if !resp.status().is_success() {
+        let body: serde_json::Value = resp.json().await.unwrap_or_default();
+        return Err(body["error"].as_str().unwrap_or("Activation failed").to_string());
+    }
+
+    let data: ActivateCodeResponse = resp.json().await
+        .map_err(|e| format!("Unexpected response from license server: {e}"))?;
+
+    // Validate the returned JWT locally with the embedded public key
+    let claims = validate_token(&data.token)?;
+
+    Ok((claims, data.token))
+}
+
 // ─── Background refresh loop ──────────────────────────────────────────────────
 
 /// Spawned as a tokio task on hub startup.

@@ -4,6 +4,7 @@
 ///
 /// Routes:
 ///   POST /v1/issue             — (admin-key) issue a new license JWT
+///   POST /v1/activate          — (public) redeem a single-use activation code → returns JWT
 ///   POST /v1/validate          — validate a token (called by hub on 24 h re-check)
 ///   POST /v1/refresh           — daily refresh: returns new 48-hour JWT + today's symmetric key
 ///   GET  /v1/licenses          — (admin-key) list all issued licenses
@@ -286,6 +287,19 @@ fn open_db(path: &str) -> Connection {
             created_at         TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
+        -- Single-use activation codes issued on payment; burned when the hub redeems them.
+        -- The JWT is never stored in email — only the short-lived code is.
+        CREATE TABLE IF NOT EXISTS activation_codes (
+            code          TEXT    PRIMARY KEY,
+            customer_email TEXT   NOT NULL,
+            plan          TEXT    NOT NULL,
+            org_name      TEXT,
+            duration_days INTEGER,
+            expires_at    TEXT    NOT NULL,    -- ISO-8601 UTC; code is invalid after this
+            used_at       TEXT,               -- NULL = not yet used
+            jti           TEXT               -- set to the license JTI when redeemed
+        );
+
         CREATE TABLE IF NOT EXISTS invoice_requests (
             id            TEXT PRIMARY KEY,
             org_name      TEXT NOT NULL,
@@ -376,6 +390,38 @@ pub fn issue_license_core(
     Ok((token, jti))
 }
 
+// ─── Activation codes ─────────────────────────────────────────────────────────
+
+/// Generate a short, human-readable single-use activation code.
+/// Format: `SCHED-XXXX-XXXX-XXXX-XXXX`  (16 uppercase hex chars, 64-bit entropy).
+/// Sufficient for a short-lived (30-minute) code — brute-force infeasible.
+pub fn generate_activation_code() -> String {
+    use rand::Rng;
+    let bytes: [u8; 8] = rand::thread_rng().gen();
+    let hex = bytes.iter().map(|b| format!("{:02X}", b)).collect::<String>();
+    format!("SCHED-{}-{}-{}-{}", &hex[0..4], &hex[4..8], &hex[8..12], &hex[12..16])
+}
+
+/// Store an activation code tied to an email + plan.
+/// `duration_days`: None = perpetual, Some(n) = expires after n days from activation.
+pub fn store_activation_code(
+    conn:          &Connection,
+    code:          &str,
+    customer_email: &str,
+    plan:          &str,
+    org_name:      Option<&str>,
+    duration_days: Option<i64>,
+) -> Result<(), String> {
+    let expires_at = (chrono::Utc::now() + chrono::Duration::minutes(30)).to_rfc3339();
+    conn.execute(
+        "INSERT INTO activation_codes
+             (code, customer_email, plan, org_name, duration_days, expires_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![code, customer_email, plan, org_name, duration_days, expires_at],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
 /// POST /v1/issue — issue a new license JWT (admin only)
@@ -408,6 +454,76 @@ async fn issue_handler(
                 org_name:   body.org_name,
                 expires_at,
             }).into_response()
+        }
+        Err(e) => json_err(&e),
+    }
+}
+
+/// POST /v1/activate — redeem a single-use activation code, receive a JWT
+///
+/// Called by the hub directly (server-to-server). The JWT is never sent via email;
+/// only the short-lived code is. This keeps the actual license credential off email.
+async fn activate_handler(
+    State(state): State<AppState>,
+    Json(body):   Json<serde_json::Value>,
+) -> Response {
+    let code = match body["code"].as_str() {
+        Some(c) => c.trim().to_uppercase(),
+        None    => return json_err("'code' field is required"),
+    };
+
+    let conn = state.db.lock().unwrap();
+
+    // Look up the code
+    let row: Option<(String, String, Option<String>, Option<i64>, String, Option<String>)> = conn.query_row(
+        "SELECT customer_email, plan, org_name, duration_days, expires_at, used_at
+         FROM activation_codes WHERE code=?1",
+        params![code],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)),
+    ).ok();
+
+    let (customer_email, plan, org_name, duration_days, expires_at_str, used_at) = match row {
+        Some(r) => r,
+        None    => return (StatusCode::NOT_FOUND,
+                           Json(serde_json::json!({"error": "Invalid activation code"}))).into_response(),
+    };
+
+    if used_at.is_some() {
+        return (StatusCode::GONE,
+                Json(serde_json::json!({"error": "Activation code has already been used"}))).into_response();
+    }
+
+    // Check expiry
+    if let Ok(exp) = chrono::DateTime::parse_from_rfc3339(&expires_at_str) {
+        if chrono::Utc::now() > exp {
+            return (StatusCode::GONE,
+                    Json(serde_json::json!({"error": "Activation code has expired. Request a new one from your confirmation email or contact support."}))).into_response();
+        }
+    }
+
+    // Issue the JWT
+    match issue_license_core(&conn, &state.encoding_key, &plan, org_name.as_deref(), duration_days) {
+        Ok((token, jti)) => {
+            // Burn the code immediately (single-use)
+            let now = chrono::Utc::now().to_rfc3339();
+            conn.execute(
+                "UPDATE activation_codes SET used_at=?1, jti=?2 WHERE code=?3",
+                params![now, jti, code],
+            ).ok();
+
+            let expires_at: Option<String> = conn.query_row(
+                "SELECT expires_at FROM licenses WHERE jti=?1",
+                params![jti],
+                |r| r.get(0),
+            ).ok();
+
+            Json(serde_json::json!({
+                "token":      token,
+                "jti":        jti,
+                "plan":       plan,
+                "org_name":   org_name,
+                "expires_at": expires_at,
+            })).into_response()
         }
         Err(e) => json_err(&e),
     }
@@ -750,6 +866,7 @@ async fn main() {
     let app = Router::new()
         // ── License management ──────────────────────────────────────────────
         .route("/v1/issue",           post(issue_handler))
+        .route("/v1/activate",        post(activate_handler))
         .route("/v1/validate",        post(validate_handler))
         .route("/v1/refresh",         post(refresh_handler))
         .route("/v1/licenses",        get(list_licenses_handler))

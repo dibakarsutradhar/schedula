@@ -86,7 +86,7 @@
       const res = await fetch(`${url}/api/license/activate`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ token }),
+        body:    JSON.stringify({ code: token }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Activation failed')
@@ -923,15 +923,18 @@
             <!-- Activation form -->
             {#if !licenseInfo?.active}
               <div class="license-form">
-                <textarea
-                  class="form-input license-token-input"
+                <div class="license-code-hint">Enter the activation code from your confirmation email:</div>
+                <input
+                  class="form-input license-code-input"
                   bind:value={licenseToken}
-                  placeholder="Paste your license token (eyJ…)"
-                  rows="3"
+                  placeholder="SCHED-XXXX-XXXX-XXXX-XXXX"
                   spellcheck="false"
-                ></textarea>
+                  autocomplete="off"
+                  autocapitalize="characters"
+                  on:input={e => licenseToken = e.target.value.toUpperCase()}
+                />
                 <button class="btn btn-primary" disabled={licenseLoading || !licenseToken.trim()} on:click={activateLicense}>
-                  {licenseLoading ? 'Activating…' : 'Activate License'}
+                  {licenseLoading ? 'Activating…' : 'Activate'}
                 </button>
               </div>
             {:else}
@@ -1105,6 +1108,7 @@
   .license-org    { font-size: 12px; color: var(--text); }
   .license-expiry { font-size: 12px; color: var(--text-muted); }
   .license-form { display: flex; flex-direction: column; gap: 10px; }
-  .license-token-input { font-family: monospace; font-size: 11px; resize: vertical; }
+  .license-code-hint { font-size: 12px; color: var(--text-muted); }
+  .license-code-input { font-family: monospace; font-size: 14px; letter-spacing: .05em; text-transform: uppercase; }
   .license-no-hub { font-size: 13px; color: var(--text-muted); padding: 12px 0; }
 </style>

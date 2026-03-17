@@ -548,9 +548,14 @@ pub struct LicenseClaims {
 }
 
 /// Body for POST /api/license/activate.
+/// Exactly one of `code` or `token` must be provided.
+///   `code`  — a single-use activation code (e.g. "SCHED-XXXX-XXXX-XXXX-XXXX")
+///             Hub redeems it server-to-server; JWT never travels via email.
+///   `token` — a raw JWT (legacy path; used by admin tooling / invoice flow).
 #[derive(Debug, Deserialize)]
 pub struct ActivateLicenseReq {
-    pub token: String,              // the raw JWT issued by the license server
+    pub code:  Option<String>,
+    pub token: Option<String>,
 }
 
 /// Structured error payload when a plan limit is exceeded.
