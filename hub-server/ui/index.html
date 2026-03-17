@@ -404,6 +404,11 @@
         <span class="nav-badge" id="approval-badge" style="display:none"></span>
       </button>
 
+      <div class="nav-section">Subscription</div>
+      <button class="nav-item" data-page="license" onclick="navigate('license', this)">
+        🔑 License
+      </button>
+
       <div class="nav-section">Logs</div>
       <button class="nav-item" data-page="audit" onclick="navigate('audit', this)">
         📋 Audit Log
@@ -480,6 +485,73 @@
                 <span class="status-key">DB size</span>
                 <span class="status-val" id="s-dbsize">—</span>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LICENSE PAGE -->
+      <div class="page" id="page-license">
+        <div class="page-title">License</div>
+        <div class="page-sub">Manage your Schedula subscription license.</div>
+
+        <!-- Current status card -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header">
+            <span class="card-title">Current License</span>
+            <span id="lic-spinner" style="display:none"><span class="spinner"></span></span>
+          </div>
+          <div id="lic-status-block" style="padding:16px 0">
+            <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Plan</div>
+                <div id="lic-plan" style="font-size:1.5rem;font-weight:700;margin-top:2px">—</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Status</div>
+                <div id="lic-status-badge" style="margin-top:4px">—</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Organisation</div>
+                <div id="lic-org" style="margin-top:4px">—</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Expires</div>
+                <div id="lic-expires" style="margin-top:4px">—</div>
+              </div>
+              <div>
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">Last Validated</div>
+                <div id="lic-validated" style="margin-top:4px">—</div>
+              </div>
+            </div>
+            <div id="lic-grace-warn" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);font-size:13px;color:#f59e0b">
+              ⚠ Running in grace period — license server unreachable. Hub will downgrade to Free if validation fails for 7 days.
+            </div>
+            <div id="lic-deactivate-wrap" style="display:none;margin-top:14px">
+              <button class="btn btn-sm btn-danger" onclick="deactivateLicense()">Remove License</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activate card -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Activate License</span>
+          </div>
+          <div style="padding:16px 0">
+            <p style="font-size:13px;margin:0 0 12px">
+              Paste your license JWT below. Obtain a license from
+              <a href="https://schedula.app/pricing" target="_blank" style="color:var(--accent)">schedula.app/pricing</a>.
+            </p>
+            <textarea
+              id="lic-token-input"
+              rows="5"
+              placeholder="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+              style="width:100%;box-sizing:border-box;font-family:monospace;font-size:12px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);resize:vertical"
+            ></textarea>
+            <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+              <button class="btn btn-primary" onclick="activateLicenseFromUI()">Activate</button>
+              <span id="lic-activate-msg" style="font-size:13px"></span>
             </div>
           </div>
         </div>
@@ -744,6 +816,7 @@ function navigate(page, btn) {
   if (page === 'approvals') loadApprovals()
   if (page === 'audit')     loadAudit()
   if (page === 'status')    loadStatus()
+  if (page === 'license')   loadLicense()
 }
 
 // ── Load all on first render ───────────────────────────────────────────────
@@ -779,6 +852,73 @@ async function loadStatus() {
   } catch(e) {
     document.getElementById('s-status').innerHTML = '<span class="badge badge-red">● Error</span>'
     console.error(e)
+  }
+}
+
+// ── License page ────────────────────────────────────────────────────────────
+async function loadLicense() {
+  document.getElementById('lic-spinner').style.display = 'inline'
+  try {
+    const info = await api('GET', '/api/license')
+    renderLicense(info)
+  } catch (e) {
+    document.getElementById('lic-status-block').innerHTML = `<span style="color:var(--red)">Failed to load license info: ${e}</span>`
+  } finally {
+    document.getElementById('lic-spinner').style.display = 'none'
+  }
+}
+
+function renderLicense(info) {
+  const PLAN_LABELS = { free: '🆓 Free', pro: '⭐ Pro', institution: '🏛 Institution' }
+  const STATUS_BADGES = {
+    active:  '<span class="badge badge-green">Active</span>',
+    grace:   '<span class="badge badge-amber">Grace Period</span>',
+    expired: '<span class="badge badge-red">Expired</span>',
+    none:    '<span class="badge">None</span>',
+  }
+  document.getElementById('lic-plan').textContent = PLAN_LABELS[info.plan] ?? info.plan
+  document.getElementById('lic-status-badge').innerHTML = STATUS_BADGES[info.status] ?? info.status
+  document.getElementById('lic-org').textContent = info.org_name ?? '—'
+
+  const expiresEl = document.getElementById('lic-expires')
+  if (info.expires_at) {
+    const days = info.days_until_expiry
+    expiresEl.textContent = `${info.expires_at.slice(0,10)} (${days}d left)`
+  } else {
+    expiresEl.textContent = info.active ? 'Perpetual' : '—'
+  }
+
+  document.getElementById('lic-validated').textContent =
+    info.last_validated_at ? info.last_validated_at.slice(0,16).replace('T',' ') : '—'
+
+  document.getElementById('lic-grace-warn').style.display = info.status === 'grace' ? 'block' : 'none'
+  document.getElementById('lic-deactivate-wrap').style.display = info.active ? 'block' : 'none'
+}
+
+async function activateLicenseFromUI() {
+  const token = document.getElementById('lic-token-input').value.trim()
+  const msgEl = document.getElementById('lic-activate-msg')
+  if (!token) { msgEl.style.color='var(--danger)'; msgEl.textContent = 'Paste a license token first.'; return }
+  msgEl.textContent = 'Activating…'
+  try {
+    const info = await api('POST', '/api/license/activate', { token })
+    renderLicense(info)
+    document.getElementById('lic-token-input').value = ''
+    msgEl.style.color = 'var(--success)'
+    msgEl.textContent = `✓ License activated — plan: ${info.plan}`
+  } catch (e) {
+    msgEl.style.color = 'var(--danger)'
+    msgEl.textContent = `Error: ${e}`
+  }
+}
+
+async function deactivateLicense() {
+  if (!confirm('Remove the active license? The hub will revert to the Free plan.')) return
+  try {
+    await api('POST', '/api/license/deactivate')
+    await loadLicense()
+  } catch (e) {
+    alert('Error: ' + e)
   }
 }
 

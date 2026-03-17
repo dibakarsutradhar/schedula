@@ -3,6 +3,7 @@ mod models;
 mod scheduler;
 mod auth;
 mod handlers;
+mod license;
 
 use axum::{
     extract::{Path, Query, State, WebSocketUpgrade},
@@ -133,6 +134,54 @@ async fn server_status_handler(State(state): State<AppState>) -> Response {
         db_path:     state.db_path.display().to_string(),
         ws_endpoint: format!("ws://{}/ws", state.listen_addr),
     }).into_response()
+}
+
+// ─── Plan handler ─────────────────────────────────────────────────────────────
+
+async fn plan_handler(
+    State(state): State<AppState>,
+    Extension(sess): Extension<SessionPayload>,
+) -> Response {
+    let conn = state.db.lock().unwrap();
+    to_response(handlers::get_plan(&conn, &sess))
+}
+
+// ─── License handlers ─────────────────────────────────────────────────────────
+
+async fn get_license_handler(State(state): State<AppState>) -> Response {
+    let conn = state.db.lock().unwrap();
+    to_response(handlers::get_license(&conn))
+}
+
+async fn activate_license_handler(
+    State(state): State<AppState>,
+    Extension(sess): Extension<SessionPayload>,
+    Json(body): Json<models::ActivateLicenseReq>,
+) -> Response {
+    if sess.role != "super_admin" {
+        return (axum::http::StatusCode::FORBIDDEN, "Super admin access required").into_response();
+    }
+    let conn = state.db.lock().unwrap();
+    let result = handlers::activate_license(&conn, body);
+    if result.is_ok() {
+        broadcast_change(&state.tx, "license", "activate");
+    }
+    to_response(result)
+}
+
+async fn deactivate_license_handler(
+    State(state): State<AppState>,
+    Extension(sess): Extension<SessionPayload>,
+) -> Response {
+    if sess.role != "super_admin" {
+        return (axum::http::StatusCode::FORBIDDEN, "Super admin access required").into_response();
+    }
+    let conn = state.db.lock().unwrap();
+    let result = handlers::deactivate_license(&conn);
+    if result.is_ok() {
+        broadcast_change(&state.tx, "license", "deactivate");
+    }
+    to_response(result)
 }
 
 // ─── Auth handlers ────────────────────────────────────────────────────────────
@@ -527,6 +576,7 @@ struct GenerateScheduleBody {
     schedule_name: String,
     semester_id: Option<i64>,
     description: Option<String>,
+    algorithm: Option<String>,
 }
 
 async fn generate_schedule_handler(
@@ -535,7 +585,7 @@ async fn generate_schedule_handler(
     Json(body): Json<GenerateScheduleBody>,
 ) -> Response {
     let conn = state.db.lock().unwrap();
-    let result = handlers::generate_schedule(&conn, &sess, body.schedule_name, body.semester_id, body.description);
+    let result = handlers::generate_schedule(&conn, &sess, body.schedule_name, body.semester_id, body.description, body.algorithm);
     if result.is_ok() { broadcast_change(&state.tx, "schedules", "create"); }
     to_response(result)
 }
@@ -924,6 +974,10 @@ async fn main() {
 
     let db_path = PathBuf::from(&args.db_path);
     let conn = db::open(&db_path).expect("Failed to open database");
+
+    // Startup license check: expire any lapsed tokens, log current plan
+    license::startup_license_check(&conn);
+
     let (tx, _) = broadcast::channel(64);
     let listen_addr = format!("0.0.0.0:{}", args.port);
 
@@ -936,6 +990,9 @@ async fn main() {
         start_time:  Arc::new(Instant::now()),
         listen_addr: listen_addr.clone(),
     };
+
+    // Background license re-validation every 24 h
+    tokio::spawn(license::background_validation_loop(state.db.clone()));
 
     // Public routes (no auth required)
     let public_routes = Router::new()
@@ -951,7 +1008,8 @@ async fn main() {
         .route("/api/approvals", post(create_approval_handler))
         .route("/api/approvals/my/:username", get(get_my_approval_status_handler))
         .route("/ws", get(ws_handler))
-        .route("/health", get(|| async { Json(json!({"status": "ok"})) }));
+        .route("/health", get(|| async { Json(json!({"status": "ok"})) }))
+        .route("/api/license", get(get_license_handler));
 
     // Protected routes (JWT required)
     let protected_routes = Router::new()
@@ -995,6 +1053,11 @@ async fn main() {
         .route("/api/batches", post(create_batch_handler))
         .route("/api/batches/:id", put(update_batch_handler))
         .route("/api/batches/:id", delete(delete_batch_handler))
+        // Plan / subscription
+        .route("/api/plan", get(plan_handler))
+        // License
+        .route("/api/license/activate",   post(activate_license_handler))
+        .route("/api/license/deactivate", post(deactivate_license_handler))
         // Schedules
         .route("/api/schedules/generate", post(generate_schedule_handler))
         .route("/api/schedules", get(get_schedules_handler))

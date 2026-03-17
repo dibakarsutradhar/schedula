@@ -43,11 +43,6 @@ pub struct NewUser {
     pub org_id: Option<i64>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct LoginRequest {
-    pub username: String,
-    pub password: String,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionPayload {
@@ -245,9 +240,11 @@ pub struct Schedule {
 
 // ─── Scheduling constants ─────────────────────────────────────────────────────
 
+#[allow(dead_code)]
 pub const DAYS: &[&str] = &["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 pub const TIME_SLOTS: &[i64] = &[0, 1, 2, 3, 4, 5, 6, 7];
 
+#[allow(dead_code)]
 pub fn slot_label(slot: i64) -> &'static str {
     match slot {
         0 => "08:00–09:00",
@@ -451,4 +448,121 @@ pub struct BulkImportResult {
     pub inserted: i64,
     pub skipped: i64,
     pub errors: Vec<String>,
+}
+
+// ─── Subscription / Plan ──────────────────────────────────────────────────────
+
+pub const PLAN_FREE: &str        = "free";
+pub const PLAN_PRO: &str         = "pro";
+pub const PLAN_INSTITUTION: &str = "institution";
+pub const UPGRADE_URL: &str      = "https://schedula.app/pricing";
+
+/// Feature entitlements and numeric limits for each plan tier.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlanLimits {
+    pub max_batches: i64,         // -1 = unlimited
+    pub max_admins: i64,          // -1 = unlimited
+    pub csp_algorithm: bool,
+    pub multi_org: bool,
+    pub bulk_import: bool,
+    pub utilization_reports: bool,
+    pub audit_log_days: i64,      // 0 = disabled, -1 = unlimited
+    pub multi_machine_sync: bool,
+}
+
+impl PlanLimits {
+    pub fn for_plan(plan: &str) -> Self {
+        match plan {
+            PLAN_PRO => Self {
+                max_batches:          50,
+                max_admins:           5,
+                csp_algorithm:        true,
+                multi_org:            true,
+                bulk_import:          true,
+                utilization_reports:  true,
+                audit_log_days:       30,
+                multi_machine_sync:   true,
+            },
+            PLAN_INSTITUTION => Self {
+                max_batches:          -1,
+                max_admins:           -1,
+                csp_algorithm:        true,
+                multi_org:            true,
+                bulk_import:          true,
+                utilization_reports:  true,
+                audit_log_days:       -1,
+                multi_machine_sync:   true,
+            },
+            _ => Self { // free
+                max_batches:          10,
+                max_admins:           1,
+                csp_algorithm:        false,
+                multi_org:            false,
+                bulk_import:          false,
+                utilization_reports:  false,
+                audit_log_days:       0,
+                multi_machine_sync:   false,
+            },
+        }
+    }
+}
+
+/// Returned by GET /api/plan (and the Tauri get_plan command).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlanInfo {
+    pub plan: String,
+    pub limits: PlanLimits,
+}
+
+/// Returned by GET /api/license.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LicenseInfo {
+    pub active:           bool,
+    pub plan:             String,
+    pub org_name:         Option<String>,
+    pub expires_at:       Option<String>,
+    pub days_until_expiry: Option<i64>,
+    pub status:           String,           // "active" | "grace" | "expired" | "none"
+    pub last_validated_at: Option<String>,
+}
+
+/// Claims inside a Schedula license JWT.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LicenseClaims {
+    pub iss:      String,           // "schedula-license"
+    pub sub:      String,           // unique license ID
+    pub plan:     String,           // "free" | "pro" | "institution"
+    pub org_name: Option<String>,
+    pub exp:      i64,              // unix timestamp; 0 = perpetual
+    pub iat:      i64,
+    pub jti:      String,           // UUID
+}
+
+/// Body for POST /api/license/activate.
+#[derive(Debug, Deserialize)]
+pub struct ActivateLicenseReq {
+    pub token: String,              // the raw JWT issued by the license server
+}
+
+/// Structured error payload when a plan limit is exceeded.
+#[derive(Debug, Clone, Serialize)]
+pub struct PlanLimitError {
+    pub code:        &'static str,
+    pub plan:        String,
+    pub feature:     &'static str,
+    pub limit:       i64,
+    pub current:     i64,
+    pub upgrade_url: &'static str,
+}
+
+impl PlanLimitError {
+    pub fn new(plan: String, feature: &'static str, limit: i64, current: i64) -> Self {
+        Self { code: "plan_limit_exceeded", plan, feature, limit, current, upgrade_url: UPGRADE_URL }
+    }
+    pub fn to_json_string(&self) -> String {
+        serde_json::to_string(self).unwrap_or_else(|_| format!(
+            r#"{{"code":"plan_limit_exceeded","feature":"{}","limit":{},"current":{}}}"#,
+            self.feature, self.limit, self.current
+        ))
+    }
 }

@@ -8,6 +8,50 @@ use crate::scheduler::{self, SchedulerInput};
 
 pub fn db_err(e: impl std::fmt::Display) -> String { e.to_string() }
 
+// ─── Plan helpers ─────────────────────────────────────────────────────────────
+
+pub fn get_org_plan(conn: &Connection, _org_id: Option<i64>) -> String {
+    // Active hub-level license takes priority over the org.plan column
+    crate::license::effective_plan(conn)
+}
+
+fn plan_limit_err(e: PlanLimitError) -> String {
+    e.to_json_string()
+}
+
+pub fn get_plan(conn: &Connection, sess: &SessionPayload) -> Result<PlanInfo, String> {
+    let plan = get_org_plan(conn, sess.org_id);
+    let limits = PlanLimits::for_plan(&plan);
+    Ok(PlanInfo { plan, limits })
+}
+
+pub fn get_license(conn: &Connection) -> Result<LicenseInfo, String> {
+    Ok(crate::license::get_license_info(conn))
+}
+
+pub fn activate_license(conn: &Connection, req: ActivateLicenseReq) -> Result<LicenseInfo, String> {
+    let token = req.token.trim().to_string();
+    if token.is_empty() {
+        return Err("License token is required".into());
+    }
+
+    // Validate JWT signature + expiry with embedded public key
+    let claims = crate::license::validate_token(&token)?;
+
+    // Store in DB (expires old licenses)
+    crate::license::store_license(conn, &claims, &token)?;
+
+    Ok(crate::license::get_license_info(conn))
+}
+
+pub fn deactivate_license(conn: &Connection) -> Result<(), String> {
+    conn.execute(
+        "UPDATE licenses SET status='expired' WHERE status IN ('active','grace')",
+        [],
+    ).map_err(db_err)?;
+    Ok(())
+}
+
 pub fn require_super_admin(sess: &SessionPayload) -> Result<(), String> {
     if sess.role != "super_admin" {
         return Err("Super admin access required".into());
@@ -253,19 +297,19 @@ pub fn create_user(conn: &Connection, sess: &SessionPayload, user: NewUser) -> R
     }
 
     if user.role == "admin" {
-        let max: i64 = conn.query_row(
-            "SELECT CAST(value AS INTEGER) FROM app_settings WHERE key='max_admins'",
-            [], |r| r.get(0),
-        ).unwrap_or(2);
-        let current: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM users WHERE role='admin' AND is_active=1",
-            [], |r| r.get(0),
-        ).unwrap_or(0);
-        if current >= max {
-            return Err(format!(
-                "Admin limit reached ({}/{}). Increase Max Admins in Settings → System.",
-                current, max
-            ));
+        let org_id = user.org_id;
+        let plan = get_org_plan(conn, org_id);
+        let limits = PlanLimits::for_plan(&plan);
+        if limits.max_admins >= 0 {
+            let current: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM users WHERE role='admin' AND is_active=1 AND (org_id IS ?1 OR org_id=?1)",
+                params![org_id], |r| r.get(0),
+            ).unwrap_or(0);
+            if current >= limits.max_admins {
+                return Err(plan_limit_err(PlanLimitError::new(
+                    plan, "admins", limits.max_admins, current,
+                )));
+            }
         }
     }
 
@@ -551,6 +595,22 @@ pub fn get_batches(conn: &Connection, sess: &SessionPayload) -> Result<Vec<Batch
 }
 
 pub fn create_batch(conn: &Connection, sess: &SessionPayload, batch: NewBatch) -> Result<i64, String> {
+    {
+        let org_id = batch.org_id.or(sess.org_id);
+        let plan = get_org_plan(conn, org_id);
+        let limits = PlanLimits::for_plan(&plan);
+        if limits.max_batches >= 0 {
+            let current: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM batches WHERE org_id IS ?1 OR org_id=?1",
+                params![org_id], |r| r.get(0),
+            ).unwrap_or(0);
+            if current >= limits.max_batches {
+                return Err(plan_limit_err(PlanLimitError::new(
+                    plan, "batches", limits.max_batches, current,
+                )));
+            }
+        }
+    }
     conn.execute(
         "INSERT INTO batches (name, department, semester, size, org_id, semester_id) VALUES (?1,?2,?3,?4,?5,?6)",
         params![batch.name, batch.department, batch.semester, batch.size, batch.org_id, batch.semester_id],
@@ -598,6 +658,7 @@ pub fn generate_schedule(
     schedule_name: String,
     semester_id: Option<i64>,
     description: Option<String>,
+    algorithm: Option<String>,
 ) -> Result<Value, String> {
     let scope = org_id_filter(sess);
     let courses = load_courses_scoped(conn, scope)?;
@@ -622,7 +683,15 @@ pub fn generate_schedule(
     };
 
     let input = SchedulerInput { courses, lecturers, rooms, batches, working_days };
-    let result = scheduler::generate(&input);
+    let use_csp = algorithm.as_deref() == Some("csp");
+    if use_csp {
+        let plan = get_org_plan(conn, sess.org_id);
+        let limits = PlanLimits::for_plan(&plan);
+        if !limits.csp_algorithm {
+            return Err(plan_limit_err(PlanLimitError::new(plan, "csp_algorithm", 0, 1)));
+        }
+    }
+    let result = if use_csp { scheduler::generate_csp(&input) } else { scheduler::generate(&input) };
 
     let now = chrono::Local::now().to_rfc3339();
     conn.execute("UPDATE schedules SET is_active=0 WHERE org_id IS ?1 OR org_id=?1", params![sess.org_id]).map_err(db_err)?;
@@ -1047,6 +1116,10 @@ pub fn get_audit_log(conn: &Connection, limit: i64) -> Result<Vec<AuditEntry>, S
 // ── Bulk CSV import ─────────────────────────────────────────────────────────────
 
 pub fn bulk_import_lecturers(conn: &Connection, sess: &SessionPayload, rows: Vec<CsvLecturer>) -> Result<BulkImportResult, String> {
+    let plan = get_org_plan(conn, sess.org_id);
+    if !PlanLimits::for_plan(&plan).bulk_import {
+        return Err(plan_limit_err(PlanLimitError::new(plan, "bulk_import", 0, 1)));
+    }
     let mut inserted = 0i64; let mut skipped = 0i64; let mut errors: Vec<String> = vec![];
     for r in &rows {
         if r.name.trim().is_empty() { errors.push("Row skipped: name is empty".into()); skipped += 1; continue; }
@@ -1069,6 +1142,10 @@ pub fn bulk_import_lecturers(conn: &Connection, sess: &SessionPayload, rows: Vec
 }
 
 pub fn bulk_import_rooms(conn: &Connection, sess: &SessionPayload, rows: Vec<CsvRoom>) -> Result<BulkImportResult, String> {
+    let plan = get_org_plan(conn, sess.org_id);
+    if !PlanLimits::for_plan(&plan).bulk_import {
+        return Err(plan_limit_err(PlanLimitError::new(plan, "bulk_import", 0, 1)));
+    }
     let mut inserted = 0i64; let mut skipped = 0i64; let mut errors: Vec<String> = vec![];
     for r in &rows {
         if r.name.trim().is_empty() { errors.push("Row skipped: name is empty".into()); skipped += 1; continue; }
@@ -1090,6 +1167,10 @@ pub fn bulk_import_rooms(conn: &Connection, sess: &SessionPayload, rows: Vec<Csv
 }
 
 pub fn bulk_import_courses(conn: &Connection, sess: &SessionPayload, rows: Vec<CsvCourse>) -> Result<BulkImportResult, String> {
+    let plan = get_org_plan(conn, sess.org_id);
+    if !PlanLimits::for_plan(&plan).bulk_import {
+        return Err(plan_limit_err(PlanLimitError::new(plan, "bulk_import", 0, 1)));
+    }
     let mut inserted = 0i64; let mut skipped = 0i64; let mut errors: Vec<String> = vec![];
     for r in &rows {
         if r.code.trim().is_empty() { errors.push("Row skipped: code is empty".into()); skipped += 1; continue; }

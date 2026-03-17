@@ -20,13 +20,11 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     migrate_v7(conn)?;
     migrate_v8(conn)?;
     migrate_v9(conn)?;
+    migrate_v10(conn)?;
+    migrate_v11(conn)?;
     Ok(())
 }
 
-/// Seed the default super-admin only if the users table is empty.
-pub fn seed_super_admin_if_empty(conn: &Connection) {
-    seed_super_admin(conn);
-}
 
 // ─── V1: original schema ──────────────────────────────────────────────────────
 fn migrate_v1(conn: &Connection) -> Result<()> {
@@ -272,6 +270,31 @@ fn migrate_v9(conn: &Connection) -> Result<()> {
             created_at              TEXT    NOT NULL DEFAULT (datetime('now')),
             resolved_at             TEXT,
             expires_at              TEXT    NOT NULL DEFAULT (datetime('now', '+48 hours'))
+        );
+    ")?;
+    Ok(())
+}
+
+// ─── V10: subscription plan column on organizations ──────────────────────────
+fn migrate_v10(conn: &Connection) -> Result<()> {
+    try_alter(conn, "ALTER TABLE organizations ADD COLUMN plan TEXT NOT NULL DEFAULT 'free'");
+    Ok(())
+}
+
+// ─── V11: license tokens ──────────────────────────────────────────────────────
+fn migrate_v11(conn: &Connection) -> Result<()> {
+    conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS licenses (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            token             TEXT    NOT NULL UNIQUE,
+            plan              TEXT    NOT NULL DEFAULT 'free',
+            org_name          TEXT,
+            expires_at        TEXT,
+            issued_at         TEXT    NOT NULL,
+            activated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+            last_validated_at TEXT    NOT NULL DEFAULT (datetime('now')),
+            status            TEXT    NOT NULL DEFAULT 'active'
+                              CHECK(status IN ('active','expired','revoked','grace'))
         );
     ")?;
     Ok(())

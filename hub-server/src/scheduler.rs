@@ -338,23 +338,391 @@ pub fn generate(input: &SchedulerInput) -> ScheduleResult {
     ScheduleResult { entries, unscheduled }
 }
 
-// ── Public re-exports of helpers for benchmarks ──────────────────────────────
-// (Only compiled when running benchmarks or tests; zero cost in release builds)
+// ══════════════════════════════════════════════════════════════════════════════
+// ALGORITHM 2 — CSP Greedy with Dynamic MCV Ordering + Backjump Recovery
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// Key differences from Algorithm 1 (static greedy):
+//   - Dynamic MCV: before each placement, re-rank remaining needs by domain
+//     size (number of still-valid (day, slot, room) triples).  The most
+//     constrained need is placed first, reducing cascading failures.
+//   - LCV slot selection: among valid candidates for a given need, prefer the
+//     slot that eliminates the fewest options for *other* unscheduled needs.
+//   - Backjump recovery: when a need has zero valid placements, find the most
+//     recently placed entry that "conflicts" with it and try to relocate that
+//     entry to an alternative slot.  Up to MAX_BACKJUMPS per schedule run.
+//
+// This trades raw throughput for higher placement rate on large/dense datasets.
 
-/// Public alias for benchmarks — delegates to the private `slot_penalty`.
-pub fn slot_penalty_pub(class_type: &str, slot: i64) -> i64 {
-    slot_penalty(class_type, slot)
+/// Maximum number of backjump recovery attempts per schedule run.
+const MAX_BACKJUMPS: usize = 300;
+
+/// Count how many valid (day, slot, room) triples remain for a need, given
+/// the current booking state.  Used for MCV domain-size estimation.
+fn domain_size(
+    batch_id: i64,
+    course: &Course,
+    lecturer: &Lecturer,
+    working_days: &[&str],
+    room_busy: &HashMap<i64, HashSet<(String, i64)>>,
+    lecturer_busy: &HashMap<i64, HashSet<(String, i64)>>,
+    batch_busy: &HashMap<i64, HashSet<(String, i64)>>,
+    lecturer_day_load: &HashMap<(i64, String), i64>,
+    lecturer_week_load: &HashMap<i64, i64>,
+    lecturer_day_slots: &HashMap<(i64, String), Vec<i64>>,
+    rooms: &[&Room],
+) -> usize {
+    let lec_avail: HashSet<&str> = lecturer.available_days.split(',').map(|s| s.trim()).collect();
+    let lec_id = lecturer.id;
+    let week_load = lecturer_week_load.get(&lec_id).copied().unwrap_or(0);
+    if week_load >= lecturer.max_hours_per_week {
+        return 0;
+    }
+    let mut count = 0usize;
+    for &day in working_days {
+        if !lec_avail.contains(day) { continue; }
+        if is_blacked_out(&lecturer.blackout_json, day, 0)
+            && is_blacked_out(&lecturer.blackout_json, day, 7)
+        {
+            continue; // entire day blacked out (approximate)
+        }
+        let day_load = lecturer_day_load.get(&(lec_id, day.to_string())).copied().unwrap_or(0);
+        if day_load >= lecturer.max_hours_per_day { continue; }
+        for &slot in TIME_SLOTS {
+            if is_blacked_out(&lecturer.blackout_json, day, slot) { continue; }
+            let ds = (day.to_string(), slot);
+            if lecturer_busy.get(&lec_id).map_or(false, |s| s.contains(&ds)) { continue; }
+            if batch_busy.get(&batch_id).map_or(false, |s| s.contains(&ds)) { continue; }
+            let occupied = lecturer_day_slots.get(&(lec_id, day.to_string()))
+                .map(|v| v.as_slice()).unwrap_or(&[]);
+            if would_exceed_consecutive(occupied, slot, lecturer.max_consecutive_hours) { continue; }
+            // Count rooms that fit
+            let room_count = rooms.iter().filter(|r| {
+                r.room_type == course.room_type
+                    && r.capacity >= course.hours_per_week // proxy for batch size, overridden below
+                    && r.available_days.split(',').any(|d| d.trim() == day)
+                    && !room_busy.get(&r.id).map_or(false, |s| s.contains(&ds))
+            }).count();
+            if room_count > 0 { count += 1; }
+        }
+    }
+    count
 }
 
-/// Public alias for benchmarks — delegates to `preferred_penalty`.
-pub fn preferred_penalty_pub(preferred_json: &Option<String>, day: &str, slot: i64) -> i64 {
-    preferred_penalty(preferred_json, day, slot)
+/// LCV score: how many valid slots does this candidate eliminate for OTHER
+/// unscheduled needs?  Lower = better (least constraining).
+fn lcv_cost(
+    day: &str,
+    slot: i64,
+    room_id: i64,
+    lec_id: i64,
+    batch_id: i64,
+    remaining_needs: &[(i64, i64, i64, bool)],
+    courses: &HashMap<i64, &Course>,
+    lecturers: &HashMap<i64, &Lecturer>,
+    _working_days: &[&str],
+    room_busy: &HashMap<i64, HashSet<(String, i64)>>,
+    lecturer_busy: &HashMap<i64, HashSet<(String, i64)>>,
+    batch_busy: &HashMap<i64, HashSet<(String, i64)>>,
+) -> i64 {
+    let ds = (day.to_string(), slot);
+    let mut cost = 0i64;
+    for &(b_id, c_id, _, _) in remaining_needs {
+        let course = match courses.get(&c_id) { Some(c) => c, None => continue };
+        let lec = match course.lecturer_id.and_then(|l| lecturers.get(&l)) {
+            Some(l) => l, None => continue,
+        };
+        // If this placement would block the other need's lecturer or batch at (day, slot)
+        if lec.id == lec_id
+            && !lecturer_busy.get(&lec_id).map_or(false, |s| s.contains(&ds))
+        {
+            cost += 1;
+        }
+        if b_id == batch_id
+            && !batch_busy.get(&batch_id).map_or(false, |s| s.contains(&ds))
+        {
+            cost += 1;
+        }
+        // Room contention
+        if course.room_type == courses.get(&c_id).map(|c| c.room_type.as_str()).unwrap_or("")
+            && !room_busy.get(&room_id).map_or(false, |s| s.contains(&ds))
+        {
+            cost += 1;
+        }
+    }
+    cost
 }
 
-/// Public alias for benchmarks — delegates to `is_blacked_out`.
-pub fn is_blacked_out_pub(blackout_json: &Option<String>, day: &str, slot: i64) -> bool {
-    is_blacked_out(blackout_json, day, slot)
+pub fn generate_csp(input: &SchedulerInput) -> ScheduleResult {
+    // Resolve working days
+    let default_days = vec![
+        "Mon".to_string(), "Tue".to_string(), "Wed".to_string(),
+        "Thu".to_string(), "Fri".to_string(),
+    ];
+    let org_days_owned: &Vec<String> = if input.working_days.is_empty() {
+        &default_days
+    } else {
+        &input.working_days
+    };
+    let working_days: Vec<&str> = org_days_owned.iter().map(|s| s.as_str()).collect();
+
+    let courses: HashMap<i64, &Course> = input.courses.iter().map(|c| (c.id, c)).collect();
+    let lecturers: HashMap<i64, &Lecturer> = input.lecturers.iter().map(|l| (l.id, l)).collect();
+    let rooms: Vec<&Room> = input.rooms.iter().collect();
+
+    type DaySlot = (String, i64);
+
+    let mut room_busy: HashMap<i64, HashSet<DaySlot>> = HashMap::new();
+    let mut lecturer_busy: HashMap<i64, HashSet<DaySlot>> = HashMap::new();
+    let mut batch_busy: HashMap<i64, HashSet<DaySlot>> = HashMap::new();
+    let mut lecturer_day_load: HashMap<(i64, String), i64> = HashMap::new();
+    let mut lecturer_week_load: HashMap<i64, i64> = HashMap::new();
+    let mut batch_day_count: HashMap<(i64, String), i64> = HashMap::new();
+    let mut lecturer_day_slots: HashMap<(i64, String), Vec<i64>> = HashMap::new();
+
+    // Build needs: (batch_id, course_id, hours_to_place, is_biweekly)
+    let mut needs: Vec<(i64, i64, i64, bool)> = Vec::new();
+    for batch in &input.batches {
+        for &cid in &batch.course_ids {
+            if let Some(course) = courses.get(&cid) {
+                let biweekly = course.frequency == "biweekly";
+                let hours = if biweekly { (course.hours_per_week + 1) / 2 } else { course.hours_per_week };
+                needs.push((batch.id, cid, hours, biweekly));
+            }
+        }
+    }
+
+    // Placed entries as a stack so we can backjump
+    let mut entries: Vec<PlacedEntry> = Vec::new();
+    let mut unscheduled: Vec<UnscheduledItem> = Vec::new();
+
+    // Track which needs are still pending (index into `needs`)
+    let mut pending: Vec<usize> = (0..needs.len()).collect();
+    let mut backjumps_used = 0usize;
+
+    while !pending.is_empty() {
+        // ── MCV: pick the need with the smallest domain size ─────────────────
+        let chosen_pos = {
+            let mut best_pos = 0usize;
+            let mut best_domain = usize::MAX;
+            for (pos, &idx) in pending.iter().enumerate() {
+                let (batch_id, course_id, _, _) = needs[idx];
+                let course = match courses.get(&course_id) { Some(c) => c, None => continue };
+                let lec_id = match course.lecturer_id { Some(l) => l, None => { best_pos = pos; break; } };
+                let lecturer = match lecturers.get(&lec_id) { Some(l) => l, None => { best_pos = pos; break; } };
+                let batch = match input.batches.iter().find(|b| b.id == batch_id) { Some(b) => b, None => continue };
+                // Use batch size for room capacity filter in domain_size
+                let ds = domain_size(
+                    batch_id, course, lecturer, &working_days,
+                    &room_busy, &lecturer_busy, &batch_busy,
+                    &lecturer_day_load, &lecturer_week_load, &lecturer_day_slots,
+                    &rooms.iter().filter(|r| r.capacity >= batch.size).cloned().collect::<Vec<_>>(),
+                );
+                if ds < best_domain {
+                    best_domain = ds;
+                    best_pos = pos;
+                }
+            }
+            best_pos
+        };
+
+        let need_idx = pending[chosen_pos];
+        let (batch_id, course_id, hours_needed, is_biweekly) = needs[need_idx];
+
+        let batch = match input.batches.iter().find(|b| b.id == batch_id) {
+            Some(b) => b,
+            None => { pending.remove(chosen_pos); continue; }
+        };
+        let course = match courses.get(&course_id) {
+            Some(c) => c,
+            None => { pending.remove(chosen_pos); continue; }
+        };
+        let lecturer_id = match course.lecturer_id {
+            Some(lid) => lid,
+            None => {
+                unscheduled.push(UnscheduledItem {
+                    batch_name: batch.name.clone(),
+                    course_code: course.code.clone(),
+                    course_name: course.name.clone(),
+                    hours_needed,
+                    reason: "No lecturer assigned to course".into(),
+                });
+                pending.remove(chosen_pos);
+                continue;
+            }
+        };
+        let lecturer = match lecturers.get(&lecturer_id) {
+            Some(l) => l,
+            None => {
+                unscheduled.push(UnscheduledItem {
+                    batch_name: batch.name.clone(),
+                    course_code: course.code.clone(),
+                    course_name: course.name.clone(),
+                    hours_needed,
+                    reason: "Assigned lecturer not found".into(),
+                });
+                pending.remove(chosen_pos);
+                continue;
+            }
+        };
+
+        let lec_avail_days: HashSet<&str> = lecturer.available_days.split(',').map(|s| s.trim()).collect();
+        let class_type = &course.class_type;
+
+        // ── Build and sort candidates with LCV tie-breaking ──────────────────
+        let mut candidates: Vec<(&str, i64, i64)> = Vec::new(); // (day, slot, room_id)
+        for &day in &working_days {
+            if !lec_avail_days.contains(day) { continue; }
+            let day_load = lecturer_day_load.get(&(lecturer_id, day.to_string())).copied().unwrap_or(0);
+            if day_load >= lecturer.max_hours_per_day { continue; }
+            let week_load = lecturer_week_load.get(&lecturer_id).copied().unwrap_or(0);
+            if week_load >= lecturer.max_hours_per_week { continue; }
+
+            let occupied = lecturer_day_slots.get(&(lecturer_id, day.to_string()))
+                .map(|v| v.as_slice()).unwrap_or(&[]);
+
+            for &slot in TIME_SLOTS {
+                if is_blacked_out(&lecturer.blackout_json, day, slot) { continue; }
+                if would_exceed_consecutive(occupied, slot, lecturer.max_consecutive_hours) { continue; }
+                let ds = (day.to_string(), slot);
+                if lecturer_busy.get(&lecturer_id).map_or(false, |s| s.contains(&ds)) { continue; }
+                if batch_busy.get(&batch_id).map_or(false, |s| s.contains(&ds)) { continue; }
+                // Find a suitable room
+                let room = rooms.iter().find(|r| {
+                    r.room_type == course.room_type
+                        && r.capacity >= batch.size
+                        && r.available_days.split(',').any(|d| d.trim() == day)
+                        && !room_busy.get(&r.id).map_or(false, |s| s.contains(&ds))
+                });
+                if let Some(r) = room {
+                    candidates.push((day, slot, r.id));
+                }
+            }
+        }
+
+        // Sort: (batch_day_count, slot_penalty + preferred, day_idx, slot, LCV cost)
+        let remaining_for_lcv: Vec<(i64, i64, i64, bool)> = pending.iter()
+            .filter(|&&i| i != need_idx)
+            .map(|&i| needs[i])
+            .collect();
+        candidates.sort_by_key(|(day, slot, room_id)| {
+            let bdc = *batch_day_count.get(&(batch_id, day.to_string())).unwrap_or(&0);
+            let sp = slot_penalty(class_type, *slot);
+            let pp = preferred_penalty(&lecturer.preferred_slots_json, day, *slot);
+            let di = working_days.iter().position(|&d| d == *day).unwrap_or(0) as i64;
+            let lcv = lcv_cost(
+                day, *slot, *room_id, lecturer_id, batch_id,
+                &remaining_for_lcv, &courses, &lecturers,
+                &working_days, &room_busy, &lecturer_busy, &batch_busy,
+            );
+            (bdc, sp + pp, di, *slot, lcv)
+        });
+
+        // ── Place as many sessions as we can from candidates ─────────────────
+        let mut placed = 0i64;
+        for (day, slot, room_id) in &candidates {
+            if placed >= hours_needed { break; }
+            // Re-validate (state may have changed from earlier iterations of this loop)
+            let ds = (day.to_string(), *slot);
+            let week_load = lecturer_week_load.get(&lecturer_id).copied().unwrap_or(0);
+            if week_load >= lecturer.max_hours_per_week { break; }
+            let day_load = lecturer_day_load.get(&(lecturer_id, day.to_string())).copied().unwrap_or(0);
+            if day_load >= lecturer.max_hours_per_day { continue; }
+            if lecturer_busy.get(&lecturer_id).map_or(false, |s| s.contains(&ds)) { continue; }
+            if batch_busy.get(&batch_id).map_or(false, |s| s.contains(&ds)) { continue; }
+            if room_busy.get(room_id).map_or(false, |s| s.contains(&ds)) { continue; }
+            let occupied = lecturer_day_slots.get(&(lecturer_id, day.to_string()))
+                .map(|v| v.as_slice()).unwrap_or(&[]);
+            if would_exceed_consecutive(occupied, *slot, lecturer.max_consecutive_hours) { continue; }
+
+            room_busy.entry(*room_id).or_default().insert(ds.clone());
+            lecturer_busy.entry(lecturer_id).or_default().insert(ds.clone());
+            batch_busy.entry(batch_id).or_default().insert(ds.clone());
+            *lecturer_day_load.entry((lecturer_id, day.to_string())).or_insert(0) += 1;
+            *lecturer_week_load.entry(lecturer_id).or_insert(0) += 1;
+            *batch_day_count.entry((batch_id, day.to_string())).or_insert(0) += 1;
+            lecturer_day_slots.entry((lecturer_id, day.to_string())).or_default().push(*slot);
+
+            entries.push(PlacedEntry {
+                course_id,
+                lecturer_id,
+                room_id: *room_id,
+                batch_id,
+                day: day.to_string(),
+                time_slot: *slot,
+                class_type: class_type.clone(),
+                week_parity: if is_biweekly { 1 } else { 0 },
+            });
+            placed += 1;
+        }
+
+        if placed >= hours_needed {
+            pending.remove(chosen_pos);
+            continue;
+        }
+
+        // ── Backjump recovery ─────────────────────────────────────────────────
+        // Find the most recent placed entry whose lecturer or batch conflicts with
+        // this need, and try to move it to an alternative slot.
+        let mut recovered = false;
+        if backjumps_used < MAX_BACKJUMPS {
+            // Walk entries in reverse to find a candidate to move
+            let conflict_pos = entries.iter().rposition(|e| {
+                e.lecturer_id == lecturer_id
+                    || e.batch_id == batch_id
+            });
+
+            if let Some(ci) = conflict_pos {
+                let conflicting = entries[ci].clone();
+                // Undo the conflicting placement
+                let ds_old = (conflicting.day.clone(), conflicting.time_slot);
+                room_busy.entry(conflicting.room_id).or_default().remove(&ds_old);
+                lecturer_busy.entry(conflicting.lecturer_id).or_default().remove(&ds_old);
+                batch_busy.entry(conflicting.batch_id).or_default().remove(&ds_old);
+                *lecturer_day_load.entry((conflicting.lecturer_id, conflicting.day.clone())).or_insert(1) -= 1;
+                *lecturer_week_load.entry(conflicting.lecturer_id).or_insert(1) -= 1;
+                *batch_day_count.entry((conflicting.batch_id, conflicting.day.clone())).or_insert(1) -= 1;
+                if let Some(v) = lecturer_day_slots.get_mut(&(conflicting.lecturer_id, conflicting.day.clone())) {
+                    v.retain(|&s| s != conflicting.time_slot);
+                }
+                entries.remove(ci);
+                backjumps_used += 1;
+
+                // Put the conflicting need's original need back in pending
+                // Find its need_idx by matching course/batch
+                if let Some(orig_pos) = needs.iter().position(|(b, c, _, _)| {
+                    *b == conflicting.batch_id && *c == conflicting.course_id
+                }) {
+                    if !pending.contains(&orig_pos) {
+                        pending.push(orig_pos);
+                    }
+                }
+                recovered = true;
+            }
+        }
+
+        if !recovered {
+            // Give up on remaining sessions for this need
+            if placed < hours_needed {
+                unscheduled.push(UnscheduledItem {
+                    batch_name: batch.name.clone(),
+                    course_code: course.code.clone(),
+                    course_name: course.name.clone(),
+                    hours_needed: hours_needed - placed,
+                    reason: format!(
+                        "Could only place {}/{} sessions — no valid slot/room for remaining",
+                        placed, hours_needed
+                    ),
+                });
+            }
+            pending.remove(chosen_pos);
+        }
+        // If recovered, we stay in the loop and retry this need next iteration
+    }
+
+    ScheduleResult { entries, unscheduled }
 }
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TESTS
