@@ -626,13 +626,26 @@
     /* ── INSTALL ──────────────────────────────────────────────────────────── */
     #install { background: var(--navy-2); }
 
+    /* System requirements bar */
+    .sysreq-bar {
+      display: flex; flex-wrap: wrap; gap: .625rem;
+      margin-top: 2rem;
+    }
+    .sysreq-chip {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: .75rem; color: var(--muted);
+      background: rgba(255,255,255,.04); border: 1px solid var(--edge-dark);
+      padding: .3rem .75rem; border-radius: 100px;
+    }
+    .sysreq-chip svg { opacity: .5; }
+
     .install-tracks {
       display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
-      margin-top: 3rem;
+      margin-top: 1.75rem;
     }
     .install-track {
       background: var(--navy-3); border: 1px solid var(--edge-dark);
-      border-radius: 16px; padding: 2rem 2rem 2rem;
+      border-radius: 16px; padding: 2rem;
       display: flex; flex-direction: column; gap: 1.25rem;
     }
     .install-track.track-pro { border-color: rgba(59,130,246,.35); }
@@ -649,9 +662,7 @@
     }
     .track-desc { font-size: .875rem; color: var(--muted); line-height: 1.65; }
     .install-steps { display: flex; flex-direction: column; gap: .875rem; }
-    .install-step {
-      display: flex; gap: .875rem; align-items: flex-start;
-    }
+    .install-step { display: flex; gap: .875rem; align-items: flex-start; }
     .is-num {
       flex-shrink: 0; width: 22px; height: 22px;
       border-radius: 50%; background: rgba(255,255,255,.08);
@@ -669,22 +680,52 @@
       border-radius: 5px; border: 1px solid rgba(245,158,11,.15);
       display: inline-block; margin-top: .25rem;
     }
-    .hub-dl-row {
-      display: flex; flex-direction: column; gap: .5rem; margin-top: .5rem;
+    .is-tip {
+      display: flex; gap: .5rem; align-items: flex-start;
+      margin-top: .4rem; padding: .5rem .625rem;
+      background: rgba(245,158,11,.06); border-left: 2px solid rgba(245,158,11,.35);
+      border-radius: 0 5px 5px 0;
     }
-    .hub-dl-btn {
-      display: inline-flex; align-items: center; gap: .5rem;
-      font-size: .8125rem; font-weight: 500; text-decoration: none;
-      color: var(--blue-lt); border: 1px solid rgba(59,130,246,.3);
-      padding: .5rem .875rem; border-radius: 7px;
-      background: rgba(59,130,246,.07); transition: all .2s;
-    }
-    .hub-dl-btn:hover { background: rgba(59,130,246,.15); border-color: var(--blue); }
-    .hub-dl-btn svg { flex-shrink: 0; }
+    .is-tip-icon { flex-shrink: 0; font-size: .75rem; margin-top: .05rem; }
+    .is-tip-text { font-size: .75rem; color: rgba(253,230,138,.7); line-height: 1.5; }
     .install-note {
       font-size: .75rem; color: rgba(255,255,255,.22);
       border-top: 1px solid var(--edge-dark); padding-top: 1rem; line-height: 1.6;
     }
+
+    /* Troubleshooting accordion */
+    .install-faq { margin-top: 3rem; }
+    .install-faq-title {
+      font-size: .75rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--muted); margin-bottom: 1rem;
+    }
+    .faq-list { display: flex; flex-direction: column; gap: .5rem; max-width: 760px; }
+    details.faq-item {
+      background: rgba(255,255,255,.03); border: 1px solid var(--edge-dark);
+      border-radius: 10px; overflow: hidden;
+    }
+    details.faq-item[open] { border-color: rgba(255,255,255,.12); }
+    summary.faq-q {
+      cursor: pointer; list-style: none; padding: .875rem 1.125rem;
+      font-size: .875rem; font-weight: 500; color: var(--white);
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 1rem; user-select: none;
+    }
+    summary.faq-q::-webkit-details-marker { display: none; }
+    summary.faq-q::after {
+      content: '+'; font-size: 1.1rem; font-weight: 300;
+      color: var(--muted); flex-shrink: 0; transition: transform .2s;
+    }
+    details.faq-item[open] summary.faq-q::after { content: '−'; }
+    .faq-a {
+      padding: 0 1.125rem 1rem; font-size: .8125rem; color: var(--muted);
+      line-height: 1.65; border-top: 1px solid var(--edge-dark);
+    }
+    .faq-a code {
+      font-family: var(--mono); font-size: .75rem; color: var(--gold);
+      background: rgba(0,0,0,.25); padding: .1rem .4rem; border-radius: 4px;
+    }
+    .faq-a a { color: var(--blue-lt); }
 
     @media (max-width: 1024px) {
       .install-tracks { grid-template-columns: 1fr; max-width: 600px; margin-inline: auto; }
@@ -1241,6 +1282,26 @@
       Pro and Institution users enable Hub Mode on one machine — the rest connect automatically.
     </p>
 
+    <!-- System requirements -->
+    <div class="sysreq-bar" aria-label="System requirements">
+      <span class="sysreq-chip">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        macOS 11 Big Sur or later
+      </span>
+      <span class="sysreq-chip">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.25h8.25V3H3v2.25zm0 7.5h8.25V10.5H3v2.25zM3 20.25h8.25V18H3v2.25zM12.75 3v2.25H21V3h-8.25zm0 7.5v2.25H21V10.5h-8.25zm0 7.5v2.25H21V18h-8.25z"/></svg>
+        Windows 10 or later (64-bit)
+      </span>
+      <span class="sysreq-chip">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+        ~60 MB disk space
+      </span>
+      <span class="sysreq-chip">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3a4.237 4.237 0 0 0-6 0zm-4-4 2 2a7.074 7.074 0 0 1 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+        Internet only for initial download
+      </span>
+    </div>
+
     <div class="install-tracks">
 
       <!-- Free track -->
@@ -1251,36 +1312,58 @@
         <div class="track-title">Desktop app only</div>
         <p class="track-desc">
           Install the app, log in with the default admin account, and you're
-          scheduling immediately. No server, no config, no account needed.
+          scheduling in minutes. No server, no config, no account needed.
         </p>
         <div class="install-steps">
+
           <div class="install-step">
             <div class="is-num">1</div>
             <div class="is-content">
-              <div class="is-title">Download Schedula</div>
-              <div class="is-body">Pick your platform from the download section below. macOS users: open the DMG and drag to Applications. Windows users: run the setup .exe.</div>
+              <div class="is-title">Download &amp; install</div>
+              <div class="is-body">Use the download buttons below to get the installer for your platform.</div>
+              <div class="is-tip">
+                <span class="is-tip-icon">🍎</span>
+                <span class="is-tip-text"><strong>macOS:</strong> Open the .dmg, drag Schedula to Applications. On first launch, right-click → Open if macOS warns about an unidentified developer.</span>
+              </div>
+              <div class="is-tip">
+                <span class="is-tip-icon">🪟</span>
+                <span class="is-tip-text"><strong>Windows:</strong> Run the setup .exe. If SmartScreen appears, click "More info" → "Run anyway".</span>
+              </div>
             </div>
           </div>
+
           <div class="install-step">
             <div class="is-num">2</div>
             <div class="is-content">
-              <div class="is-title">Log in</div>
-              <div class="is-body">Default credentials on first launch:</div>
+              <div class="is-title">Log in with the default account</div>
+              <div class="is-body">On first launch, use the default credentials:</div>
               <span class="is-code">admin / admin123</span>
-              <div class="is-body" style="margin-top:.35rem">Change the password immediately in Settings → Security.</div>
+              <div class="is-body" style="margin-top:.4rem">
+                <strong style="color:var(--white)">Important:</strong> change the password immediately in <strong>Settings → Security</strong>.
+              </div>
             </div>
           </div>
+
           <div class="install-step">
             <div class="is-num">3</div>
             <div class="is-content">
-              <div class="is-title">Start scheduling</div>
-              <div class="is-body">Create your organization, add a semester, enter lecturers, rooms, and courses. The setup wizard guides you through each step.</div>
+              <div class="is-title">Set up your data</div>
+              <div class="is-body">Create an organization, add a semester, then enter lecturers, rooms, and courses. The dashboard guides you through each step in order.</div>
             </div>
           </div>
+
+          <div class="install-step">
+            <div class="is-num">4</div>
+            <div class="is-content">
+              <div class="is-title">Generate your timetable</div>
+              <div class="is-body">Go to Schedules → Generate. The solver runs in seconds and produces a conflict-free draft. Review, publish, and export to CSV.</div>
+            </div>
+          </div>
+
         </div>
         <div class="install-note">
           All data is stored in a local SQLite database on your machine.
-          No internet connection required after download.
+          No internet connection required after the initial download.
         </div>
       </div>
 
@@ -1289,49 +1372,108 @@
         <div>
           <span class="track-label pro">Pro &amp; Institution</span>
         </div>
-        <div class="track-title">One app, one download</div>
+        <div class="track-title">Multi-machine sync</div>
         <p class="track-desc">
-          Install the same Schedula app on every admin machine. Designate
-          one machine as the hub — it runs the sync server in the background
-          while you schedule normally. Everyone else just enters its address.
+          Same app, same installer — downloaded once per machine. Designate
+          one machine as the hub and all others connect to it automatically.
+          No separate software, no IT involvement needed.
         </p>
         <div class="install-steps">
+
           <div class="install-step">
             <div class="is-num">1</div>
             <div class="is-content">
-              <div class="is-title">Download Schedula on all admin machines</div>
-              <div class="is-body">Same installer as Free — use the download buttons below. No extra software needed.</div>
+              <div class="is-title">Install Schedula on every admin machine</div>
+              <div class="is-body">Download the same installer from the section below and follow the same install steps as Free. Every machine gets the same app.</div>
             </div>
           </div>
+
           <div class="install-step">
             <div class="is-num">2</div>
             <div class="is-content">
-              <div class="is-title">Designate one machine as the hub</div>
-              <div class="is-body">On the machine that stays on (a PC in the IT room, a shared workstation), open Schedula → <strong>Settings → Sync → Enable Hub Mode</strong>. The app starts the hub server in the background and shows the address to share.</div>
+              <div class="is-title">Pick a hub machine and enable Hub Mode</div>
+              <div class="is-body">Choose a machine that stays on — a shared workstation or IT room PC. On that machine, open <strong>Settings → Sync → Enable Hub Mode</strong>. The app starts the built-in hub server and shows a local network address like:</div>
+              <span class="is-code">http://192.168.1.x:7878</span>
+              <div class="is-body" style="margin-top:.4rem">Copy that address — you'll need it in the next step.</div>
             </div>
           </div>
+
           <div class="install-step">
             <div class="is-num">3</div>
             <div class="is-content">
-              <div class="is-title">Connect every other admin machine</div>
-              <div class="is-body">On each other admin's machine, open Schedula → <strong>Settings → Sync</strong>, enter the hub address shown in step 2, and click Connect. That's it — changes appear in real time for everyone.</div>
+              <div class="is-title">Connect every other machine</div>
+              <div class="is-body">On each other admin's machine, open <strong>Settings → Sync</strong>, paste the address from step 2, and click <strong>Connect</strong>. Log in — changes now appear in real time for everyone on the network.</div>
             </div>
           </div>
+
           <div class="install-step">
             <div class="is-num">4</div>
             <div class="is-content">
               <div class="is-title">Activate your license</div>
-              <div class="is-body">On the hub machine, go to <strong>Settings → License</strong> and paste the token from your confirmation email. The plan unlocks across all connected machines instantly.</div>
+              <div class="is-body">On any machine, go to <strong>Settings → License</strong> and paste the token from your confirmation email. Pro and Institution features unlock instantly across all connected machines.</div>
             </div>
           </div>
+
         </div>
         <div class="install-note">
-          The hub runs entirely on your hardware inside the Schedula app —
-          no data leaves your network. It uses under 30 MB of RAM.
+          The hub runs entirely on your hardware, inside the Schedula app —
+          no data ever leaves your network. It uses under 30 MB of RAM and
+          stops automatically when you close Schedula.
         </div>
       </div>
 
     </div><!-- /install-tracks -->
+
+    <!-- Troubleshooting FAQ -->
+    <div class="install-faq">
+      <div class="install-faq-title">Common questions</div>
+      <div class="faq-list">
+
+        <details class="faq-item">
+          <summary class="faq-q">macOS says "Schedula can't be opened because it's from an unidentified developer"</summary>
+          <div class="faq-a">
+            This is macOS Gatekeeper blocking an app that isn't notarized yet. To open it: <strong>right-click</strong> (or Control-click) the app in Finder and choose <strong>Open</strong>. In the dialog that appears, click <strong>Open</strong> again. You only need to do this once.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Windows shows a SmartScreen warning when I run the installer</summary>
+          <div class="faq-a">
+            Click <strong>"More info"</strong> in the blue SmartScreen box, then click <strong>"Run anyway"</strong>. This warning appears because the installer isn't yet code-signed with an EV certificate. It's safe to proceed.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Other machines can't reach the hub address</summary>
+          <div class="faq-a">
+            All machines must be on <strong>the same local network</strong> (same Wi-Fi or LAN). If they can't connect, check that: (1) the hub machine's firewall allows inbound connections on port <code>7878</code>, (2) both machines are on the same subnet, and (3) the hub machine isn't in sleep/hibernate mode. On Windows, you may need to allow Schedula through Windows Defender Firewall.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">I forgot the default password</summary>
+          <div class="faq-a">
+            On first launch the credentials are <code>admin / admin123</code>. If you've already changed the password and forgotten it, use <strong>Settings → Security → Password Recovery</strong>, or — as a last resort — delete the database file at <code>~/Library/Application Support/com.schedula.app/schedula.db</code> (macOS) or <code>%APPDATA%\com.schedula.app\schedula.db</code> (Windows) to start fresh. <em>This deletes all data.</em>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Do I need to keep the hub machine running all the time?</summary>
+          <div class="faq-a">
+            Only while your team is actively scheduling. The hub runs inside the Schedula app and stops when the app closes. Other machines will reconnect automatically when the hub comes back online — no data is lost while the hub is offline, changes just won't sync until it's back.
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-q">Can I move from Free to Pro without losing my data?</summary>
+          <div class="faq-a">
+            Yes — just activate a license in <strong>Settings → License</strong>. All your existing data stays intact. If you want to enable multi-machine sync, designate one machine as the hub and connect the others. No migration needed.
+          </div>
+        </details>
+
+      </div>
+    </div><!-- /install-faq -->
+
   </div>
 </section>
 

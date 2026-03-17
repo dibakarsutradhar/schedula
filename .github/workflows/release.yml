@@ -15,6 +15,7 @@ env:
 
 # ──────────────────────────────────────────────────────────────────────────────
 # macOS — Apple Silicon (aarch64)
+# Hub sidecar is built first and bundled into the Tauri app.
 # ──────────────────────────────────────────────────────────────────────────────
 jobs:
   build-macos-arm:
@@ -34,6 +35,15 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Build hub sidecar — arm64
+        run: |
+          cargo build --release \
+            --manifest-path hub-server/Cargo.toml \
+            --target aarch64-apple-darwin
+          mkdir -p src-tauri/binaries
+          cp hub-server/target/aarch64-apple-darwin/release/schedula-hub \
+             src-tauri/binaries/schedula-hub-aarch64-apple-darwin
 
       - name: Build Tauri — arm64
         run: npm run tauri build -- --target aarch64-apple-darwin
@@ -67,6 +77,15 @@ jobs:
 
       - run: npm ci
 
+      - name: Build hub sidecar — x86_64
+        run: |
+          cargo build --release \
+            --manifest-path hub-server/Cargo.toml \
+            --target x86_64-apple-darwin
+          mkdir -p src-tauri/binaries
+          cp hub-server/target/x86_64-apple-darwin/release/schedula-hub \
+             src-tauri/binaries/schedula-hub-x86_64-apple-darwin
+
       - name: Build Tauri — x86_64
         run: npm run tauri build -- --target x86_64-apple-darwin
 
@@ -97,6 +116,14 @@ jobs:
 
       - run: npm ci
 
+      - name: Build hub sidecar — Windows x64
+        shell: bash
+        run: |
+          cargo build --release --manifest-path hub-server/Cargo.toml
+          mkdir -p src-tauri/binaries
+          cp hub-server/target/release/schedula-hub.exe \
+             src-tauri/binaries/schedula-hub-x86_64-pc-windows-msvc.exe
+
       - name: Build Tauri
         run: npm run tauri build
 
@@ -118,100 +145,11 @@ jobs:
           retention-days: 1
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Hub Server — macOS Apple Silicon
-# ──────────────────────────────────────────────────────────────────────────────
-  build-hub-macos-arm:
-    name: Hub Server — macOS Apple Silicon
-    runs-on: macos-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin
-      - name: Build hub — arm64
-        run: cargo build --release --manifest-path hub-server/Cargo.toml --target aarch64-apple-darwin
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: hub-macos-arm64
-          path: hub-server/target/aarch64-apple-darwin/release/schedula-hub
-          if-no-files-found: error
-          retention-days: 1
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Hub Server — macOS Intel
-# ──────────────────────────────────────────────────────────────────────────────
-  build-hub-macos-intel:
-    name: Hub Server — macOS Intel
-    runs-on: macos-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-apple-darwin
-      - name: Build hub — x86_64
-        run: cargo build --release --manifest-path hub-server/Cargo.toml --target x86_64-apple-darwin
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: hub-macos-intel
-          path: hub-server/target/x86_64-apple-darwin/release/schedula-hub
-          if-no-files-found: error
-          retention-days: 1
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Hub Server — Windows x64
-# ──────────────────────────────────────────────────────────────────────────────
-  build-hub-windows:
-    name: Hub Server — Windows x64
-    runs-on: windows-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Build hub — Windows
-        run: cargo build --release --manifest-path hub-server/Cargo.toml
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: hub-windows
-          path: hub-server/target/release/schedula-hub.exe
-          if-no-files-found: error
-          retention-days: 1
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Hub Server — Linux x64 (for server installs)
-# ──────────────────────────────────────────────────────────────────────────────
-  build-hub-linux:
-    name: Hub Server — Linux x64
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-unknown-linux-gnu
-      - name: Install musl tools
-        run: sudo apt-get install -y musl-tools
-      - name: Build hub — Linux
-        run: cargo build --release --manifest-path hub-server/Cargo.toml
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: hub-linux
-          path: hub-server/target/release/schedula-hub
-          if-no-files-found: error
-          retention-days: 1
-
-# ──────────────────────────────────────────────────────────────────────────────
 # Publish to Cloudflare R2
 # ──────────────────────────────────────────────────────────────────────────────
   publish:
     name: Publish to Cloudflare R2
-    needs: [build-macos-arm, build-macos-intel, build-windows,
-            build-hub-macos-arm, build-hub-macos-intel, build-hub-windows, build-hub-linux]
+    needs: [build-macos-arm, build-macos-intel, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -253,41 +191,15 @@ jobs:
           name: windows-msi
           path: dist/windows
 
-      # ── Download hub artifacts ───────────────────────────────────────────────
-      - name: Download Hub macOS ARM64
-        uses: actions/download-artifact@v4
-        with:
-          name: hub-macos-arm64
-          path: dist/hub-macos-arm64
-
-      - name: Download Hub macOS Intel
-        uses: actions/download-artifact@v4
-        with:
-          name: hub-macos-intel
-          path: dist/hub-macos-intel
-
-      - name: Download Hub Windows
-        uses: actions/download-artifact@v4
-        with:
-          name: hub-windows
-          path: dist/hub-windows
-
-      - name: Download Hub Linux
-        uses: actions/download-artifact@v4
-        with:
-          name: hub-linux
-          path: dist/hub-linux
-
       # ── Rename to canonical filenames ───────────────────────────────────────
       - name: Rename artifacts
         id: art
         run: |
           VERSION="${{ steps.ver.outputs.tag }}"
 
-          # Desktop app
-          ARM_SRC=$(ls dist/macos-arm64/*.dmg 2>/dev/null | head -1)
+          ARM_SRC=$(ls   dist/macos-arm64/*.dmg 2>/dev/null | head -1)
           INTEL_SRC=$(ls dist/macos-intel/*.dmg 2>/dev/null | head -1)
-          WIN_SRC=$(ls dist/windows/*.exe dist/windows/*.msi 2>/dev/null | head -1)
+          WIN_SRC=$(ls   dist/windows/*.exe dist/windows/*.msi 2>/dev/null | head -1)
 
           ARM_DST="Schedula-${VERSION}-macos-arm64.dmg"
           INTEL_DST="Schedula-${VERSION}-macos-x64.dmg"
@@ -300,22 +212,6 @@ jobs:
           echo "arm_file=${ARM_DST}"     >> $GITHUB_OUTPUT
           echo "intel_file=${INTEL_DST}" >> $GITHUB_OUTPUT
           echo "win_file=${WIN_DST}"     >> $GITHUB_OUTPUT
-
-          # Hub server binaries
-          HUB_ARM_DST="schedula-hub-${VERSION}-macos-arm64"
-          HUB_INTEL_DST="schedula-hub-${VERSION}-macos-x64"
-          HUB_WIN_DST="schedula-hub-${VERSION}-windows-x64.exe"
-          HUB_LINUX_DST="schedula-hub-${VERSION}-linux-x64"
-
-          [ -f "dist/hub-macos-arm64/schedula-hub"  ] && cp "dist/hub-macos-arm64/schedula-hub"  "dist/${HUB_ARM_DST}"
-          [ -f "dist/hub-macos-intel/schedula-hub"  ] && cp "dist/hub-macos-intel/schedula-hub"  "dist/${HUB_INTEL_DST}"
-          [ -f "dist/hub-windows/schedula-hub.exe"  ] && cp "dist/hub-windows/schedula-hub.exe"  "dist/${HUB_WIN_DST}"
-          [ -f "dist/hub-linux/schedula-hub"        ] && cp "dist/hub-linux/schedula-hub"        "dist/${HUB_LINUX_DST}"
-
-          echo "hub_arm_file=${HUB_ARM_DST}"     >> $GITHUB_OUTPUT
-          echo "hub_intel_file=${HUB_INTEL_DST}" >> $GITHUB_OUTPUT
-          echo "hub_win_file=${HUB_WIN_DST}"     >> $GITHUB_OUTPUT
-          echo "hub_linux_file=${HUB_LINUX_DST}" >> $GITHUB_OUTPUT
 
       # ── Upload versioned release to R2 ──────────────────────────────────────
       - name: Upload release files to R2
@@ -341,16 +237,9 @@ jobs:
             fi
           }
 
-          # Desktop app
           upload "${{ steps.art.outputs.arm_file }}"
           upload "${{ steps.art.outputs.intel_file }}"
           upload "${{ steps.art.outputs.win_file }}"
-
-          # Hub server binaries
-          upload "${{ steps.art.outputs.hub_arm_file }}"
-          upload "${{ steps.art.outputs.hub_intel_file }}"
-          upload "${{ steps.art.outputs.hub_win_file }}"
-          upload "${{ steps.art.outputs.hub_linux_file }}"
 
       # ── Write latest.json manifest ───────────────────────────────────────────
       - name: Write and upload latest.json
@@ -380,24 +269,6 @@ jobs:
               "windows": {
                 "url": "${BASE}/${{ steps.art.outputs.win_file }}",
                 "filename": "${{ steps.art.outputs.win_file }}"
-              }
-            },
-            "hub": {
-              "macos_arm": {
-                "url": "${BASE}/${{ steps.art.outputs.hub_arm_file }}",
-                "filename": "${{ steps.art.outputs.hub_arm_file }}"
-              },
-              "macos_intel": {
-                "url": "${BASE}/${{ steps.art.outputs.hub_intel_file }}",
-                "filename": "${{ steps.art.outputs.hub_intel_file }}"
-              },
-              "windows": {
-                "url": "${BASE}/${{ steps.art.outputs.hub_win_file }}",
-                "filename": "${{ steps.art.outputs.hub_win_file }}"
-              },
-              "linux": {
-                "url": "${BASE}/${{ steps.art.outputs.hub_linux_file }}",
-                "filename": "${{ steps.art.outputs.hub_linux_file }}"
               }
             }
           }
