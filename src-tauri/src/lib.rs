@@ -116,6 +116,11 @@ pub fn run() {
             commands::get_pending_approvals,
             commands::get_approval_count,
             commands::resolve_approval,
+            // Plan / subscription
+            commands::get_plan,
+            commands::get_license,
+            commands::activate_license,
+            commands::deactivate_license,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

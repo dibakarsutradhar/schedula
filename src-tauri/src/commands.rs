@@ -11,6 +11,22 @@ pub struct SessionState(pub Mutex<Option<SessionPayload>>);
 
 fn db_err(e: impl std::fmt::Display) -> String { e.to_string() }
 
+// ─── Plan helpers ─────────────────────────────────────────────────────────────
+
+fn get_org_plan(conn: &Connection, org_id: Option<i64>) -> String {
+    org_id.and_then(|id| {
+        conn.query_row(
+            "SELECT plan FROM organizations WHERE id=?1",
+            params![id],
+            |r| r.get::<_, String>(0),
+        ).ok()
+    }).unwrap_or_else(|| PLAN_FREE.to_string())
+}
+
+fn plan_limit_err(e: PlanLimitError) -> String {
+    e.to_json_string()
+}
+
 // ─── Auth guard ───────────────────────────────────────────────────────────────
 
 fn require_session(session: &State<SessionState>) -> Result<SessionPayload, String> {
@@ -129,21 +145,21 @@ pub fn create_user(
         return Err("Only one super admin is allowed per app instance.".into());
     }
 
-    // Enforce max_admins quota
+    // Enforce plan-based admin limit (per org)
     if user.role == "admin" {
-        let max: i64 = conn.query_row(
-            "SELECT CAST(value AS INTEGER) FROM app_settings WHERE key='max_admins'",
-            [], |r| r.get(0),
-        ).unwrap_or(2);
-        let current: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM users WHERE role='admin' AND is_active=1",
-            [], |r| r.get(0),
-        ).unwrap_or(0);
-        if current >= max {
-            return Err(format!(
-                "Admin limit reached ({}/{}). Increase Max Admins in Settings → System.",
-                current, max
-            ).into());
+        let org_id = user.org_id;
+        let plan = get_org_plan(&conn, org_id);
+        let limits = PlanLimits::for_plan(&plan);
+        if limits.max_admins >= 0 {
+            let current: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM users WHERE role='admin' AND is_active=1 AND (org_id IS ?1 OR org_id=?1)",
+                params![org_id], |r| r.get(0),
+            ).unwrap_or(0);
+            if current >= limits.max_admins {
+                return Err(plan_limit_err(PlanLimitError::new(
+                    plan, "admins", limits.max_admins, current,
+                )));
+            }
         }
     }
 
@@ -534,6 +550,25 @@ pub fn get_batches(db: State<DbState>, session: State<SessionState>) -> Result<V
 pub fn create_batch(db: State<DbState>, session: State<SessionState>, batch: NewBatch) -> Result<i64, String> {
     let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
+
+    // Enforce plan-based batch limit
+    {
+        let org_id = batch.org_id.or(s.org_id);
+        let plan = get_org_plan(&conn, org_id);
+        let limits = PlanLimits::for_plan(&plan);
+        if limits.max_batches >= 0 {
+            let current: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM batches WHERE org_id IS ?1 OR org_id=?1",
+                params![org_id], |r| r.get(0),
+            ).unwrap_or(0);
+            if current >= limits.max_batches {
+                return Err(plan_limit_err(PlanLimitError::new(
+                    plan, "batches", limits.max_batches, current,
+                )));
+            }
+        }
+    }
+
     conn.execute(
         "INSERT INTO batches (name, department, semester, size, org_id, semester_id) VALUES (?1,?2,?3,?4,?5,?6)",
         params![batch.name, batch.department, batch.semester, batch.size, batch.org_id, batch.semester_id],
@@ -588,6 +623,7 @@ pub fn generate_schedule(
     schedule_name: String,
     semester_id: Option<i64>,
     description: Option<String>,
+    algorithm: Option<String>,
 ) -> Result<Value, String> {
     let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
@@ -615,7 +651,16 @@ pub fn generate_schedule(
     };
 
     let input = SchedulerInput { courses, lecturers, rooms, batches, working_days };
-    let result = scheduler::generate(&input);
+    let use_csp = algorithm.as_deref() == Some("csp");
+    // Gate CSP algorithm behind Pro/Institution plan
+    if use_csp {
+        let plan = get_org_plan(&conn, s.org_id);
+        let limits = PlanLimits::for_plan(&plan);
+        if !limits.csp_algorithm {
+            return Err(plan_limit_err(PlanLimitError::new(plan, "csp_algorithm", 0, 1)));
+        }
+    }
+    let result = if use_csp { scheduler::generate_csp(&input) } else { scheduler::generate(&input) };
 
     let now = chrono::Local::now().to_rfc3339();
     conn.execute("UPDATE schedules SET is_active=0 WHERE org_id IS ?1 OR org_id=?1", params![s.org_id]).map_err(db_err)?;
@@ -1205,6 +1250,46 @@ pub fn get_audit_log(
     rows.map_err(db_err)
 }
 
+// ── Plan / Subscription ────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn get_plan(
+    db: State<DbState>,
+    session: State<SessionState>,
+) -> Result<PlanInfo, String> {
+    let s = require_session(&session)?;
+    let conn = db.0.lock().map_err(db_err)?;
+    let plan = get_org_plan(&conn, s.org_id);
+    let limits = PlanLimits::for_plan(&plan);
+    Ok(PlanInfo { plan, limits })
+}
+
+/// Standalone mode: license info always returns "none" — licensing is hub-only.
+#[tauri::command]
+pub fn get_license() -> Result<LicenseInfo, String> {
+    Ok(LicenseInfo {
+        active:            false,
+        plan:              PLAN_FREE.to_string(),
+        org_name:          None,
+        expires_at:        None,
+        days_until_expiry: None,
+        status:            "none".into(),
+        last_validated_at: None,
+    })
+}
+
+/// Standalone mode: license activation is handled in the hub server, not the desktop app.
+#[tauri::command]
+pub fn activate_license(_token: String) -> Result<LicenseInfo, String> {
+    Err("License activation is only available in hub server mode. Connect to a hub and use the hub admin panel.".into())
+}
+
+/// Standalone mode: no-op.
+#[tauri::command]
+pub fn deactivate_license() -> Result<(), String> {
+    Ok(())
+}
+
 // ── Bulk CSV import ─────────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -1215,6 +1300,13 @@ pub fn bulk_import_lecturers(
 ) -> Result<BulkImportResult, String> {
     let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
+    {
+        let plan = get_org_plan(&conn, s.org_id);
+        let limits = PlanLimits::for_plan(&plan);
+        if !limits.bulk_import {
+            return Err(plan_limit_err(PlanLimitError::new(plan, "bulk_import", 0, 1)));
+        }
+    }
     let mut inserted = 0i64; let mut skipped = 0i64; let mut errors: Vec<String> = vec![];
     for r in &rows {
         if r.name.trim().is_empty() { errors.push("Row skipped: name is empty".into()); skipped += 1; continue; }
@@ -1244,6 +1336,13 @@ pub fn bulk_import_rooms(
 ) -> Result<BulkImportResult, String> {
     let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
+    {
+        let plan = get_org_plan(&conn, s.org_id);
+        let limits = PlanLimits::for_plan(&plan);
+        if !limits.bulk_import {
+            return Err(plan_limit_err(PlanLimitError::new(plan, "bulk_import", 0, 1)));
+        }
+    }
     let mut inserted = 0i64; let mut skipped = 0i64; let mut errors: Vec<String> = vec![];
     for r in &rows {
         if r.name.trim().is_empty() { errors.push("Row skipped: name is empty".into()); skipped += 1; continue; }
@@ -1272,6 +1371,13 @@ pub fn bulk_import_courses(
 ) -> Result<BulkImportResult, String> {
     let s = require_session(&session)?;
     let conn = db.0.lock().map_err(db_err)?;
+    {
+        let plan = get_org_plan(&conn, s.org_id);
+        let limits = PlanLimits::for_plan(&plan);
+        if !limits.bulk_import {
+            return Err(plan_limit_err(PlanLimitError::new(plan, "bulk_import", 0, 1)));
+        }
+    }
     let mut inserted = 0i64; let mut skipped = 0i64; let mut errors: Vec<String> = vec![];
     for r in &rows {
         if r.code.trim().is_empty() { errors.push("Row skipped: code is empty".into()); skipped += 1; continue; }
