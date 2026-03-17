@@ -4,10 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Schedula — University Timetabling, Automated</title>
-  <meta name="description" content="Schedula generates conflict-free academic timetables in seconds. Free, open source desktop app for universities. Runs on Windows and macOS." />
+  <meta name="description" content="Schedula generates conflict-free academic timetables in seconds. Offline-first desktop app for universities with optional multi-machine sync and advanced features. Free tier available." />
   <meta property="og:title" content="Schedula — University Timetabling, Automated" />
-  <meta property="og:description" content="Constraint-based scheduler for universities. Free, open source, offline-first." />
+  <meta property="og:description" content="Constraint-based scheduler for universities. Offline-first, with Pro and Institution plans for sync and advanced features." />
   <meta property="og:type" content="website" />
+  <!-- Paddle.js (Paddle Billing v2) — loads only when PADDLE_CLIENT_TOKEN is set below -->
+  <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -656,6 +658,125 @@
     .fade-up:nth-child(5) { transition-delay: .4s; }
     .fade-up:nth-child(6) { transition-delay: .5s; }
 
+    /* ── PRICING ──────────────────────────────────────────────────────────── */
+    #pricing { background: var(--cream); }
+
+    .pricing-toggle-wrap {
+      display: flex; justify-content: center; margin-bottom: 3rem;
+    }
+    .pricing-toggle {
+      display: flex; background: var(--white);
+      border: 1.5px solid var(--edge-light); border-radius: 999px;
+      padding: 3px; gap: 2px;
+    }
+    .pricing-toggle button {
+      font-family: var(--sans); font-size: .8125rem; font-weight: 500;
+      padding: .45rem 1.25rem; border: none; border-radius: 999px;
+      background: transparent; color: var(--mid); cursor: pointer;
+      transition: all .2s;
+    }
+    .pricing-toggle button.active { background: var(--navy); color: var(--white); }
+
+    .pricing-cards {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem;
+    }
+    .pcard {
+      background: var(--white); border: 1.5px solid var(--edge-light);
+      border-radius: 12px; padding: 2rem 1.75rem;
+      display: flex; flex-direction: column;
+      position: relative; transition: box-shadow .25s;
+    }
+    .pcard:hover { box-shadow: 0 8px 40px rgba(15,23,42,.08); }
+    .pcard.pcard-highlight { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+    .pcard-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--blue); color: var(--white);
+      font-size: .6875rem; font-weight: 600; letter-spacing: .05em;
+      text-transform: uppercase; padding: .25rem .875rem;
+      border-radius: 999px; white-space: nowrap;
+    }
+    .pcard-name {
+      font-family: var(--serif); font-size: 1.375rem; font-weight: 500;
+      color: var(--ink); margin-top: .25rem;
+    }
+    .pcard-price {
+      display: flex; align-items: baseline; gap: .35rem; margin: .5rem 0;
+    }
+    .pcard-price .amount {
+      font-family: var(--serif); font-size: 2.75rem; font-weight: 600;
+      color: var(--ink); letter-spacing: -.03em; line-height: 1;
+    }
+    .pcard-price .period { font-size: .875rem; color: var(--mid); }
+    .pcard-tagline { font-size: .875rem; color: var(--mid); line-height: 1.6; margin-bottom: .25rem; }
+    .pcard-divider { border: none; border-top: 1px solid var(--edge-light); margin: .875rem 0; }
+    .pcard-features {
+      list-style: none; display: flex; flex-direction: column; gap: .5rem; flex: 1;
+    }
+    .pcard-features li {
+      display: flex; align-items: flex-start; gap: .5rem;
+      font-size: .875rem; color: var(--ink); line-height: 1.5;
+    }
+    .pcard-features li::before {
+      content: '✓'; color: var(--blue); font-weight: 700;
+      flex-shrink: 0; margin-top: .05rem;
+    }
+    .pcard-features li.feat-dim { color: var(--muted); }
+    .pcard-features li.feat-dim::before { content: '–'; color: var(--muted); }
+    .pcard-cta { margin-top: 1.5rem; }
+    .pcard-cta .btn { width: 100%; justify-content: center; font-size: .9rem; }
+    .btn-navy       { background: var(--navy); color: var(--white); border: none; }
+    .btn-navy:hover { background: var(--navy-3); color: var(--white); }
+    .btn-blue-solid       { background: var(--blue); color: var(--white); border: none; }
+    .btn-blue-solid:hover { background: #2563eb; color: var(--white); }
+    .pcard-note { font-size: .75rem; color: var(--muted); text-align: center; margin-top: .625rem; }
+
+    .period-monthly { display: inline; }
+    .period-annual  { display: none; }
+    .annual-mode .period-monthly { display: none; }
+    .annual-mode .period-annual  { display: inline; }
+
+    .pcard-or {
+      display: flex; align-items: center; gap: .5rem;
+      color: var(--muted); font-size: .75rem; margin: .5rem 0;
+    }
+    .pcard-or::before, .pcard-or::after {
+      content: ''; flex: 1; height: 1px; background: var(--edge-light);
+    }
+    .btn-paddle       { background: #0b52a4; color: #fff; border: none; }
+    .btn-paddle:hover { background: #084099; color: #fff; }
+    .btn-outline-sm   {
+      background: transparent; color: var(--mid);
+      border: 1.5px solid var(--edge-light); font-size: .8125rem;
+    }
+    .btn-outline-sm:hover { border-color: var(--blue); color: var(--blue); background: transparent; }
+
+    /* ── CHECKOUT MODAL ───────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(11,20,38,.75);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9000; opacity: 0; pointer-events: none; transition: opacity .2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal-card {
+      background: var(--white); border-radius: 16px;
+      padding: 2.5rem; max-width: 440px; width: 90%;
+      box-shadow: 0 32px 80px rgba(0,0,0,.3);
+      display: flex; flex-direction: column; gap: 1rem;
+    }
+    .modal-card h3 { font-family: var(--serif); font-size: 1.5rem; font-weight: 500; color: var(--ink); }
+    .modal-card p  { font-size: .9rem; color: var(--mid); }
+    .modal-input {
+      width: 100%; padding: .75rem 1rem;
+      font-family: var(--sans); font-size: .9375rem;
+      border: 1.5px solid var(--edge-light); border-radius: 8px;
+      outline: none; color: var(--ink); transition: border-color .2s;
+    }
+    .modal-input:focus  { border-color: var(--blue); }
+    .modal-actions { display: flex; flex-direction: column; gap: .625rem; }
+    .modal-error { font-size: .8125rem; color: #dc2626; display: none; }
+    .modal-error.visible { display: block; }
+    .modal-success { font-size: .875rem; color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: .625rem .875rem; }
+
     /* ── RESPONSIVE ───────────────────────────────────────────────────────── */
     @media (max-width: 1024px) {
       .hero-inner { grid-template-columns: 1fr; text-align: center; padding-top: 3rem; }
@@ -668,8 +789,9 @@
       .steps       { grid-template-columns: 1fr; gap: 2.5rem; }
       .steps::after { display: none; }
       .step { padding: 0 0 0 2rem; border-left: 1px solid var(--edge-dark); }
-      .sync-grid   { grid-template-columns: 1fr; gap: 3rem; }
-      
+      .sync-grid     { grid-template-columns: 1fr; gap: 3rem; }
+      .pricing-cards { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+
       .nav-links { display: none !important; }
       .nav-links.open { display: flex !important; }
       #ham { display: flex; }
@@ -713,11 +835,12 @@
     <li><a href="#features">Features</a></li>
     <li><a href="#how">How it works</a></li>
     <li><a href="#sync">Sync</a></li>
+    <li><a href="#pricing">Pricing</a></li>
     <li><a href="#oss">Download</a></li>
   </ul>
 
   <div class="nav-end">
-    <a href="#oss" class="btn btn-gold">Download Free</a>
+    <a href="#pricing" class="btn btn-gold">Explore Plans</a>
     <button class="hamburger" id="ham" aria-label="Toggle menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
@@ -736,7 +859,7 @@
     <div class="hero-copy">
       <div class="hero-badge" role="note">
         <i aria-hidden="true"></i>
-        Free &amp; Open Source · Desktop App
+        Flexible Plans Available · Desktop App
       </div>
 
       <h1 id="hero-heading">
@@ -751,17 +874,17 @@
       </p>
 
       <div class="hero-ctas">
-        <a href="#oss" class="btn btn-gold btn-lg" aria-label="Download Schedula for macOS">
+        <a href="#pricing" class="btn btn-gold btn-lg" aria-label="Start with Schedula">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97 14.32 22 13.89 21.18 12.37 21.18 10.84 21.18 10.36 21.95 9.1 22 7.78 22.05 6.8 20.68 5.96 19.47 4.25 17 2.94 12.45 4.7 9.39 5.57 7.87 7.13 6.91 8.82 6.88 10.1 6.86 11.32 7.75 12.11 7.75 12.89 7.75 14.37 6.68 15.92 6.84 16.57 6.87 18.39 7.1 19.56 8.82 19.47 8.88 17.39 10.1 17.41 12.63 17.44 15.65 20.06 16.66 20.09 16.67 20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2 16.07 3.17 15.6 4.35 14.9 5.19 14.21 6.04 13.07 6.7 11.95 6.61 11.8 5.46 12.36 4.26 13 3.5Z"/>
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
           </svg>
-          Download for macOS
+          Explore Plans
         </a>
-        <a href="#oss" class="btn btn-ghost btn-lg" aria-label="Download Schedula for Windows">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M3 5.557 10.144 4.6V11.4H3V5.557ZM10.144 19.4 3 18.443V12.6h7.144V19.4ZM11 4.469 21 3v8.4H11V4.469ZM21 12.6V21L11 19.531V12.6H21Z"/>
+        <a href="#oss" class="btn btn-ghost btn-lg" aria-label="Download free standalone version">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
           </svg>
-          Download for Windows
+          Download Free
         </a>
       </div>
 
@@ -1185,26 +1308,181 @@
 </section>
 
 
+<!-- ─── PRICING ──────────────────────────────────────────────────────────── -->
+<section id="pricing" aria-labelledby="pricing-heading">
+  <div class="inner">
+    <div class="feat-header">
+      <p class="eyebrow on-light">Pricing</p>
+      <h2 class="on-light" id="pricing-heading">Start free.<br>Scale when you're ready.</h2>
+      <p class="section-sub on-light">
+        The core scheduling app is MIT-licensed and free forever.
+        Unlock multi-machine sync and advanced features with a Hub plan.
+      </p>
+    </div>
+
+    <div class="pricing-toggle-wrap">
+      <div class="pricing-toggle" role="group" aria-label="Billing period">
+        <button id="toggle-monthly" class="active" onclick="setPricingPeriod('monthly')">Monthly</button>
+        <button id="toggle-annual"  onclick="setPricingPeriod('annual')">Annual &nbsp;<span style="background:#dcfce7;color:#166534;font-size:.65rem;font-weight:700;padding:.15rem .55rem;border-radius:999px">Save 20%</span></button>
+      </div>
+    </div>
+
+    <div class="pricing-cards" id="pricing-cards">
+
+      <!-- ── Free ─────────────────────────────────────────────────────────── -->
+      <div class="pcard fade-up">
+        <div class="pcard-name">Free</div>
+        <div class="pcard-price">
+          <span class="amount">$0</span>
+          <span class="period">forever</span>
+        </div>
+        <p class="pcard-tagline">Single-machine timetabling for departments exploring Schedula.</p>
+        <hr class="pcard-divider">
+        <ul class="pcard-features">
+          <li>Up to 10 batches per semester</li>
+          <li>1 admin account</li>
+          <li>Unlimited courses, rooms &amp; lecturers</li>
+          <li>Greedy constraint scheduler</li>
+          <li>Draft → Published → Active workflow</li>
+          <li>CSV export</li>
+          <li class="feat-dim">No hub / multi-machine sync</li>
+          <li class="feat-dim">No CSP algorithm</li>
+          <li class="feat-dim">No bulk CSV import</li>
+        </ul>
+        <div class="pcard-cta">
+          <a href="#oss" class="btn btn-outline-dark">Download free</a>
+        </div>
+      </div>
+
+      <!-- ── Pro ──────────────────────────────────────────────────────────── -->
+      <div class="pcard pcard-highlight fade-up">
+        <div class="pcard-badge">Most popular</div>
+        <div class="pcard-name">Pro</div>
+        <div class="pcard-price">
+          <span class="amount">$<span class="period-monthly">29</span><span class="period-annual">23</span></span>
+          <span class="period">/ mo</span>
+        </div>
+        <p class="pcard-tagline">Multi-machine hub for departments with distributed admin teams.</p>
+        <hr class="pcard-divider">
+        <ul class="pcard-features">
+          <li>Up to 50 batches per semester</li>
+          <li>Up to 5 admin accounts</li>
+          <li>Hub server &amp; real-time WebSocket sync</li>
+          <li>CSP constraint solver (better timetables)</li>
+          <li>Bulk CSV import for lecturers, rooms &amp; courses</li>
+          <li>Utilization reports &amp; audit log</li>
+          <li>Approval workflow for admins</li>
+          <li>Password recovery with security questions</li>
+          <li><strong>14-day free trial</strong></li>
+        </ul>
+        <div class="pcard-cta">
+          <button class="btn btn-blue-solid" onclick="openCheckout('pro')">Start free trial →</button>
+          <div class="pcard-or" id="paddle-pro-or" style="display:none">or</div>
+          <button class="btn btn-paddle" id="paddle-pro-btn" style="display:none" onclick="openPaddleCheckout('pro')">Pay with Paddle</button>
+        </div>
+        <p class="pcard-note">
+          <span class="period-monthly">$29/mo billed monthly.</span>
+          <span class="period-annual">$276/yr billed annually.</span>
+          Cancel anytime.
+        </p>
+      </div>
+
+      <!-- ── Institution ───────────────────────────────────────────────────── -->
+      <div class="pcard fade-up">
+        <div class="pcard-name">Institution</div>
+        <div class="pcard-price">
+          <span class="amount">$<span class="period-monthly">99</span><span class="period-annual">79</span></span>
+          <span class="period">/ mo</span>
+        </div>
+        <p class="pcard-tagline">University-wide deployment with unlimited scale and priority support.</p>
+        <hr class="pcard-divider">
+        <ul class="pcard-features">
+          <li>Unlimited batches</li>
+          <li>Unlimited admin accounts</li>
+          <li>Everything in Pro</li>
+          <li>Multiple organizations / faculties</li>
+          <li>Priority email support</li>
+          <li>Invoice &amp; purchase-order billing</li>
+          <li>Annual billing option</li>
+          <li><strong>14-day free trial</strong></li>
+        </ul>
+        <div class="pcard-cta">
+          <button class="btn btn-navy" onclick="openCheckout('institution')">Start free trial →</button>
+          <button class="btn btn-outline-sm" style="margin-top:.5rem;width:100%;justify-content:center" onclick="openInvoiceRequest('institution')">Request invoice / PO →</button>
+          <div class="pcard-or" id="paddle-inst-or" style="display:none">or</div>
+          <button class="btn btn-paddle" id="paddle-inst-btn" style="display:none" onclick="openPaddleCheckout('institution')">Pay with Paddle</button>
+        </div>
+        <p class="pcard-note">
+          <span class="period-monthly">$99/mo billed monthly.</span>
+          <span class="period-annual">$948/yr billed annually.</span>
+          Cancel anytime.
+        </p>
+      </div>
+
+    </div><!-- /pricing-cards -->
+  </div>
+</section>
+
+
+<!-- ─── CHECKOUT MODAL ────────────────────────────────────────────────────── -->
+<div id="checkout-modal" class="modal-overlay" role="dialog" aria-modal="true"
+     aria-labelledby="modal-title" aria-hidden="true">
+  <div class="modal-card">
+    <h3 id="modal-title">Start your trial</h3>
+    <p  id="modal-desc">Enter your work email. You'll be redirected to Stripe to complete checkout.</p>
+    <input type="email" id="checkout-email" class="modal-input"
+           placeholder="you@university.edu" autocomplete="email">
+    <div id="modal-error" class="modal-error" role="alert"></div>
+    <div class="modal-actions">
+      <button class="btn btn-blue-solid" id="modal-submit">Continue to checkout →</button>
+      <button class="btn btn-outline-dark" onclick="closeCheckout()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ─── INVOICE REQUEST MODAL ─────────────────────────────────────────────── -->
+<div id="invoice-modal" class="modal-overlay" role="dialog" aria-modal="true"
+     aria-labelledby="invoice-modal-title" aria-hidden="true">
+  <div class="modal-card" style="max-width:480px">
+    <h3 id="invoice-modal-title">Request an invoice / PO</h3>
+    <p id="invoice-modal-desc">Fill in your procurement details and we'll send a quote within one business day.</p>
+    <input type="text"  id="inv-org-name"      class="modal-input" placeholder="Institution / organisation name" autocomplete="organization">
+    <input type="text"  id="inv-contact-name"  class="modal-input" placeholder="Your name" autocomplete="name">
+    <input type="email" id="inv-contact-email" class="modal-input" placeholder="you@university.edu" autocomplete="email">
+    <input type="number" id="inv-user-count"   class="modal-input" placeholder="Estimated number of users" min="1">
+    <input type="text"  id="inv-country"       class="modal-input" placeholder="Country" autocomplete="country-name">
+    <textarea id="inv-notes" class="modal-input" rows="3" placeholder="Notes (optional)" style="resize:vertical"></textarea>
+    <div id="invoice-modal-error"   class="modal-error"   role="alert"></div>
+    <div id="invoice-modal-success" class="modal-success" role="status" style="display:none"></div>
+    <div class="modal-actions" id="invoice-modal-actions">
+      <button class="btn btn-navy" id="invoice-submit">Send request →</button>
+      <button class="btn btn-outline-dark" onclick="closeInvoiceRequest()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
 <!-- ─── OPEN SOURCE / DOWNLOAD ───────────────────────────────────────────── -->
 <section id="oss" aria-labelledby="oss-heading">
   <div class="inner">
     <div class="oss-card">
       <div class="oss-emoji" aria-hidden="true">⚗️</div>
-      <h2 class="oss-title" id="oss-heading">Free, forever.</h2>
+      <h2 class="oss-title" id="oss-heading">Desktop App — Always Free</h2>
       <p class="oss-body">
-        Schedula is open source under the MIT license and free to use for any
-        university, department, or institution — regardless of size.
-        No seat limits, no subscription, no cloud lock-in.
-        Your data stays on your hardware.
+        Download Schedula for free and use it standalone on a single machine.
+        The desktop app is completely free with no time limits or feature restrictions.
+        Upgrade to Pro or Institution plans when you need multi-machine sync and advanced features.
+        Your data always stays on your hardware — no cloud lock-in.
       </p>
-      <div class="oss-pills" role="list" aria-label="What's included">
-        <span class="pill" role="listitem">Unlimited users</span>
-        <span class="pill" role="listitem">Unlimited schedules</span>
-        <span class="pill" role="listitem">No cloud required</span>
-        <span class="pill" role="listitem">Full source code access</span>
+      <div class="oss-pills" role="list" aria-label="What's included in free tier">
+        <span class="pill" role="listitem">Offline-first app</span>
+        <span class="pill" role="listitem">Greedy constraint solver</span>
+        <span class="pill" role="listitem">10 batches per semester</span>
         <span class="pill" role="listitem">Windows &amp; macOS</span>
-        <span class="pill" role="listitem">Self-hosted hub server</span>
-        <span class="pill" role="listitem">MIT license</span>
+        <span class="pill" role="listitem">No time limits</span>
+        <span class="pill" role="listitem">No cloud required</span>
+        <span class="pill" role="listitem">Data export</span>
       </div>
       <div class="oss-ctas">
         <a href="https://github.com/dibakarsutradhar/schedula/releases/latest" id="dl-github" class="btn btn-gold btn-lg"
@@ -1243,10 +1521,10 @@
     <div class="foot-links" aria-label="Footer navigation">
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
-      <a href="#sync">Sync</a>
-      <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
-      <a href="https://github.com" target="_blank" rel="noopener noreferrer">Releases</a>
-      <a href="https://github.com" target="_blank" rel="noopener noreferrer">MIT License</a>
+      <a href="#pricing">Pricing</a>
+      <a href="https://github.com/dibakarsutradhar/schedula" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://github.com/dibakarsutradhar/schedula/releases" target="_blank" rel="noopener noreferrer">Releases</a>
+      <a href="https://github.com/dibakarsutradhar/schedula/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a>
     </div>
 
     <div class="foot-copy">
@@ -1350,6 +1628,274 @@
     }
   }
   fetchLatestRelease();
+
+  // ── Pricing ─────────────────────────────────────────────────────────────────
+  // Set these to your deployed license-server URL and Paddle client token to
+  // enable online checkout. When empty the CTA buttons show informational alerts.
+  const BILLING_URL = '';          // e.g. 'https://license.schedula.app'
+  const PADDLE_CLIENT_TOKEN = '';  // e.g. 'live_xxxxxxxxxxxxxxxx'
+
+  // Paddle price IDs — set to your Paddle price IDs
+  const PADDLE_PRICES = {
+    pro_monthly:  '',  // e.g. 'pri_01xxxxxxxxxxxxxxxxxxxxxxxxxx'
+    pro_annual:   '',
+    inst_monthly: '',
+    inst_annual:  '',
+  };
+
+  let _checkoutPlan     = 'pro';
+  let _checkoutProvider = 'stripe'; // 'stripe' | 'paddle'
+  let _billingPeriod    = 'monthly';
+
+  // ── Paddle init ─────────────────────────────────────────────────────────────
+  function initPaddle() {
+    if (!PADDLE_CLIENT_TOKEN || typeof Paddle === 'undefined') return;
+    Paddle.Initialize({ token: PADDLE_CLIENT_TOKEN });
+    // Show Paddle buttons once configured
+    ['paddle-pro-or', 'paddle-pro-btn', 'paddle-inst-or', 'paddle-inst-btn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPaddle);
+  } else {
+    initPaddle();
+  }
+
+  window.setPricingPeriod = function(period) {
+    _billingPeriod = period;
+    const cards = document.getElementById('pricing-cards');
+    if (period === 'annual') {
+      cards.classList.add('annual-mode');
+      document.getElementById('toggle-annual').classList.add('active');
+      document.getElementById('toggle-monthly').classList.remove('active');
+    } else {
+      cards.classList.remove('annual-mode');
+      document.getElementById('toggle-monthly').classList.add('active');
+      document.getElementById('toggle-annual').classList.remove('active');
+    }
+  };
+
+  // ── Stripe checkout modal ────────────────────────────────────────────────────
+  window.openCheckout = function(plan) {
+    if (!BILLING_URL) {
+      alert(
+        'Online checkout is not configured on this deployment.\n\n' +
+        'To subscribe, self-host the license server and set BILLING_URL in the landing page.\n\n' +
+        'For invoice / purchase-order billing click "Request invoice / PO".'
+      );
+      return;
+    }
+    _checkoutPlan     = plan;
+    _checkoutProvider = 'stripe';
+    const label = plan === 'institution' ? 'Institution' : 'Pro';
+    document.getElementById('modal-title').textContent = `Start your ${label} trial`;
+    document.getElementById('modal-desc').textContent  =
+      `Enter your work email. You'll be redirected to Stripe for your 14-day free ${label} trial.`;
+    document.getElementById('checkout-email').value = '';
+    const errEl = document.getElementById('modal-error');
+    errEl.textContent = '';
+    errEl.classList.remove('visible');
+    const btn = document.getElementById('modal-submit');
+    btn.textContent = 'Continue to checkout →';
+    btn.disabled = false;
+    const modal = document.getElementById('checkout-modal');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    setTimeout(() => document.getElementById('checkout-email').focus(), 50);
+  };
+
+  window.closeCheckout = function() {
+    const modal = document.getElementById('checkout-modal');
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  };
+
+  // ── Paddle checkout ──────────────────────────────────────────────────────────
+  window.openPaddleCheckout = function(plan) {
+    if (!PADDLE_CLIENT_TOKEN || typeof Paddle === 'undefined') {
+      alert('Paddle checkout is not configured on this deployment.');
+      return;
+    }
+    const key = `${plan === 'institution' ? 'inst' : 'pro'}_${_billingPeriod}`;
+    const priceId = PADDLE_PRICES[key];
+    if (!priceId) {
+      alert('Paddle price not configured for this plan.');
+      return;
+    }
+    // Collect email via Stripe modal reused as email capture
+    _checkoutPlan     = plan;
+    _checkoutProvider = 'paddle';
+    const label = plan === 'institution' ? 'Institution' : 'Pro';
+    document.getElementById('modal-title').textContent = `Start your ${label} trial (Paddle)`;
+    document.getElementById('modal-desc').textContent  =
+      `Enter your email and you'll continue to Paddle checkout for your 14-day free ${label} trial.`;
+    document.getElementById('checkout-email').value = '';
+    const errEl = document.getElementById('modal-error');
+    errEl.textContent = '';
+    errEl.classList.remove('visible');
+    const btn = document.getElementById('modal-submit');
+    btn.textContent = 'Continue to Paddle →';
+    btn.disabled = false;
+    const modal = document.getElementById('checkout-modal');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    setTimeout(() => document.getElementById('checkout-email').focus(), 50);
+  };
+
+  document.getElementById('modal-submit').addEventListener('click', async () => {
+    const email = document.getElementById('checkout-email').value.trim();
+    const errEl = document.getElementById('modal-error');
+    if (!email || !email.includes('@')) {
+      errEl.textContent = 'Please enter a valid email address.';
+      errEl.classList.add('visible');
+      return;
+    }
+    const btn = document.getElementById('modal-submit');
+    btn.disabled = true;
+    errEl.classList.remove('visible');
+
+    if (_checkoutProvider === 'paddle') {
+      // Open Paddle overlay — no server round-trip needed
+      window.closeCheckout();
+      const key = `${_checkoutPlan === 'institution' ? 'inst' : 'pro'}_${_billingPeriod}`;
+      Paddle.Checkout.open({
+        items: [{ priceId: PADDLE_PRICES[key], quantity: 1 }],
+        customer: { email },
+        customData: { email },
+      });
+      return;
+    }
+
+    // Stripe flow
+    btn.textContent = 'Redirecting…';
+    try {
+      const res = await fetch(`${BILLING_URL}/billing/checkout`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email, plan: _checkoutPlan, billing_period: _billingPeriod }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Checkout failed');
+      window.location.href = data.checkout_url;
+    } catch (e) {
+      errEl.textContent = `Error: ${e.message}. Please try again or contact support.`;
+      errEl.classList.add('visible');
+      btn.textContent = 'Continue to checkout →';
+      btn.disabled = false;
+    }
+  });
+
+  // Allow pressing Enter in the email field to submit
+  document.getElementById('checkout-email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('modal-submit').click();
+  });
+
+  // Close modals on backdrop click or Escape key
+  document.getElementById('checkout-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) window.closeCheckout();
+  });
+  document.getElementById('invoice-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) window.closeInvoiceRequest();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if (document.getElementById('checkout-modal').classList.contains('open')) window.closeCheckout();
+      if (document.getElementById('invoice-modal').classList.contains('open'))  window.closeInvoiceRequest();
+    }
+  });
+
+  // ── Invoice request modal ────────────────────────────────────────────────────
+  let _invoicePlan = 'institution';
+
+  window.openInvoiceRequest = function(plan) {
+    _invoicePlan = plan;
+    const label = plan === 'institution' ? 'Institution' : 'Pro';
+    document.getElementById('invoice-modal-title').textContent = `Request an invoice / PO — ${label}`;
+    // Reset fields
+    ['inv-org-name','inv-contact-name','inv-contact-email','inv-user-count','inv-country','inv-notes']
+      .forEach(id => { document.getElementById(id).value = ''; });
+    const errEl  = document.getElementById('invoice-modal-error');
+    const succEl = document.getElementById('invoice-modal-success');
+    errEl.textContent = '';
+    errEl.classList.remove('visible');
+    succEl.style.display = 'none';
+    succEl.textContent = '';
+    document.getElementById('invoice-submit').disabled = false;
+    document.getElementById('invoice-submit').textContent = 'Send request →';
+    document.getElementById('invoice-modal-actions').style.display = '';
+    const modal = document.getElementById('invoice-modal');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    setTimeout(() => document.getElementById('inv-org-name').focus(), 50);
+  };
+
+  window.closeInvoiceRequest = function() {
+    const modal = document.getElementById('invoice-modal');
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+  };
+
+  document.getElementById('invoice-submit').addEventListener('click', async () => {
+    const orgName      = document.getElementById('inv-org-name').value.trim();
+    const contactName  = document.getElementById('inv-contact-name').value.trim();
+    const contactEmail = document.getElementById('inv-contact-email').value.trim();
+    const userCount    = document.getElementById('inv-user-count').value.trim();
+    const country      = document.getElementById('inv-country').value.trim();
+    const notes        = document.getElementById('inv-notes').value.trim();
+    const errEl        = document.getElementById('invoice-modal-error');
+
+    if (!orgName || !contactName || !contactEmail || !contactEmail.includes('@') || !country) {
+      errEl.textContent = 'Please fill in all required fields (org name, your name, email, country).';
+      errEl.classList.add('visible');
+      return;
+    }
+
+    if (!BILLING_URL) {
+      // No server — show a mailto fallback
+      const subject = encodeURIComponent(`Invoice request — ${_invoicePlan} plan`);
+      const body = encodeURIComponent(
+        `Organisation: ${orgName}\nContact: ${contactName}\nEmail: ${contactEmail}\nUsers: ${userCount || 'N/A'}\nCountry: ${country}\nNotes: ${notes}`
+      );
+      window.open(`mailto:sales@schedula.app?subject=${subject}&body=${body}`);
+      window.closeInvoiceRequest();
+      return;
+    }
+
+    const btn = document.getElementById('invoice-submit');
+    btn.textContent = 'Sending…';
+    btn.disabled = true;
+    errEl.classList.remove('visible');
+
+    try {
+      const res = await fetch(`${BILLING_URL}/billing/invoice-request`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          org_name:      orgName,
+          contact_name:  contactName,
+          contact_email: contactEmail,
+          plan:          _invoicePlan,
+          user_count:    userCount ? parseInt(userCount, 10) : null,
+          country,
+          notes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      // Show success
+      document.getElementById('invoice-modal-actions').style.display = 'none';
+      const succEl = document.getElementById('invoice-modal-success');
+      succEl.textContent = `Thanks, ${contactName.split(' ')[0]}! We've received your request and will send a quote to ${contactEmail} within one business day.`;
+      succEl.style.display = 'block';
+    } catch (e) {
+      errEl.textContent = `Error: ${e.message}. Please try again or email sales@schedula.app.`;
+      errEl.classList.add('visible');
+      btn.textContent = 'Send request →';
+      btn.disabled = false;
+    }
+  });
 </script>
 </body>
 </html>

@@ -1,9 +1,10 @@
-# 📚 Schedula — AI-Powered University Timetable Generator
+# 📚 Schedula — University Timetabling, Automated
 
-> Automated, conflict-free class schedule generation for universities and colleges. Built with Rust, Tauri, Svelte, and SQLite.
+> Generate conflict-free academic timetables in seconds. Free standalone app or Pro/Institution plans with multi-machine sync. Built with Rust, Tauri, Svelte, and SQLite.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![macOS](https://img.shields.io/badge/macOS-13.0+-brightgreen)
+![Windows](https://img.shields.io/badge/Windows-10+-blue)
 
 ## 🎯 What is Schedula?
 
@@ -383,6 +384,37 @@ npm run tauri build
 # Output: src-tauri/target/release/bundle/macos/Schedula.dmg
 ```
 
+### Deployment & Licensing
+
+Schedula supports optional subscription licensing for Pro and Institution plans:
+
+**Standalone Mode** (always free):
+- Desktop app runs fully offline
+- No licensing server needed
+- Free tier limitations apply (10 batches, 1 admin)
+
+**Hub Server Mode** (requires license):
+- Multi-machine sync via hub server
+- Stripe checkout integration
+- License tokens issued and validated at hub startup
+- 7-day offline grace period
+- Pro/Institution plan features unlocked
+
+To deploy the licensing server:
+```bash
+# Build license server
+cd license-server
+cargo build --release
+
+# Run with environment variables
+SCHEDULA_ADMIN_KEY=<secret> \
+STRIPE_SECRET_KEY=<key> \
+STRIPE_WEBHOOK_SECRET=<secret> \
+  ./target/release/license-server
+```
+
+See [`license-server/`](license-server/) for complete setup instructions.
+
 ### Project Structure
 
 ```
@@ -596,9 +628,33 @@ This project is licensed under the **MIT License** — see [LICENSE](LICENSE) fo
 
 ---
 
-## 🎓 Academic Use
+## 💳 Pricing & Plans
 
-Schedula is designed for and freely available to academic institutions. If you're using it at a university or college, please let us know! We'd love to hear about your experience.
+**Free Tier** — Single-machine standalone app
+- Offline-first, no cloud required
+- Up to 10 batches per semester
+- 1 admin account
+- Greedy constraint solver
+- No time or feature restrictions
+
+**Pro Plan** ($29/month or $276/year)
+- Multi-machine hub server with real-time WebSocket sync
+- Up to 50 batches per semester
+- Up to 5 admin accounts
+- CSP constraint solver (better schedules)
+- Bulk CSV import
+- Approval workflow for admins
+- 14-day free trial
+
+**Institution Plan** ($99/month or $948/year)
+- Everything in Pro, unlimited scale
+- Unlimited batches and admin accounts
+- Multiple organizations/faculties
+- Priority support
+- Invoice & PO billing
+- 14-day free trial
+
+👉 **[View full pricing](https://schedula.app#pricing)** at schedula.app
 
 ---
 
