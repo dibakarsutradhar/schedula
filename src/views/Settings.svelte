@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte'
+  import { invoke } from '@tauri-apps/api/core'
   import DaySelect from '../lib/components/DaySelect.svelte'
   import { session } from '../lib/stores/session.js'
   import { isSuperAdmin } from '../lib/stores/session.js'
@@ -48,6 +49,55 @@
     disconnectWs()
     syncMode.setStandalone()
     toast('Switched to standalone mode')
+  }
+
+  // ── Hub Mode (sidecar) ────────────────────────────────────────────────────────
+  let hubRunning  = false
+  let hubUrl      = null
+  let hubLoading  = false
+
+  async function checkHubStatus() {
+    try {
+      const status = await invoke('get_hub_status')
+      hubRunning = status.running
+      hubUrl     = status.url ?? null
+    } catch (e) {
+      // sidecar not available in dev without binary — ignore silently
+    }
+  }
+
+  async function startHubMode() {
+    hubLoading = true
+    try {
+      const status = await invoke('start_hub_mode')
+      hubRunning = status.running
+      hubUrl     = status.url ?? null
+      toast('Hub mode enabled — share the address with other admins', 'success')
+    } catch (e) {
+      toast('Failed to start hub: ' + e, 'error')
+    } finally {
+      hubLoading = false
+    }
+  }
+
+  async function stopHubMode() {
+    hubLoading = true
+    try {
+      await invoke('stop_hub_mode')
+      hubRunning = false
+      hubUrl     = null
+      toast('Hub mode stopped')
+    } catch (e) {
+      toast('Failed to stop hub: ' + e, 'error')
+    } finally {
+      hubLoading = false
+    }
+  }
+
+  async function copyHubUrl() {
+    if (!hubUrl) return
+    await navigator.clipboard.writeText(hubUrl)
+    toast('Hub address copied ✓')
   }
 
   // ── Appearance ──────────────────────────────────────────────────────────────
@@ -271,6 +321,7 @@
     stats = await getStats()
     appInfo = await getAppInfo()
     if (isSuperAdmin($session)) await loadSystemSettings()
+    await checkHubStatus()
   })
 
   function switchTab(t) {
@@ -736,19 +787,39 @@
         </div>
 
         <div class="card settings-section">
-          <h2>How to set up a hub</h2>
+          <h2>Hub Mode</h2>
           <p class="section-desc">
-            Pick one machine on your network to be the hub — a shared workstation,
-            an IT room PC, or any machine that stays on. Install Schedula on it,
-            then enable Hub Mode there (coming soon). Share the address it shows
-            and every other admin connects by entering it above.
+            Turn this machine into the hub. All other Schedula machines on your network
+            will connect to the address shown below.
           </p>
-          <div class="sync-how">
-            <div class="how-step"><span class="step-num">1</span><span>Install Schedula on the designated hub machine</span></div>
-            <div class="how-step"><span class="step-num">2</span><span>On that machine: Settings → Sync → <strong>Enable Hub Mode</strong></span></div>
-            <div class="how-step"><span class="step-num">3</span><span>Copy the hub address it shows (e.g. <code>http://192.168.1.x:7878</code>)</span></div>
-            <div class="how-step"><span class="step-num">4</span><span>On every other machine: paste that address above and click Connect</span></div>
-          </div>
+
+          {#if hubRunning}
+            <div class="hub-mode-active">
+              <div class="hub-status-indicator">
+                <span class="hub-dot on"></span>
+                <span class="hub-status-label">Hub is running</span>
+              </div>
+              <div class="hub-url-row">
+                <code class="hub-url-display">{hubUrl}</code>
+                <button class="btn btn-secondary btn-sm" on:click={copyHubUrl}>Copy</button>
+              </div>
+              <p class="hub-hint">Share this address with every other admin — paste it into their Hub Server URL field above.</p>
+              <div style="margin-top: 14px">
+                <button class="btn btn-danger-outline" disabled={hubLoading} on:click={stopHubMode}>
+                  {hubLoading ? 'Stopping…' : 'Stop Hub Mode'}
+                </button>
+              </div>
+            </div>
+          {:else}
+            <div class="sync-how" style="margin-bottom: 16px">
+              <div class="how-step"><span class="step-num">1</span><span>On the designated hub machine: enable Hub Mode below</span></div>
+              <div class="how-step"><span class="step-num">2</span><span>Copy the address it shows</span></div>
+              <div class="how-step"><span class="step-num">3</span><span>On every other machine: paste that address in Hub Server URL above and click Connect</span></div>
+            </div>
+            <button class="btn btn-primary" disabled={hubLoading} on:click={startHubMode}>
+              {hubLoading ? 'Starting…' : 'Enable Hub Mode'}
+            </button>
+          {/if}
         </div>
 
       <!-- ── About ── -->
@@ -877,4 +948,23 @@
     background: rgba(108,99,255,.2); color: var(--accent2);
     font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
   }
+  /* Hub Mode */
+  .hub-mode-active { display: flex; flex-direction: column; gap: 10px; }
+  .hub-status-indicator { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #2ecc71; }
+  .hub-dot { width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; flex-shrink: 0; }
+  .hub-dot.on { box-shadow: 0 0 6px rgba(46,204,113,.6); }
+  .hub-url-row { display: flex; align-items: center; gap: 10px; }
+  .hub-url-display {
+    flex: 1; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .hub-hint { font-size: 12px; color: var(--text-muted); margin: 0; }
+  .btn-danger-outline {
+    background: transparent; border: 1px solid var(--danger); color: var(--danger);
+    padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    transition: background .15s;
+  }
+  .btn-danger-outline:hover { background: rgba(231,76,60,.1); }
+  .btn-danger-outline:disabled { opacity: .5; cursor: not-allowed; }
 </style>

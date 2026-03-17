@@ -1,5 +1,6 @@
 mod commands;
 pub mod db;
+pub mod hub;
 pub mod models;
 pub mod scheduler;
 
@@ -7,12 +8,14 @@ pub mod scheduler;
 mod db_tests;
 
 use commands::{DbState, SessionState};
+use hub::HubState;
 use std::sync::Mutex;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             let data_dir = app
                 .path()
@@ -23,6 +26,7 @@ pub fn run() {
             let conn = db::open(&db_path).expect("Failed to open database");
             app.manage(DbState(Mutex::new(conn)));
             app.manage(SessionState(Mutex::new(None)));
+            app.manage(HubState(Mutex::new(None)));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -121,6 +125,10 @@ pub fn run() {
             commands::get_license,
             commands::activate_license,
             commands::deactivate_license,
+            // Hub mode (sidecar)
+            hub::start_hub_mode,
+            hub::stop_hub_mode,
+            hub::get_hub_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

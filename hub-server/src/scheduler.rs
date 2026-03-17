@@ -790,10 +790,11 @@ mod tests {
 
     fn simple() -> SchedulerInput {
         SchedulerInput {
-            courses:   vec![course(1, 2, "lecture", "lecture", Some(1))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
-            rooms:     vec![room(1, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1])],
+            courses:      vec![course(1, 2, "lecture", "lecture", Some(1))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         }
     }
 
@@ -984,12 +985,13 @@ mod tests {
     fn hard_no_room_double_booking() {
         // Two batches, two courses, one room — they cannot share (day, slot, room)
         let inp = SchedulerInput {
-            courses:   vec![course(1, 1, "lecture", "lecture", Some(1)),
-                            course(2, 1, "lecture", "lecture", Some(2))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20),
-                            lec(2, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
-            rooms:     vec![room(1, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1]), batch(2, 25, vec![2])],
+            courses:      vec![course(1, 1, "lecture", "lecture", Some(1)),
+                               course(2, 1, "lecture", "lecture", Some(2))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20),
+                               lec(2, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1]), batch(2, 25, vec![2])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_no_room_conflicts(&r.entries);
@@ -1001,11 +1003,12 @@ mod tests {
     fn hard_no_lecturer_double_booking() {
         // Same lecturer, two batches, two rooms
         let inp = SchedulerInput {
-            courses:   vec![course(1, 5, "lecture", "lecture", Some(1)),
-                            course(2, 5, "lecture", "lecture", Some(1))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 40)],
-            rooms:     vec![room(1, 30, "lecture"), room(2, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1]), batch(2, 25, vec![2])],
+            courses:      vec![course(1, 5, "lecture", "lecture", Some(1)),
+                               course(2, 5, "lecture", "lecture", Some(1))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 40)],
+            rooms:        vec![room(1, 30, "lecture"), room(2, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1]), batch(2, 25, vec![2])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_no_lecturer_conflicts(&r.entries);
@@ -1017,12 +1020,13 @@ mod tests {
     fn hard_no_batch_double_booking() {
         // Single batch, two courses — batch can't be two places at once
         let inp = SchedulerInput {
-            courses:   vec![course(1, 5, "lecture", "lecture", Some(1)),
-                            course(2, 5, "lecture", "lecture", Some(2))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 40),
-                            lec(2, "Mon,Tue,Wed,Thu,Fri", 8, 40)],
-            rooms:     vec![room(1, 30, "lecture"), room(2, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1, 2])],
+            courses:      vec![course(1, 5, "lecture", "lecture", Some(1)),
+                               course(2, 5, "lecture", "lecture", Some(2))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 40),
+                               lec(2, "Mon,Tue,Wed,Thu,Fri", 8, 40)],
+            rooms:        vec![room(1, 30, "lecture"), room(2, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1, 2])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_no_batch_conflicts(&r.entries);
@@ -1033,10 +1037,11 @@ mod tests {
     #[test]
     fn hard_lab_uses_only_lab_room() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 2, "lab", "lab", Some(1))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
-            rooms:     vec![room(1, 30, "lecture"), room(2, 30, "lab")],
-            batches:   vec![batch(1, 25, vec![1])],
+            courses:      vec![course(1, 2, "lab", "lab", Some(1))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:        vec![room(1, 30, "lecture"), room(2, 30, "lab")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 2);
@@ -1046,10 +1051,11 @@ mod tests {
     #[test]
     fn hard_lecture_never_uses_lab_room() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 2, "lecture", "lecture", Some(1))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
-            rooms:     vec![room(1, 30, "lab"), room(2, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1])],
+            courses:      vec![course(1, 2, "lecture", "lecture", Some(1))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:        vec![room(1, 30, "lab"), room(2, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 2);
@@ -1059,10 +1065,11 @@ mod tests {
     #[test]
     fn hard_no_lab_room_causes_unscheduled() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 2, "lab", "lab", Some(1))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
-            rooms:     vec![room(1, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1])],
+            courses:      vec![course(1, 2, "lab", "lab", Some(1))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert!(r.entries.is_empty());
@@ -1074,10 +1081,11 @@ mod tests {
     #[test]
     fn hard_room_capacity_picks_large_enough_room() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 1, "lecture", "lecture", Some(1))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
-            rooms:     vec![room(1, 10, "lecture"), room(2, 60, "lecture")],
-            batches:   vec![batch(1, 50, vec![1])],
+            courses:      vec![course(1, 1, "lecture", "lecture", Some(1))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:        vec![room(1, 10, "lecture"), room(2, 60, "lecture")],
+            batches:      vec![batch(1, 50, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 1);
@@ -1087,10 +1095,11 @@ mod tests {
     #[test]
     fn hard_room_too_small_unscheduled() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 1, "lecture", "lecture", Some(1))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
-            rooms:     vec![room(1, 10, "lecture")],
-            batches:   vec![batch(1, 100, vec![1])],
+            courses:      vec![course(1, 1, "lecture", "lecture", Some(1))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:        vec![room(1, 10, "lecture")],
+            batches:      vec![batch(1, 100, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert!(r.entries.is_empty());
@@ -1102,16 +1111,17 @@ mod tests {
     #[test]
     fn hard_lecturer_only_placed_on_available_days() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 3, "lecture", "lecture", Some(1))],
-            lecturers: vec![Lecturer {
+            courses:      vec![course(1, 3, "lecture", "lecture", Some(1))],
+            lecturers:    vec![Lecturer {
                 id: 1, name: "Mon-only".to_string(), email: None,
                 available_days: "Mon".to_string(),
                 max_hours_per_day: 8, max_hours_per_week: 20,
                 org_id: Some(1), preferred_slots_json: None, blackout_json: None,
                 max_consecutive_hours: 0,
             }],
-            rooms:   vec![room(1, 30, "lecture")],
-            batches: vec![batch(1, 25, vec![1])],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 3);
@@ -1121,16 +1131,17 @@ mod tests {
     #[test]
     fn hard_lecturer_no_available_days_unscheduled() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 1, "lecture", "lecture", Some(1))],
-            lecturers: vec![Lecturer {
+            courses:      vec![course(1, 1, "lecture", "lecture", Some(1))],
+            lecturers:    vec![Lecturer {
                 id: 1, name: "Unavailable".to_string(), email: None,
                 available_days: "".to_string(),
                 max_hours_per_day: 8, max_hours_per_week: 20,
                 org_id: Some(1), preferred_slots_json: None, blackout_json: None,
                 max_consecutive_hours: 0,
             }],
-            rooms:   vec![room(1, 30, "lecture")],
-            batches: vec![batch(1, 25, vec![1])],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert!(r.entries.is_empty());
@@ -1141,8 +1152,8 @@ mod tests {
     #[test]
     fn hard_max_hours_per_day_not_exceeded() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 8, "lecture", "lecture", Some(1))],
-            lecturers: vec![Lecturer {
+            courses:      vec![course(1, 8, "lecture", "lecture", Some(1))],
+            lecturers:    vec![Lecturer {
                 id: 1, name: "L".to_string(), email: None,
                 available_days: "Mon,Tue,Wed,Thu,Fri".to_string(),
                 max_hours_per_day: 2,
@@ -1150,8 +1161,9 @@ mod tests {
                 org_id: Some(1), preferred_slots_json: None, blackout_json: None,
                 max_consecutive_hours: 0,
             }],
-            rooms:   vec![room(1, 30, "lecture")],
-            batches: vec![batch(1, 25, vec![1])],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         let mut day_count: std::collections::HashMap<String, i64> = Default::default();
@@ -1166,8 +1178,8 @@ mod tests {
     #[test]
     fn hard_max_hours_per_week_caps_placement() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 10, "lecture", "lecture", Some(1))],
-            lecturers: vec![Lecturer {
+            courses:      vec![course(1, 10, "lecture", "lecture", Some(1))],
+            lecturers:    vec![Lecturer {
                 id: 1, name: "L".to_string(), email: None,
                 available_days: "Mon,Tue,Wed,Thu,Fri".to_string(),
                 max_hours_per_day: 8,
@@ -1175,8 +1187,9 @@ mod tests {
                 org_id: Some(1), preferred_slots_json: None, blackout_json: None,
                 max_consecutive_hours: 0,
             }],
-            rooms:   vec![room(1, 30, "lecture")],
-            batches: vec![batch(1, 25, vec![1])],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 5, "exactly max_hours_per_week sessions placed");
@@ -1190,8 +1203,8 @@ mod tests {
     fn hard_blackout_days_avoided() {
         // Blackout Mon–Thu → all sessions must land on Fri
         let inp = SchedulerInput {
-            courses:   vec![course(1, 3, "lecture", "lecture", Some(1))],
-            lecturers: vec![Lecturer {
+            courses:      vec![course(1, 3, "lecture", "lecture", Some(1))],
+            lecturers:    vec![Lecturer {
                 id: 1, name: "L".to_string(), email: None,
                 available_days: "Mon,Tue,Wed,Thu,Fri".to_string(),
                 max_hours_per_day: 8, max_hours_per_week: 20,
@@ -1203,8 +1216,9 @@ mod tests {
                 ]"#.to_string()),
                 max_consecutive_hours: 0,
             }],
-            rooms:   vec![room(1, 30, "lecture")],
-            batches: vec![batch(1, 25, vec![1])],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         for e in &r.entries { assert_eq!(e.day, "Fri", "Blackout days must be avoided"); }
@@ -1214,8 +1228,8 @@ mod tests {
     fn hard_blackout_specific_slot_avoided() {
         // Blackout Mon slot 0 only
         let inp = SchedulerInput {
-            courses:   vec![course(1, 1, "lecture", "lecture", Some(1))],
-            lecturers: vec![Lecturer {
+            courses:      vec![course(1, 1, "lecture", "lecture", Some(1))],
+            lecturers:    vec![Lecturer {
                 id: 1, name: "L".to_string(), email: None,
                 available_days: "Mon".to_string(),
                 max_hours_per_day: 8, max_hours_per_week: 20,
@@ -1224,8 +1238,9 @@ mod tests {
                 blackout_json: Some(r#"[{"day":"Mon","slot":0}]"#.to_string()),
                 max_consecutive_hours: 0,
             }],
-            rooms:   vec![room(1, 30, "lecture")],
-            batches: vec![batch(1, 25, vec![1])],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 1);
@@ -1238,8 +1253,8 @@ mod tests {
     fn hard_max_consecutive_hours_not_exceeded() {
         // Force everything to one day; max_consecutive=2 → no 3-in-a-row
         let inp = SchedulerInput {
-            courses:   vec![course(1, 6, "lecture", "lecture", Some(1))],
-            lecturers: vec![Lecturer {
+            courses:      vec![course(1, 6, "lecture", "lecture", Some(1))],
+            lecturers:    vec![Lecturer {
                 id: 1, name: "L".to_string(), email: None,
                 available_days: "Mon".to_string(),
                 max_hours_per_day: 8, max_hours_per_week: 40,
@@ -1247,8 +1262,9 @@ mod tests {
                 preferred_slots_json: None, blackout_json: None,
                 max_consecutive_hours: 2,
             }],
-            rooms:   vec![room(1, 30, "lecture")],
-            batches: vec![batch(1, 25, vec![1])],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         let mut slots: Vec<i64> = r.entries.iter()
@@ -1281,10 +1297,11 @@ mod tests {
     #[test]
     fn unscheduled_no_lecturer() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 2, "lecture", "lecture", None)],
-            lecturers: vec![],
-            rooms:     vec![room(1, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1])],
+            courses:      vec![course(1, 2, "lecture", "lecture", None)],
+            lecturers:    vec![],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert!(r.entries.is_empty());
@@ -1296,10 +1313,11 @@ mod tests {
     fn unscheduled_missing_lecturer_record() {
         // Lecturer ID 99 referenced but not provided
         let inp = SchedulerInput {
-            courses:   vec![course(1, 1, "lecture", "lecture", Some(99))],
-            lecturers: vec![],
-            rooms:     vec![room(1, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1])],
+            courses:      vec![course(1, 1, "lecture", "lecture", Some(99))],
+            lecturers:    vec![],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert!(r.entries.is_empty());
@@ -1311,16 +1329,17 @@ mod tests {
     fn unscheduled_partial_placement_reports_remaining() {
         // 10 hours needed but weekly cap = 6 → 4 unscheduled hours
         let inp = SchedulerInput {
-            courses:   vec![course(1, 10, "lecture", "lecture", Some(1))],
-            lecturers: vec![Lecturer {
+            courses:      vec![course(1, 10, "lecture", "lecture", Some(1))],
+            lecturers:    vec![Lecturer {
                 id: 1, name: "L".to_string(), email: None,
                 available_days: "Mon,Tue,Wed,Thu,Fri".to_string(),
                 max_hours_per_day: 8, max_hours_per_week: 6,
                 org_id: Some(1), preferred_slots_json: None, blackout_json: None,
                 max_consecutive_hours: 0,
             }],
-            rooms:   vec![room(1, 30, "lecture")],
-            batches: vec![batch(1, 25, vec![1])],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 6);
@@ -1334,7 +1353,7 @@ mod tests {
     #[test]
     fn empty_input_produces_empty_output() {
         let r = generate(&SchedulerInput {
-            courses: vec![], lecturers: vec![], rooms: vec![], batches: vec![],
+            courses: vec![], lecturers: vec![], rooms: vec![], batches: vec![], working_days: vec![],
         });
         assert!(r.entries.is_empty());
         assert!(r.unscheduled.is_empty());
@@ -1362,10 +1381,11 @@ mod tests {
     fn biweekly_places_half_sessions_ceil() {
         // 4 hrs/week biweekly → ceil(4/2) = 2 sessions
         let inp = SchedulerInput {
-            courses:   vec![biweekly_course(1, 4, 1)],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 20)],
-            rooms:     vec![room(1, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1])],
+            courses:      vec![biweekly_course(1, 4, 1)],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 20)],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 2, "biweekly 4hr → 2 sessions placed");
@@ -1375,10 +1395,11 @@ mod tests {
     fn biweekly_odd_hours_ceil() {
         // 3 hrs/week biweekly → ceil(3/2) = 2 sessions
         let inp = SchedulerInput {
-            courses:   vec![biweekly_course(1, 3, 1)],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 20)],
-            rooms:     vec![room(1, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1])],
+            courses:      vec![biweekly_course(1, 3, 1)],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 20)],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 2, "ceil(3/2) = 2 sessions");
@@ -1387,10 +1408,11 @@ mod tests {
     #[test]
     fn biweekly_entries_have_week_parity_one() {
         let inp = SchedulerInput {
-            courses:   vec![biweekly_course(1, 2, 1)],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 20)],
-            rooms:     vec![room(1, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1])],
+            courses:      vec![biweekly_course(1, 2, 1)],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 20)],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         for e in &r.entries {
@@ -1416,7 +1438,8 @@ mod tests {
         let rooms: Vec<Room> = (1..=5).map(|i| room(i, 30, "lecture")).collect();
         let inp = SchedulerInput {
             courses, lecturers, rooms,
-            batches: vec![batch(1, 25, vec![1, 2, 3, 4, 5])],
+            batches:      vec![batch(1, 25, vec![1, 2, 3, 4, 5])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 5);
@@ -1427,10 +1450,11 @@ mod tests {
     #[test]
     fn labs_prefer_afternoon_slots() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 3, "lab", "lab", Some(1))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
-            rooms:     vec![room(1, 30, "lab")],
-            batches:   vec![batch(1, 25, vec![1])],
+            courses:      vec![course(1, 3, "lab", "lab", Some(1))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:        vec![room(1, 30, "lab")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 3);
@@ -1442,10 +1466,11 @@ mod tests {
     #[test]
     fn tutorials_prefer_morning_slots() {
         let inp = SchedulerInput {
-            courses:   vec![course(1, 3, "lecture", "tutorial", Some(1))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
-            rooms:     vec![room(1, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1])],
+            courses:      vec![course(1, 3, "lecture", "tutorial", Some(1))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 4, 20)],
+            rooms:        vec![room(1, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 3);
@@ -1460,10 +1485,11 @@ mod tests {
     fn multiple_batches_same_course_independent_sessions() {
         // Two batches both enrolled in course 1 → 4 total sessions (2 per batch)
         let inp = SchedulerInput {
-            courses:   vec![course(1, 2, "lecture", "lecture", Some(1))],
-            lecturers: vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 40)],
-            rooms:     vec![room(1, 30, "lecture"), room(2, 30, "lecture")],
-            batches:   vec![batch(1, 25, vec![1]), batch(2, 25, vec![1])],
+            courses:      vec![course(1, 2, "lecture", "lecture", Some(1))],
+            lecturers:    vec![lec(1, "Mon,Tue,Wed,Thu,Fri", 8, 40)],
+            rooms:        vec![room(1, 30, "lecture"), room(2, 30, "lecture")],
+            batches:      vec![batch(1, 25, vec![1]), batch(2, 25, vec![1])],
+            working_days: vec![],
         };
         let r = generate(&inp);
         assert_eq!(r.entries.len(), 4, "2 batches × 2 hrs = 4 entries");
@@ -1480,7 +1506,7 @@ mod tests {
         let batches: Vec<Batch> = (1..=10).map(|i| {
             batch(i, 30, vec![(i * 2 - 1).min(20), (i * 2).min(20)])
         }).collect();
-        let r = generate(&SchedulerInput { courses, lecturers, rooms, batches });
+        let r = generate(&SchedulerInput { courses, lecturers, rooms, batches, working_days: vec![] });
         assert_no_room_conflicts(&r.entries);
         assert_no_lecturer_conflicts(&r.entries);
         assert_no_batch_conflicts(&r.entries);

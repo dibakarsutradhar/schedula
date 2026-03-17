@@ -26,7 +26,7 @@
 #   make help             - Show this help
 
 .PHONY: dev dev-all tauri hub license landing \
-        build build-hub build-license build-all \
+        build build-hub build-license build-all build-hub-sidecar \
         test test-tauri test-hub test-license check \
         keys-gen deploy-license install clean help
 
@@ -158,6 +158,10 @@ build-hub:
 	cargo build --release --manifest-path hub-server/Cargo.toml
 	@echo "Binary → hub-server/target/release/schedula-hub"
 
+## Build hub sidecar and copy into src-tauri/binaries/ (required before `make tauri` / `make build`)
+build-hub-sidecar:
+	bash scripts/build-hub-sidecar.sh
+
 ## Build license server binary (release)
 build-license:
 	cargo build --release --manifest-path $(LICENSE_DIR)/Cargo.toml
@@ -264,10 +268,11 @@ help:
 	@echo "    make landing       Landing page dev server  (port $(LANDING_PORT))"
 	@echo ""
 	@echo "  Build"
-	@echo "    make build         Build Tauri app for release"
-	@echo "    make build-hub     Build hub server binary for release"
-	@echo "    make build-license Build license server binary for release"
-	@echo "    make build-all     Build all targets"
+	@echo "    make build              Build Tauri app for release"
+	@echo "    make build-hub          Build hub server binary for release"
+	@echo "    make build-hub-sidecar  Build hub + copy into src-tauri/binaries/ (run before tauri build)"
+	@echo "    make build-license      Build license server binary for release"
+	@echo "    make build-all          Build all targets"
 	@echo ""
 	@echo "  Testing"
 	@echo "    make test          Run all tests"

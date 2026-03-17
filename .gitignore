@@ -7,5 +7,8 @@ src-tauri/target/
 # Tauri generated
 src-tauri/gen/
 
+# Sidecar binaries (built locally, not stored in git)
+src-tauri/binaries/schedula-hub-*
+
 # Planning agents output (not source)
 .planning/codebase/
