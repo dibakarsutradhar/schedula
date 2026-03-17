@@ -54,6 +54,15 @@ endif
 # Use npx concurrently if available, otherwise fall back to & (background jobs)
 CONCURRENTLY := $(shell command -v npx 2>/dev/null && npx --yes concurrently --version > /dev/null 2>&1 && echo "npx concurrently" || echo "")
 
+# ── Inline commands (used directly in concurrently to avoid sub-make overhead) ─
+_HUB_CMD     = cargo run --manifest-path hub-server/Cargo.toml -- --port $(HUB_PORT) --db-path $(HUB_DB)
+_LICENSE_CMD = SCHEDULA_ADMIN_KEY=$(ADMIN_KEY) cargo run --manifest-path $(LICENSE_DIR)/Cargo.toml -- \
+               --port $(LICENSE_PORT) --db-path $(LICENSE_DB) \
+               --private-key $(LICENSE_DIR)/keys/private.pem \
+               --public-key  $(LICENSE_DIR)/keys/public.pem
+_LANDING_CMD = python3 -m http.server $(LANDING_PORT) --directory $(LANDING_DIR) 2>/dev/null || \
+               python  -m SimpleHTTPServer $(LANDING_PORT)
+
 # ── Dev targets ───────────────────────────────────────────────────────────────
 
 ## Run Tauri desktop app + hub server concurrently
@@ -62,12 +71,11 @@ ifdef CONCURRENTLY
 	npx --yes concurrently \
 	  --names "TAURI,HUB" \
 	  --prefix-colors "cyan,yellow" \
-	  --kill-others-on-fail \
 	  "npm run tauri dev" \
-	  "$(MAKE) hub"
+	  "$(_HUB_CMD)"
 else
 	@echo "Starting hub server in background..."
-	@$(MAKE) hub &
+	$(_HUB_CMD) &
 	@echo "Starting Tauri app..."
 	npm run tauri dev
 endif
@@ -78,29 +86,36 @@ ifdef CONCURRENTLY
 	npx --yes concurrently \
 	  --names "TAURI,HUB,LANDING" \
 	  --prefix-colors "cyan,yellow,green" \
-	  --kill-others-on-fail \
 	  "npm run tauri dev" \
-	  "$(MAKE) hub" \
-	  "$(MAKE) landing"
+	  "$(_HUB_CMD)" \
+	  "$(_LANDING_CMD)"
 else
-	@$(MAKE) hub &
-	@$(MAKE) landing &
+	$(_HUB_CMD) &
+	$(_LANDING_CMD) &
 	npm run tauri dev
 endif
 
-## Run Tauri app + hub server + license server concurrently (full stack)
-dev-full: _check_node
+## Run all four services: Tauri + hub + license server + landing page
+dev-full: _check_node _check_license_keys
+	@echo "Starting full dev stack:"
+	@echo "  Tauri app    → launched by Vite"
+	@echo "  Hub server   → http://localhost:$(HUB_PORT)"
+	@echo "  License srv  → http://localhost:$(LICENSE_PORT)"
+	@echo "  Landing page → http://localhost:$(LANDING_PORT)"
+	@echo "  Admin UI     → http://localhost:$(LICENSE_PORT)/admin?key=$(ADMIN_KEY)"
+	@echo ""
 ifdef CONCURRENTLY
 	npx --yes concurrently \
-	  --names "TAURI,HUB,LICENSE" \
-	  --prefix-colors "cyan,yellow,magenta" \
-	  --kill-others-on-fail \
+	  --names "TAURI,HUB,LICENSE,LANDING" \
+	  --prefix-colors "cyan,yellow,magenta,green" \
 	  "npm run tauri dev" \
-	  "$(MAKE) hub" \
-	  "$(MAKE) license"
+	  "$(_HUB_CMD)" \
+	  "$(_LICENSE_CMD)" \
+	  "$(_LANDING_CMD)"
 else
-	@$(MAKE) hub &
-	@$(MAKE) license &
+	$(_HUB_CMD) &
+	$(_LICENSE_CMD) &
+	$(_LANDING_CMD) &
 	npm run tauri dev
 endif
 
@@ -110,22 +125,15 @@ tauri: _check_node
 
 ## Start hub server (Axum HTTP + WebSocket on port $(HUB_PORT))
 hub:
-	@echo "Starting hub server on http://localhost:$(HUB_PORT)"
-	cargo run --manifest-path hub-server/Cargo.toml -- \
-	  --port $(HUB_PORT) \
-	  --db-path $(HUB_DB)
+	@echo "Hub server → http://localhost:$(HUB_PORT)"
+	$(_HUB_CMD)
 
 ## Start license server (Axum HTTP on port $(LICENSE_PORT))
-## Requires ADMIN_KEY env var (or override: make license ADMIN_KEY=secret)
+## Override admin key: make license ADMIN_KEY=mysecret
 license: _check_license_keys
-	@echo "Starting license server on http://localhost:$(LICENSE_PORT)"
-	@echo "  Admin UI → http://localhost:$(LICENSE_PORT)/admin?key=$(ADMIN_KEY)"
-	SCHEDULA_ADMIN_KEY=$(ADMIN_KEY) \
-	cargo run --manifest-path $(LICENSE_DIR)/Cargo.toml -- \
-	  --port $(LICENSE_PORT) \
-	  --db-path $(LICENSE_DB) \
-	  --private-key $(LICENSE_DIR)/keys/private.pem \
-	  --public-key  $(LICENSE_DIR)/keys/public.pem
+	@echo "License server → http://localhost:$(LICENSE_PORT)"
+	@echo "Admin UI       → http://localhost:$(LICENSE_PORT)/admin?key=$(ADMIN_KEY)"
+	$(_LICENSE_CMD)
 
 ## Serve landing page on http://localhost:$(LANDING_PORT)
 landing:
@@ -249,7 +257,7 @@ help:
 	@echo "  Development"
 	@echo "    make dev           Tauri app + hub server (recommended)"
 	@echo "    make dev-all       Tauri app + hub server + landing page"
-	@echo "    make dev-full      Tauri app + hub server + license server"
+	@echo "    make dev-full      All four: Tauri + hub + license + landing"
 	@echo "    make tauri         Tauri desktop app only"
 	@echo "    make hub           Hub server only          (port $(HUB_PORT))"
 	@echo "    make license       License server only      (port $(LICENSE_PORT))"
