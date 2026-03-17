@@ -56,6 +56,73 @@
   let hubUrl      = null
   let hubLoading  = false
 
+  // ── License ───────────────────────────────────────────────────────────────────
+  let licenseInfo    = null   // { active, plan, org_name, expires_at, status }
+  let licenseToken   = ''
+  let licenseLoading = false
+
+  function activeHubUrl() {
+    if (hubRunning) return 'http://localhost:7878'
+    if ($syncMode.mode === 'server' && $syncMode.serverUrl) return $syncMode.serverUrl.replace(/\/$/, '')
+    return null
+  }
+
+  async function fetchLicenseInfo() {
+    const url = activeHubUrl()
+    if (!url) { licenseInfo = null; return }
+    try {
+      const res = await fetch(`${url}/api/license`)
+      if (res.ok) licenseInfo = await res.json()
+    } catch { licenseInfo = null }
+  }
+
+  async function activateLicense() {
+    const token = licenseToken.trim()
+    if (!token) { toast('Paste your license token first', 'error'); return }
+    const url = activeHubUrl()
+    if (!url) { toast('Enable Hub Mode or connect to a hub first', 'error'); return }
+    licenseLoading = true
+    try {
+      const res = await fetch(`${url}/api/license/activate`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ token }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Activation failed')
+      licenseInfo  = data
+      licenseToken = ''
+      toast(`${capitalize(data.plan)} plan activated ✓`, 'success')
+    } catch (e) {
+      toast(e.message, 'error')
+    } finally {
+      licenseLoading = false
+    }
+  }
+
+  async function deactivateLicense() {
+    const url = activeHubUrl()
+    if (!url) return
+    licenseLoading = true
+    try {
+      const res = await fetch(`${url}/api/license/deactivate`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `JWT ${$syncMode.token || ''}` },
+      })
+      if (res.ok) { licenseInfo = await fetchLicenseInfo(); toast('License deactivated') }
+      else { const d = await res.json(); toast(d.error || 'Failed', 'error') }
+    } catch (e) { toast(e.message, 'error') }
+    finally { licenseLoading = false }
+  }
+
+  function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s }
+
+  function planBadgeClass(plan) {
+    if (!plan || plan === 'free') return 'plan-badge-free'
+    if (plan === 'pro')          return 'plan-badge-pro'
+    return 'plan-badge-institution'
+  }
+
   async function checkHubStatus() {
     try {
       const status = await invoke('get_hub_status')
@@ -73,6 +140,7 @@
       hubRunning = status.running
       hubUrl     = status.url ?? null
       toast('Hub mode enabled — share the address with other admins', 'success')
+      await fetchLicenseInfo()
     } catch (e) {
       toast('Failed to start hub: ' + e, 'error')
     } finally {
@@ -322,6 +390,7 @@
     appInfo = await getAppInfo()
     if (isSuperAdmin($session)) await loadSystemSettings()
     await checkHubStatus()
+    await fetchLicenseInfo()
   })
 
   function switchTab(t) {
@@ -822,6 +891,63 @@
           {/if}
         </div>
 
+        <!-- ── License ── -->
+        <div class="card settings-section">
+          <h2>License</h2>
+          <p class="section-desc">
+            Activate your Pro or Institution license token here.
+            You receive the token by email after purchasing.
+          </p>
+
+          {#if activeHubUrl()}
+            <!-- Current license status -->
+            {#if licenseInfo}
+              <div class="license-status-row">
+                <span class="plan-badge {planBadgeClass(licenseInfo.plan)}">{capitalize(licenseInfo.plan)}</span>
+                {#if licenseInfo.active}
+                  <span class="license-state active">Active</span>
+                  {#if licenseInfo.org_name}
+                    <span class="license-org">{licenseInfo.org_name}</span>
+                  {/if}
+                  {#if licenseInfo.expires_at}
+                    <span class="license-expiry">Expires {new Date(licenseInfo.expires_at * 1000).toLocaleDateString()}</span>
+                  {:else}
+                    <span class="license-expiry">Perpetual</span>
+                  {/if}
+                {:else}
+                  <span class="license-state inactive">{licenseInfo.status === 'none' ? 'No license' : licenseInfo.status}</span>
+                {/if}
+              </div>
+            {/if}
+
+            <!-- Activation form -->
+            {#if !licenseInfo?.active}
+              <div class="license-form">
+                <textarea
+                  class="form-input license-token-input"
+                  bind:value={licenseToken}
+                  placeholder="Paste your license token (eyJ…)"
+                  rows="3"
+                  spellcheck="false"
+                ></textarea>
+                <button class="btn btn-primary" disabled={licenseLoading || !licenseToken.trim()} on:click={activateLicense}>
+                  {licenseLoading ? 'Activating…' : 'Activate License'}
+                </button>
+              </div>
+            {:else}
+              <div style="margin-top:12px">
+                <button class="btn btn-danger-outline" disabled={licenseLoading} on:click={deactivateLicense}>
+                  {licenseLoading ? 'Working…' : 'Deactivate'}
+                </button>
+              </div>
+            {/if}
+          {:else}
+            <div class="license-no-hub">
+              <span>Enable Hub Mode above, or connect to a hub, to manage your license.</span>
+            </div>
+          {/if}
+        </div>
+
       <!-- ── About ── -->
       {:else if tab === 'about'}
         <div class="card settings-section">
@@ -967,4 +1093,18 @@
   }
   .btn-danger-outline:hover { background: rgba(231,76,60,.1); }
   .btn-danger-outline:disabled { opacity: .5; cursor: not-allowed; }
+  /* License */
+  .license-status-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .plan-badge { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 3px 9px; border-radius: 100px; }
+  .plan-badge-free        { background: rgba(255,255,255,.08); color: var(--text-muted); }
+  .plan-badge-pro         { background: rgba(59,130,246,.18); color: #93c5fd; }
+  .plan-badge-institution { background: rgba(139,92,246,.18); color: #c4b5fd; }
+  .license-state { font-size: 12px; font-weight: 600; }
+  .license-state.active   { color: #2ecc71; }
+  .license-state.inactive { color: var(--text-muted); }
+  .license-org    { font-size: 12px; color: var(--text); }
+  .license-expiry { font-size: 12px; color: var(--text-muted); }
+  .license-form { display: flex; flex-direction: column; gap: 10px; }
+  .license-token-input { font-family: monospace; font-size: 11px; resize: vertical; }
+  .license-no-hub { font-size: 13px; color: var(--text-muted); padding: 12px 0; }
 </style>

@@ -1047,7 +1047,10 @@ async fn main() {
         .route("/api/approvals/my/:username", get(get_my_approval_status_handler))
         .route("/ws", get(ws_handler))
         .route("/health", get(|| async { Json(json!({"status": "ok"})) }))
-        .route("/api/license", get(get_license_handler));
+        .route("/api/license", get(get_license_handler))
+        // License activation is self-authenticated: the RS256 JWT signature from
+        // the license server is proof of entitlement. No session token needed.
+        .route("/api/license/activate", post(activate_license_handler));
 
     // Protected routes (JWT required)
     let protected_routes = Router::new()
@@ -1094,7 +1097,6 @@ async fn main() {
         // Plan / subscription
         .route("/api/plan", get(plan_handler))
         // License
-        .route("/api/license/activate",   post(activate_license_handler))
         .route("/api/license/deactivate", post(deactivate_license_handler))
         // Schedules
         .route("/api/schedules/generate", post(generate_schedule_handler))
