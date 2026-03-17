@@ -23,6 +23,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     migrate_v10(conn)?;
     migrate_v11(conn)?;
     migrate_v12(conn)?;
+    migrate_v13(conn)?;
     Ok(())
 }
 
@@ -312,6 +313,17 @@ fn migrate_v12(conn: &Connection) -> Result<()> {
     for sql in &alters {
         try_alter(conn, sql);
     }
+    Ok(())
+}
+
+fn migrate_v13(conn: &Connection) -> Result<()> {
+    // device_config: persistent key-value store for hub identity (device_id for checkout)
+    conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS device_config (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+    ")?;
     Ok(())
 }
 

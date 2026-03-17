@@ -406,6 +406,167 @@ pub async fn activate_with_code(code: &str) -> Result<(LicenseClaims, String), S
     Ok((claims, data.token))
 }
 
+// ─── Device-based checkout ────────────────────────────────────────────────────
+
+/// Get or create a persistent device ID for this hub installation.
+/// Stored in `device_config` table; survives restarts.
+pub fn get_or_create_device_id(conn: &Connection) -> String {
+    if let Ok(id) = conn.query_row(
+        "SELECT value FROM device_config WHERE key='device_id'",
+        [],
+        |r| r.get::<_, String>(0),
+    ) {
+        return id;
+    }
+
+    let id = uuid::Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT OR IGNORE INTO device_config (key, value) VALUES ('device_id', ?1)",
+        params![id],
+    ).ok();
+    id
+}
+
+/// Initiate a Stripe checkout session via the license server.
+/// The `device_id` is embedded as subscription metadata so the webhook
+/// can link the completed payment back to this hub automatically.
+///
+/// Returns the Stripe checkout URL to open in the user's browser.
+pub async fn initiate_checkout(
+    plan:           &str,
+    billing_period: &str,
+    device_id:      &str,
+) -> Result<String, String> {
+    let license_url = std::env::var("SCHEDULA_LICENSE_URL")
+        .unwrap_or_else(|_| DEFAULT_LICENSE_URL.to_string());
+    let url = format!("{}/billing/checkout", license_url);
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let resp = client
+        .post(&url)
+        .json(&serde_json::json!({
+            "plan":           plan,
+            "billing_period": billing_period,
+            "device_id":      device_id,
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Could not reach license server: {e}"))?;
+
+    if !resp.status().is_success() {
+        let body: serde_json::Value = resp.json().await.unwrap_or_default();
+        return Err(body["error"].as_str().unwrap_or("Checkout initiation failed").to_string());
+    }
+
+    let data: serde_json::Value = resp.json().await
+        .map_err(|e| format!("Unexpected response from license server: {e}"))?;
+
+    data["checkout_url"].as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| "License server returned no checkout URL".into())
+}
+
+/// Poll the license server once for a device-linked license.
+/// Returns `true` if the license was found, validated, and stored.
+async fn try_fetch_device_license(
+    device_id:      &str,
+    db:             &Arc<Mutex<Connection>>,
+    current_plan:   &Arc<RwLock<String>>,
+    current_secret: &Arc<RwLock<String>>,
+) -> bool {
+    let license_url = std::env::var("SCHEDULA_LICENSE_URL")
+        .unwrap_or_else(|_| DEFAULT_LICENSE_URL.to_string());
+    let url = format!("{}/v1/license/device/{}", license_url, device_id);
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .unwrap_or_default();
+
+    let resp = match client.get(&url).send().await {
+        Ok(r)  => r,
+        Err(e) => { tracing::debug!("Device license poll error: {}", e); return false; }
+    };
+
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return false; // Payment not completed yet — keep polling
+    }
+
+    if !resp.status().is_success() {
+        return false;
+    }
+
+    let data: serde_json::Value = match resp.json().await {
+        Ok(v)  => v,
+        Err(_) => return false,
+    };
+
+    let token = match data["token"].as_str() {
+        Some(t) => t.to_string(),
+        None    => return false,
+    };
+
+    // Validate the JWT locally with the embedded RS256 public key
+    let claims = match validate_token(&token) {
+        Ok(c)  => c,
+        Err(e) => { tracing::error!("Device license token validation failed: {}", e); return false; }
+    };
+
+    // Store the license and derive the plan — drop the lock before the await below
+    let plan = {
+        let conn = db.lock().unwrap();
+        if let Err(e) = store_license(&conn, &claims, &token) {
+            tracing::error!("Failed to store device license: {}", e);
+            return false;
+        }
+        effective_plan(&conn)
+        // MutexGuard dropped here
+    };
+
+    *current_plan.write().unwrap() = plan.clone();
+    // secret_key will be populated by the refresh call below
+    *current_secret.write().unwrap() = String::new();
+
+    tracing::info!("Device license activated automatically: plan={}", plan);
+
+    // Immediately refresh to get today's secret key (lock is already released)
+    do_refresh(db, current_plan, current_secret).await;
+
+    true
+}
+
+/// Background task: polls the license server for a device-linked license after checkout.
+/// Runs every 30 seconds for up to 60 minutes, then gives up.
+/// Broadcasts a WebSocket event when the license is activated.
+pub async fn poll_for_device_license(
+    device_id:      String,
+    db:             Arc<Mutex<Connection>>,
+    current_plan:   Arc<RwLock<String>>,
+    current_secret: Arc<RwLock<String>>,
+    tx:             tokio::sync::broadcast::Sender<String>,
+) {
+    const MAX_POLLS: u32 = 120; // 120 × 30s = 60 minutes
+    for attempt in 1..=MAX_POLLS {
+        tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+
+        if try_fetch_device_license(&device_id, &db, &current_plan, &current_secret).await {
+            tracing::info!("Checkout polling succeeded on attempt {}", attempt);
+            let _ = tx.send(
+                serde_json::json!({"entity": "license", "action": "activate"}).to_string()
+            );
+            return;
+        }
+
+        tracing::debug!("Checkout poll {}/{} — awaiting payment", attempt, MAX_POLLS);
+    }
+
+    tracing::warn!("Checkout polling timed out after {} minutes", MAX_POLLS / 2);
+}
+
 // ─── Background refresh loop ──────────────────────────────────────────────────
 
 /// Spawned as a tokio task on hub startup.

@@ -558,6 +558,13 @@ pub struct ActivateLicenseReq {
     pub token: Option<String>,
 }
 
+/// Body for POST /api/license/checkout.
+#[derive(Debug, Deserialize)]
+pub struct CheckoutReq {
+    pub plan:           String,         // "pro" | "institution"
+    pub billing_period: Option<String>, // "monthly" | "annual" (default: "monthly")
+}
+
 /// Structured error payload when a plan limit is exceeded.
 #[derive(Debug, Clone, Serialize)]
 pub struct PlanLimitError {

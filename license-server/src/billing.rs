@@ -91,9 +91,10 @@ async fn stripe_post(
 
 #[derive(Deserialize)]
 pub struct CheckoutRequest {
-    pub email:          String,
-    pub plan:           String,  // "pro" | "institution"
-    pub billing_period: String,  // "monthly" | "annual"
+    pub email:          Option<String>,  // Optional: required for web checkout, omit for device checkout
+    pub plan:           String,          // "pro" | "institution"
+    pub billing_period: String,          // "monthly" | "annual"
+    pub device_id:      Option<String>,  // Hub's persistent UUID — enables automated activation
 }
 
 #[derive(Serialize)]
@@ -133,30 +134,39 @@ pub async fn checkout_handler(
                 Json(serde_json::json!({"error": "Price ID not configured for this plan"}))).into_response();
     }
 
-    // Find or create Stripe customer
-    let customer_id = match get_or_create_customer(&state, &body.email).await {
-        Ok(id) => id,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR,
-                          Json(serde_json::json!({"error": e}))).into_response(),
+    // Find or create Stripe customer (only when email is provided)
+    // For device-based checkout from the hub, email is omitted and Stripe collects it.
+    let customer_id: String = if let Some(ref email) = body.email {
+        match get_or_create_customer(&state, email).await {
+            Ok(id) => id,
+            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR,
+                              Json(serde_json::json!({"error": e}))).into_response(),
+        }
+    } else {
+        String::new()
     };
 
     // Check if this customer already has an active/trialing subscription (skip trial offer)
-    let already_subscribed = {
+    let already_subscribed = if !customer_id.is_empty() {
         let conn = state.db.lock().unwrap();
         conn.query_row(
             "SELECT status FROM customers WHERE stripe_customer_id=?1",
             params![customer_id],
             |r| r.get::<_, String>(0),
         ).map(|s| s == "active" || s == "trialing").unwrap_or(false)
+    } else {
+        false
     };
 
     let success_url = format!("{}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
                               state.billing.app_url);
     let cancel_url  = format!("{}/#pricing", state.billing.app_url);
 
+    // device_id from the hub sidecar — embedded in subscription metadata for automated activation
+    let device_id = body.device_id.as_deref().unwrap_or("");
+
     // Build form; trial params added only for first-time subscribers
     let mut form: Vec<(&str, &str)> = vec![
-        ("customer",                    &customer_id),
         ("mode",                        "subscription"),
         ("line_items[0][price]",        price_id),
         ("line_items[0][quantity]",     "1"),
@@ -164,6 +174,15 @@ pub async fn checkout_handler(
         ("cancel_url",                  &cancel_url),
         ("allow_promotion_codes",       "true"),
     ];
+
+    if !customer_id.is_empty() {
+        form.push(("customer", &customer_id));
+    }
+
+    if !device_id.is_empty() {
+        // Store device_id in subscription metadata so the webhook can link it back
+        form.push(("subscription_data[metadata][device_id]", device_id));
+    }
 
     if !already_subscribed {
         // 14-day free trial; card is collected but not charged until trial ends.
@@ -365,14 +384,53 @@ async fn handle_subscription_active(
         return;
     }
 
-    // Generate a single-use activation code (30-min TTL).
-    // The JWT itself is never sent via email — the hub redeems the code server-to-server.
     let expiry_days = {
         let now = Utc::now().timestamp();
         let end = period_end + 7 * 86400;
         ((end - now) / 86400).max(1)
     };
 
+    // Check if this subscription came from a device-based checkout (hub sidecar).
+    // If so, issue the JWT directly into device_licenses — the hub polls for it.
+    // No email, no activation code — fully automated.
+    let device_id = sub["metadata"]["device_id"].as_str().map(|s| s.to_string());
+
+    if let Some(ref device_id) = device_id {
+        let issue_result = {
+            let conn = state.db.lock().unwrap();
+            crate::issue_license_core(&conn, &state.encoding_key, &plan, None, Some(expiry_days))
+        };
+
+        match issue_result {
+            Ok((token, jti)) => {
+                let expires_at: Option<String> = {
+                    let conn = state.db.lock().unwrap();
+                    conn.query_row(
+                        "SELECT expires_at FROM licenses WHERE jti=?1",
+                        params![jti],
+                        |r| r.get(0),
+                    ).ok()
+                };
+
+                let conn = state.db.lock().unwrap();
+                conn.execute(
+                    "INSERT OR REPLACE INTO device_licenses \
+                     (device_id, token, plan, jti, expires_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+                    params![device_id, token, plan, jti, expires_at],
+                ).ok();
+
+                tracing::info!(
+                    "Device license stored: device_id={} plan={} jti={}",
+                    device_id, plan, jti
+                );
+            }
+            Err(e) => tracing::error!("Failed to issue device license for {}: {}", device_id, e),
+        }
+        return; // Skip email entirely for device-based checkout
+    }
+
+    // Non-device checkout: generate a single-use activation code (30-min TTL).
+    // The JWT is never sent via email — the hub redeems the code server-to-server.
     let code = crate::generate_activation_code();
     let store_result = {
         let conn = state.db.lock().unwrap();
@@ -866,7 +924,7 @@ pub async fn issue_invoice_handler(
     };
 
     match result {
-        Ok((token, jti)) => {
+        Ok((_token, jti)) => {
             let now = chrono::Utc::now().to_rfc3339();
             {
                 let conn = state.db.lock().unwrap();
@@ -876,9 +934,17 @@ pub async fn issue_invoice_handler(
                 ).ok();
             }
 
-            // Email the license token
+            // Email an activation code (not the JWT) — hub redeems it server-to-server
+            let code = crate::generate_activation_code();
             let expiry = (chrono::Utc::now() + chrono::Duration::days(365)).to_rfc3339();
-            send_license_email(&state, &contact_email, &token, &plan, &expiry).await;
+            {
+                let conn = state.db.lock().unwrap();
+                crate::store_activation_code(
+                    &conn, &code, &contact_email, &plan,
+                    Some(org_name.as_str()), Some(365),
+                ).ok();
+            }
+            send_activation_code_email(&state, &contact_email, &code, &plan, &expiry).await;
 
             tracing::info!("Invoice {} issued → {}", &id[..8], contact_email);
             Json(serde_json::json!({
@@ -1831,25 +1897,26 @@ async fn handle_paddle_subscription_active(
         ((end - chrono::Utc::now().timestamp()) / 86400).max(1)
     };
 
-    let result = {
+    // Generate a single-use activation code — hub redeems it server-to-server
+    let code = crate::generate_activation_code();
+    let store_result = {
         let conn = state.db.lock().unwrap();
-        crate::issue_license_core(&conn, &state.encoding_key, &plan,
-                                  Some(email.as_str()), Some(expiry_days))
+        crate::store_activation_code(&conn, &code, &email, &plan, None, Some(expiry_days))
     };
 
-    match result {
-        Ok((token, _jti)) => {
+    match store_result {
+        Ok(()) => {
             let is_new   = event_type == "subscription.created";
             let is_trial = status == "trialing";
 
             if is_new && is_trial {
-                send_trial_started_email(state, &email, &token,
+                send_trial_started_email(state, &email, &code,
                                          trial_end_str.as_deref()).await;
             } else {
-                send_license_email(state, &email, &token, &plan, &period_end_str).await;
+                send_activation_code_email(state, &email, &code, &plan, &period_end_str).await;
             }
         }
-        Err(e) => tracing::error!("Failed to issue Paddle license for {}: {}", email, e),
+        Err(e) => tracing::error!("Failed to store Paddle activation code for {}: {}", email, e),
     }
 }
 

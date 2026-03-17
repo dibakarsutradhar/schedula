@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import { invoke } from '@tauri-apps/api/core'
+  import { open as openUrl } from '@tauri-apps/plugin-shell'
   import DaySelect from '../lib/components/DaySelect.svelte'
   import { session } from '../lib/stores/session.js'
   import { isSuperAdmin } from '../lib/stores/session.js'
@@ -57,9 +58,11 @@
   let hubLoading  = false
 
   // ── License ───────────────────────────────────────────────────────────────────
-  let licenseInfo    = null   // { active, plan, org_name, expires_at, status }
-  let licenseToken   = ''
-  let licenseLoading = false
+  let licenseInfo      = null   // { active, plan, org_name, expires_at, status }
+  let licenseToken     = ''
+  let licenseLoading   = false
+  let checkoutPending  = false  // true while polling for checkout completion
+  let checkoutPollTimer = null
 
   function activeHubUrl() {
     if (hubRunning) return 'http://localhost:7878'
@@ -113,6 +116,55 @@
       else { const d = await res.json(); toast(d.error || 'Failed', 'error') }
     } catch (e) { toast(e.message, 'error') }
     finally { licenseLoading = false }
+  }
+
+  async function startCheckout(plan) {
+    const url = activeHubUrl()
+    if (!url) { toast('Enable Hub Mode or connect to a hub first', 'error'); return }
+    licenseLoading = true
+    try {
+      const res = await fetch(`${url}/api/license/checkout`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ plan, billing_period: 'monthly' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to start checkout')
+
+      // Open Stripe checkout in the system browser
+      try {
+        await openUrl(data.checkout_url)
+      } catch {
+        // Fallback for dev / non-Tauri context
+        window.open(data.checkout_url, '_blank')
+      }
+
+      checkoutPending = true
+      toast('Browser opened — complete checkout to activate your license', 'info')
+
+      // Poll /api/license every 5s until the plan changes (hub activates automatically)
+      checkoutPollTimer = setInterval(async () => {
+        await fetchLicenseInfo()
+        if (licenseInfo?.active) {
+          clearInterval(checkoutPollTimer)
+          checkoutPending = false
+          toast(`${capitalize(licenseInfo.plan)} plan activated ✓`, 'success')
+        }
+      }, 5000)
+
+      // Stop polling after 65 minutes regardless
+      setTimeout(() => {
+        if (checkoutPollTimer) {
+          clearInterval(checkoutPollTimer)
+          checkoutPending = false
+        }
+      }, 65 * 60 * 1000)
+
+    } catch (e) {
+      toast(e.message, 'error')
+    } finally {
+      licenseLoading = false
+    }
   }
 
   function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s }
@@ -894,10 +946,6 @@
         <!-- ── License ── -->
         <div class="card settings-section">
           <h2>License</h2>
-          <p class="section-desc">
-            Activate your Pro or Institution license token here.
-            You receive the token by email after purchasing.
-          </p>
 
           {#if activeHubUrl()}
             <!-- Current license status -->
@@ -910,7 +958,7 @@
                     <span class="license-org">{licenseInfo.org_name}</span>
                   {/if}
                   {#if licenseInfo.expires_at}
-                    <span class="license-expiry">Expires {new Date(licenseInfo.expires_at * 1000).toLocaleDateString()}</span>
+                    <span class="license-expiry">Expires {new Date(licenseInfo.expires_at).toLocaleDateString()}</span>
                   {:else}
                     <span class="license-expiry">Perpetual</span>
                   {/if}
@@ -920,23 +968,45 @@
               </div>
             {/if}
 
-            <!-- Activation form -->
-            {#if !licenseInfo?.active}
-              <div class="license-form">
-                <div class="license-code-hint">Enter the activation code from your confirmation email:</div>
-                <input
-                  class="form-input license-code-input"
-                  bind:value={licenseToken}
-                  placeholder="SCHED-XXXX-XXXX-XXXX-XXXX"
-                  spellcheck="false"
-                  autocomplete="off"
-                  autocapitalize="characters"
-                  on:input={e => licenseToken = e.target.value.toUpperCase()}
-                />
-                <button class="btn btn-primary" disabled={licenseLoading || !licenseToken.trim()} on:click={activateLicense}>
-                  {licenseLoading ? 'Activating…' : 'Activate'}
+            <!-- Checkout in progress -->
+            {#if checkoutPending}
+              <div class="license-checkout-pending">
+                <span class="checkout-spinner"></span>
+                <span>Waiting for payment… Your license will activate automatically once checkout is complete.</span>
+                <button class="btn btn-sm" on:click={() => { clearInterval(checkoutPollTimer); checkoutPending = false }}>Cancel</button>
+              </div>
+            {:else if !licenseInfo?.active}
+              <!-- Upgrade buttons -->
+              <p class="section-desc" style="margin-bottom:14px">
+                Click to open Stripe checkout in your browser. Your license activates automatically after payment — no codes to copy.
+              </p>
+              <div class="license-upgrade-row">
+                <button class="btn btn-primary" disabled={licenseLoading} on:click={() => startCheckout('pro')}>
+                  {licenseLoading ? 'Opening…' : 'Upgrade to Pro'}
+                </button>
+                <button class="btn btn-institution" disabled={licenseLoading} on:click={() => startCheckout('institution')}>
+                  {licenseLoading ? 'Opening…' : 'Upgrade to Institution'}
                 </button>
               </div>
+
+              <!-- Fallback: manual activation code -->
+              <details class="license-manual-fallback">
+                <summary>Already have an activation code?</summary>
+                <div class="license-form" style="margin-top:10px">
+                  <input
+                    class="form-input license-code-input"
+                    bind:value={licenseToken}
+                    placeholder="SCHED-XXXX-XXXX-XXXX-XXXX"
+                    spellcheck="false"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    on:input={e => licenseToken = e.target.value.toUpperCase()}
+                  />
+                  <button class="btn btn-primary" disabled={licenseLoading || !licenseToken.trim()} on:click={activateLicense}>
+                    {licenseLoading ? 'Activating…' : 'Activate'}
+                  </button>
+                </div>
+              </details>
             {:else}
               <div style="margin-top:12px">
                 <button class="btn btn-danger-outline" disabled={licenseLoading} on:click={deactivateLicense}>
@@ -1111,4 +1181,36 @@
   .license-code-hint { font-size: 12px; color: var(--text-muted); }
   .license-code-input { font-family: monospace; font-size: 14px; letter-spacing: .05em; text-transform: uppercase; }
   .license-no-hub { font-size: 13px; color: var(--text-muted); padding: 12px 0; }
+
+  /* Upgrade buttons */
+  .license-upgrade-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .btn-institution {
+    background: rgba(139,92,246,.2); color: #c4b5fd; border: 1px solid rgba(139,92,246,.35);
+    padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background .15s;
+  }
+  .btn-institution:hover:not(:disabled) { background: rgba(139,92,246,.35); }
+  .btn-institution:disabled { opacity: .5; cursor: default; }
+
+  /* Checkout pending state */
+  .license-checkout-pending {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 12px 14px; background: rgba(6,182,212,.08); border: 1px solid rgba(6,182,212,.25);
+    border-radius: 8px; font-size: 13px; color: #67e8f9; margin-bottom: 14px;
+  }
+  .checkout-spinner {
+    width: 16px; height: 16px; border: 2px solid rgba(6,182,212,.3);
+    border-top-color: #06b6d4; border-radius: 50%; flex-shrink: 0;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Manual fallback */
+  .license-manual-fallback { margin-top: 4px; }
+  .license-manual-fallback summary {
+    font-size: 12px; color: var(--text-muted); cursor: pointer; user-select: none;
+    list-style: none; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .license-manual-fallback summary::before { content: '›'; transition: transform .15s; }
+  .license-manual-fallback[open] summary::before { transform: rotate(90deg); }
 </style>

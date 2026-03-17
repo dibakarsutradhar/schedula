@@ -51,6 +51,11 @@ struct AppState {
     /// successful refresh has occurred yet (or the license was revoked).
     /// Available to the API layer for HMAC signing / app-side validation.
     current_secret: Arc<RwLock<String>>,
+
+    /// True while a device-based checkout polling task is running.
+    /// Set to true when /api/license/checkout is called; cleared when the
+    /// polling task finds the license or times out.
+    checkout_pending: Arc<std::sync::atomic::AtomicBool>,
 }
 
 #[derive(Parser)]
@@ -203,6 +208,52 @@ async fn activate_license_handler(
         broadcast_change(&state.tx, "license", "activate");
     }
     to_response(result)
+}
+
+/// POST /api/license/checkout — initiate a Stripe checkout session for the hub.
+///
+/// The hub's persistent device_id is embedded in the Stripe subscription metadata.
+/// After the user completes payment, the license server stores the JWT in
+/// `device_licenses`. A background polling task fetches and auto-activates it.
+///
+/// Returns `{ checkout_url }` — the caller should open this in the system browser.
+async fn checkout_license_handler(
+    State(state): State<AppState>,
+    Json(body):   Json<models::CheckoutReq>,
+) -> Response {
+    let device_id = {
+        let conn = state.db.lock().unwrap();
+        license::get_or_create_device_id(&conn)
+    };
+
+    let billing_period = body.billing_period.as_deref().unwrap_or("monthly");
+
+    match license::initiate_checkout(&body.plan, billing_period, &device_id).await {
+        Ok(checkout_url) => {
+            state.checkout_pending.store(true, std::sync::atomic::Ordering::Relaxed);
+
+            // Spawn polling task: checks every 30 s for up to 60 min
+            let db             = state.db.clone();
+            let current_plan   = state.current_plan.clone();
+            let current_secret = state.current_secret.clone();
+            let tx             = state.tx.clone();
+            let pending        = state.checkout_pending.clone();
+
+            tokio::spawn(async move {
+                license::poll_for_device_license(device_id, db, current_plan, current_secret, tx).await;
+                pending.store(false, std::sync::atomic::Ordering::Relaxed);
+            });
+
+            Json(json!({ "checkout_url": checkout_url })).into_response()
+        }
+        Err(e) => (StatusCode::BAD_GATEWAY, Json(json!({"error": e}))).into_response(),
+    }
+}
+
+/// GET /api/license/checkout/status — check if a checkout is in progress.
+async fn checkout_status_handler(State(state): State<AppState>) -> Response {
+    let pending = state.checkout_pending.load(std::sync::atomic::Ordering::Relaxed);
+    Json(json!({ "pending": pending })).into_response()
 }
 
 async fn deactivate_license_handler(
@@ -1040,11 +1091,12 @@ async fn main() {
         jwt_secret,
         tx,
         db_path,
-        ws_count:       Arc::new(AtomicUsize::new(0)),
-        start_time:     Arc::new(Instant::now()),
-        listen_addr:    listen_addr.clone(),
-        current_plan:   current_plan.clone(),
-        current_secret: current_secret.clone(),
+        ws_count:         Arc::new(AtomicUsize::new(0)),
+        start_time:       Arc::new(Instant::now()),
+        listen_addr:      listen_addr.clone(),
+        current_plan:     current_plan.clone(),
+        current_secret:   current_secret.clone(),
+        checkout_pending: Arc::new(std::sync::atomic::AtomicBool::new(false)),
     };
 
     // Background refresh: calls /v1/refresh immediately on startup, then every 24 h.
@@ -1070,10 +1122,12 @@ async fn main() {
         .route("/api/approvals/my/:username", get(get_my_approval_status_handler))
         .route("/ws", get(ws_handler))
         .route("/health", get(|| async { Json(json!({"status": "ok"})) }))
-        .route("/api/license", get(get_license_handler))
-        // License activation is self-authenticated: the RS256 JWT signature from
-        // the license server is proof of entitlement. No session token needed.
-        .route("/api/license/activate", post(activate_license_handler));
+        .route("/api/license",                  get(get_license_handler))
+        // License activation — RS256 JWT signature is proof of entitlement
+        .route("/api/license/activate",         post(activate_license_handler))
+        // Device-based checkout — device_id acts as identity, no session needed
+        .route("/api/license/checkout",         post(checkout_license_handler))
+        .route("/api/license/checkout/status",  get(checkout_status_handler));
 
     // Protected routes (JWT required)
     let protected_routes = Router::new()

@@ -315,6 +315,17 @@ fn open_db(path: &str) -> Connection {
             paid_at       TEXT,
             issued_at     TEXT
         );
+
+        -- Device-linked licenses: stored here after a device-based Stripe checkout,
+        -- polled and fetched by the hub sidecar, then deleted (single-use).
+        CREATE TABLE IF NOT EXISTS device_licenses (
+            device_id  TEXT    PRIMARY KEY,
+            token      TEXT    NOT NULL,
+            plan       TEXT    NOT NULL,
+            jti        TEXT    NOT NULL,
+            expires_at TEXT,
+            created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+        );
     ").expect("Failed to create tables");
 
     // Migrate existing customers table (no-op if column already exists)
@@ -482,7 +493,7 @@ async fn activate_handler(
         |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)),
     ).ok();
 
-    let (customer_email, plan, org_name, duration_days, expires_at_str, used_at) = match row {
+    let (_customer_email, plan, org_name, duration_days, expires_at_str, used_at) = match row {
         Some(r) => r,
         None    => return (StatusCode::NOT_FOUND,
                            Json(serde_json::json!({"error": "Invalid activation code"}))).into_response(),
@@ -526,6 +537,38 @@ async fn activate_handler(
             })).into_response()
         }
         Err(e) => json_err(&e),
+    }
+}
+
+/// GET /v1/license/device/:device_id — poll for a device-linked license
+///
+/// Called by the hub sidecar after initiating a Stripe checkout. Returns the JWT
+/// once the webhook has been processed. Deletes the record on first fetch
+/// (the hub stores it locally; no need to keep it here).
+async fn device_license_handler(
+    State(state): State<AppState>,
+    Path(device_id): Path<String>,
+) -> Response {
+    let conn = state.db.lock().unwrap();
+
+    let row: Option<(String, String, Option<String>)> = conn.query_row(
+        "SELECT token, plan, expires_at FROM device_licenses WHERE device_id=?1",
+        params![device_id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    ).ok();
+
+    match row {
+        None => (StatusCode::NOT_FOUND,
+                 Json(serde_json::json!({"error": "No license ready for this device yet"}))).into_response(),
+        Some((token, plan, expires_at)) => {
+            // Single-use: delete after first successful fetch
+            conn.execute("DELETE FROM device_licenses WHERE device_id=?1", params![device_id]).ok();
+            Json(serde_json::json!({
+                "token":      token,
+                "plan":       plan,
+                "expires_at": expires_at,
+            })).into_response()
+        }
     }
 }
 
@@ -865,9 +908,10 @@ async fn main() {
 
     let app = Router::new()
         // ── License management ──────────────────────────────────────────────
-        .route("/v1/issue",           post(issue_handler))
-        .route("/v1/activate",        post(activate_handler))
-        .route("/v1/validate",        post(validate_handler))
+        .route("/v1/issue",                     post(issue_handler))
+        .route("/v1/activate",                  post(activate_handler))
+        .route("/v1/license/device/:device_id", get(device_license_handler))
+        .route("/v1/validate",                  post(validate_handler))
         .route("/v1/refresh",         post(refresh_handler))
         .route("/v1/licenses",        get(list_licenses_handler))
         .route("/v1/licenses/:jti",   delete(revoke_handler))
