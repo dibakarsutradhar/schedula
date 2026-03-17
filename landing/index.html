@@ -623,6 +623,73 @@
     .oss-version { font-size: .8125rem; color: var(--muted); margin-bottom: .75rem; min-height: 1.2em; }
     .oss-arch-note { font-size: .8rem; color: var(--muted); margin-top: 1rem; }
 
+    /* ── INSTALL ──────────────────────────────────────────────────────────── */
+    #install { background: var(--navy-2); }
+
+    .install-tracks {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+      margin-top: 3rem;
+    }
+    .install-track {
+      background: var(--navy-3); border: 1px solid var(--edge-dark);
+      border-radius: 16px; padding: 2rem 2rem 2rem;
+      display: flex; flex-direction: column; gap: 1.25rem;
+    }
+    .install-track.track-pro { border-color: rgba(59,130,246,.35); }
+    .track-label {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: .75rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .07em; padding: .25rem .75rem; border-radius: 100px;
+      background: rgba(255,255,255,.06); color: var(--muted);
+    }
+    .track-label.pro { background: rgba(59,130,246,.12); color: var(--blue-lt); }
+    .track-title {
+      font-family: var(--serif); font-size: 1.375rem; font-weight: 400;
+      color: var(--white); letter-spacing: -.015em;
+    }
+    .track-desc { font-size: .875rem; color: var(--muted); line-height: 1.65; }
+    .install-steps { display: flex; flex-direction: column; gap: .875rem; }
+    .install-step {
+      display: flex; gap: .875rem; align-items: flex-start;
+    }
+    .is-num {
+      flex-shrink: 0; width: 22px; height: 22px;
+      border-radius: 50%; background: rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .6875rem; font-weight: 700; color: var(--muted);
+      margin-top: .15rem;
+    }
+    .install-track.track-pro .is-num { background: rgba(59,130,246,.2); color: var(--blue-lt); }
+    .is-content { display: flex; flex-direction: column; gap: .2rem; }
+    .is-title { font-size: .875rem; font-weight: 600; color: var(--white); }
+    .is-body  { font-size: .8rem; color: var(--muted); line-height: 1.55; }
+    .is-code  {
+      font-family: var(--mono); font-size: .75rem; color: var(--gold);
+      background: rgba(0,0,0,.3); padding: .25rem .625rem;
+      border-radius: 5px; border: 1px solid rgba(245,158,11,.15);
+      display: inline-block; margin-top: .25rem;
+    }
+    .hub-dl-row {
+      display: flex; flex-direction: column; gap: .5rem; margin-top: .5rem;
+    }
+    .hub-dl-btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      font-size: .8125rem; font-weight: 500; text-decoration: none;
+      color: var(--blue-lt); border: 1px solid rgba(59,130,246,.3);
+      padding: .5rem .875rem; border-radius: 7px;
+      background: rgba(59,130,246,.07); transition: all .2s;
+    }
+    .hub-dl-btn:hover { background: rgba(59,130,246,.15); border-color: var(--blue); }
+    .hub-dl-btn svg { flex-shrink: 0; }
+    .install-note {
+      font-size: .75rem; color: rgba(255,255,255,.22);
+      border-top: 1px solid var(--edge-dark); padding-top: 1rem; line-height: 1.6;
+    }
+
+    @media (max-width: 1024px) {
+      .install-tracks { grid-template-columns: 1fr; max-width: 600px; margin-inline: auto; }
+    }
+
     /* ── FOOTER ───────────────────────────────────────────────────────────── */
     footer {
       background: var(--navy); border-top: 1px solid var(--edge-dark);
@@ -838,6 +905,7 @@
     <li><a href="#how">How it works</a></li>
     <li><a href="#sync">Sync</a></li>
     <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#install">Install</a></li>
     <li><a href="#oss">Download</a></li>
   </ul>
 
@@ -1159,6 +1227,132 @@
         </div>
       </div>
     </div>
+  </div>
+</section>
+
+
+<!-- ─── INSTALL ───────────────────────────────────────────────────────────── -->
+<section id="install" aria-labelledby="install-heading">
+  <div class="inner">
+    <p class="eyebrow on-dark">Installation</p>
+    <h2 class="on-dark" id="install-heading">Two ways to get started</h2>
+    <p class="section-sub on-dark">
+      Free tier is a single download. Pro and Institution add a lightweight
+      hub server that keeps every admin machine in sync.
+    </p>
+
+    <div class="install-tracks">
+
+      <!-- Free track -->
+      <div class="install-track fade-up">
+        <div>
+          <span class="track-label">Free tier</span>
+        </div>
+        <div class="track-title">Desktop app only</div>
+        <p class="track-desc">
+          Install the app, log in with the default admin account, and you're
+          scheduling immediately. No server, no config, no account needed.
+        </p>
+        <div class="install-steps">
+          <div class="install-step">
+            <div class="is-num">1</div>
+            <div class="is-content">
+              <div class="is-title">Download Schedula</div>
+              <div class="is-body">Pick your platform from the download section below. macOS users: open the DMG and drag to Applications. Windows users: run the setup .exe.</div>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="is-num">2</div>
+            <div class="is-content">
+              <div class="is-title">Log in</div>
+              <div class="is-body">Default credentials on first launch:</div>
+              <span class="is-code">admin / admin123</span>
+              <div class="is-body" style="margin-top:.35rem">Change the password immediately in Settings → Security.</div>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="is-num">3</div>
+            <div class="is-content">
+              <div class="is-title">Start scheduling</div>
+              <div class="is-body">Create your organization, add a semester, enter lecturers, rooms, and courses. The setup wizard guides you through each step.</div>
+            </div>
+          </div>
+        </div>
+        <div class="install-note">
+          All data is stored in a local SQLite database on your machine.
+          No internet connection required after download.
+        </div>
+      </div>
+
+      <!-- Pro / Institution track -->
+      <div class="install-track track-pro fade-up">
+        <div>
+          <span class="track-label pro">Pro &amp; Institution</span>
+        </div>
+        <div class="track-title">Desktop app + Hub server</div>
+        <p class="track-desc">
+          Run the hub server on one machine inside your network. Every other
+          admin installs only the desktop app and points it at that hub URL.
+        </p>
+        <div class="install-steps">
+          <div class="install-step">
+            <div class="is-num">1</div>
+            <div class="is-content">
+              <div class="is-title">Download &amp; run the hub server</div>
+              <div class="is-body">Pick the hub binary for the machine that will act as your server (a spare PC, a VM, or any always-on computer on your network).</div>
+              <div class="hub-dl-row" id="hub-dl-row">
+                <a href="#" id="hub-dl-macos-arm" class="hub-dl-btn" aria-label="Hub server for macOS Apple Silicon">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97 14.32 22 13.89 21.18 12.37 21.18 10.84 21.18 10.36 21.95 9.1 22 7.78 22.05 6.8 20.68 5.96 19.47 4.25 17 2.94 12.45 4.7 9.39 5.57 7.87 7.13 6.91 8.82 6.88 10.1 6.86 11.32 7.75 12.11 7.75 12.89 7.75 14.37 6.68 15.92 6.84 16.57 6.87 18.39 7.1 19.56 8.82 19.47 8.88 17.39 10.1 17.41 12.63 17.44 15.65 20.06 16.66 20.09 16.67 20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2 16.07 3.17 15.6 4.35 14.9 5.19 14.21 6.04 13.07 6.7 11.95 6.61 11.8 5.46 12.36 4.26 13 3.5Z"/></svg>
+                  Hub — macOS Apple Silicon
+                </a>
+                <a href="#" id="hub-dl-macos-intel" class="hub-dl-btn" aria-label="Hub server for macOS Intel">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97 14.32 22 13.89 21.18 12.37 21.18 10.84 21.18 10.36 21.95 9.1 22 7.78 22.05 6.8 20.68 5.96 19.47 4.25 17 2.94 12.45 4.7 9.39 5.57 7.87 7.13 6.91 8.82 6.88 10.1 6.86 11.32 7.75 12.11 7.75 12.89 7.75 14.37 6.68 15.92 6.84 16.57 6.87 18.39 7.1 19.56 8.82 19.47 8.88 17.39 10.1 17.41 12.63 17.44 15.65 20.06 16.66 20.09 16.67 20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2 16.07 3.17 15.6 4.35 14.9 5.19 14.21 6.04 13.07 6.7 11.95 6.61 11.8 5.46 12.36 4.26 13 3.5Z"/></svg>
+                  Hub — macOS Intel
+                </a>
+                <a href="#" id="hub-dl-windows" class="hub-dl-btn" aria-label="Hub server for Windows">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.557 10.144 4.6V11.4H3V5.557ZM10.144 19.4 3 18.443V12.6h7.144V19.4ZM11 4.469 21 3v8.4H11V4.469ZM21 12.6V21L11 19.531V12.6H21Z"/></svg>
+                  Hub — Windows x64
+                </a>
+                <a href="#" id="hub-dl-linux" class="hub-dl-btn" aria-label="Hub server for Linux">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-8v4h4l-5 8z"/></svg>
+                  Hub — Linux x64
+                </a>
+              </div>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="is-num">2</div>
+            <div class="is-content">
+              <div class="is-title">Start the hub</div>
+              <div class="is-body">Run the binary with a port and database path. The hub starts an HTTP + WebSocket server on your local network.</div>
+              <span class="is-code">./schedula-hub --port 7878 --db-path schedula.db</span>
+              <div class="is-body" style="margin-top:.35rem">Keep it running in a terminal, a background service, or set it up as a systemd/launchd service. The hub uses ~30 MB of RAM.</div>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="is-num">3</div>
+            <div class="is-content">
+              <div class="is-title">Download the desktop app on every admin machine</div>
+              <div class="is-body">Use the download buttons below. On first launch, enter the hub URL instead of creating a local database.</div>
+              <span class="is-code">http://192.168.x.x:7878</span>
+            </div>
+          </div>
+          <div class="install-step">
+            <div class="is-num">4</div>
+            <div class="is-content">
+              <div class="is-title">Activate your license</div>
+              <div class="is-body">In the hub's admin panel → License, paste the JWT token you received after subscribing. The plan unlocks immediately and syncs to all connected apps.</div>
+            </div>
+          </div>
+        </div>
+        <div class="install-note">
+          The hub server runs entirely on your hardware — no data leaves your
+          network. License validation uses a short-lived signed token checked
+          daily against our license server.
+        </div>
+      </div>
+
+    </div><!-- /install-tracks -->
   </div>
 </section>
 
@@ -1524,6 +1718,7 @@
     <div class="foot-links" aria-label="Footer navigation">
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
+      <a href="#install">Install</a>
       <a href="#pricing">Pricing</a>
       <a href="https://github.com/dibakarsutradhar/schedula" target="_blank" rel="noopener noreferrer">GitHub</a>
       <a href="https://github.com/dibakarsutradhar/schedula/releases" target="_blank" rel="noopener noreferrer">Releases</a>
@@ -1611,6 +1806,12 @@
     const intBtn = document.getElementById('dl-macos-intel');
     const winBtn = document.getElementById('dl-windows');
 
+    // Hub server buttons
+    const hubArmBtn   = document.getElementById('hub-dl-macos-arm');
+    const hubIntelBtn = document.getElementById('hub-dl-macos-intel');
+    const hubWinBtn   = document.getElementById('hub-dl-windows');
+    const hubLinuxBtn = document.getElementById('hub-dl-linux');
+
     if (!DOWNLOADS_MANIFEST_URL) return; // no manifest configured — buttons stay as #
 
     try {
@@ -1623,20 +1824,18 @@
         badge.textContent = `Latest: ${data.version}  ·  Released ${data.date ?? ''}`;
       }
 
+      // Desktop app buttons
       const p = data.platforms || {};
+      if (armBtn && p.macos_arm?.url)   { armBtn.href = p.macos_arm.url;   armBtn.removeAttribute('onclick'); }
+      if (intBtn && p.macos_intel?.url) { intBtn.href = p.macos_intel.url; intBtn.removeAttribute('onclick'); }
+      if (winBtn && p.windows?.url)     { winBtn.href = p.windows.url;     winBtn.removeAttribute('onclick'); }
 
-      if (armBtn && p.macos_arm?.url) {
-        armBtn.href = p.macos_arm.url;
-        armBtn.removeAttribute('onclick');
-      }
-      if (intBtn && p.macos_intel?.url) {
-        intBtn.href = p.macos_intel.url;
-        intBtn.removeAttribute('onclick');
-      }
-      if (winBtn && p.windows?.url) {
-        winBtn.href = p.windows.url;
-        winBtn.removeAttribute('onclick');
-      }
+      // Hub server buttons
+      const h = data.hub || {};
+      if (hubArmBtn   && h.macos_arm?.url)   { hubArmBtn.href   = h.macos_arm.url;   hubArmBtn.removeAttribute('onclick'); }
+      if (hubIntelBtn && h.macos_intel?.url) { hubIntelBtn.href = h.macos_intel.url; hubIntelBtn.removeAttribute('onclick'); }
+      if (hubWinBtn   && h.windows?.url)     { hubWinBtn.href   = h.windows.url;     hubWinBtn.removeAttribute('onclick'); }
+      if (hubLinuxBtn && h.linux?.url)       { hubLinuxBtn.href = h.linux.url;       hubLinuxBtn.removeAttribute('onclick'); }
     } catch (e) {
       console.warn('Could not load download manifest:', e.message);
       if (badge) badge.textContent = 'Download links temporarily unavailable.';
