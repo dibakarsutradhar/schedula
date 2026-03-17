@@ -244,6 +244,63 @@ They can:
 
 ---
 
+## Deploying the Licensing Server (Optional)
+
+For **Pro and Institution tiers**, you'll need to deploy the licensing server for multi-machine hub sync and subscription management.
+
+### Prerequisites
+
+- Rust 1.70+ (install via [rustup](https://rustup.rs))
+- Stripe API keys (free account at [stripe.com](https://stripe.com))
+- Paddle API keys (free account at [paddle.com](https://paddle.com)) — optional
+- SMTP credentials for email delivery (SendGrid, Gmail, etc.)
+
+### Deployment Steps
+
+1. **Build the licensing server**:
+   ```bash
+   cd license-server
+   cargo build --release
+   ```
+
+2. **Set environment variables** (see `.env.example`):
+   ```bash
+   export SCHEDULA_ADMIN_KEY="your-secret-admin-key"
+   export STRIPE_SECRET_KEY="sk_live_..."
+   export STRIPE_WEBHOOK_SECRET="whsec_..."
+   export STRIPE_PRICE_PRO_MONTHLY="price_..."
+   export STRIPE_PRICE_PRO_ANNUAL="price_..."
+   export STRIPE_PRICE_INST_MONTHLY="price_..."
+   export STRIPE_PRICE_INST_ANNUAL="price_..."
+   export APP_URL="https://schedula.app"
+   # ... other env vars (SMTP, Paddle, etc.)
+   ```
+
+3. **Run the server**:
+   ```bash
+   ./target/release/license-server
+   # Listens on 0.0.0.0:3000
+   ```
+
+4. **Deploy to production** (Cloudflare Workers, Railway, Fly.io, etc.):
+   - See `license-server/` README for deployment options
+   - Expose at `https://license.schedula.app` (or your domain)
+   - Webhooks: `POST /billing/stripe/webhook`, `POST /billing/paddle/webhook`
+
+5. **Update landing page** (Cloudflare Pages):
+   ```javascript
+   // landing/index.html
+   const BILLING_URL = "https://license.schedula.app";
+   const PADDLE_CLIENT_TOKEN = "live_..."; // if using Paddle
+   ```
+
+6. **Update hub server config** to validate licenses:
+   - Embed public key at compile time
+   - Hub validates JWT tokens locally
+   - See `hub-server/src/license.rs`
+
+---
+
 ## Success Checklist
 
 - [ ] GitHub repository created
@@ -256,6 +313,9 @@ They can:
 - [ ] DMG file tested locally
 - [ ] Release notes visible and clear
 - [ ] Users can download and run the app ✅
+- [ ] *(Optional)* Licensing server deployed and configured (for Pro/Institution plans)
+- [ ] *(Optional)* Landing page BILLING_URL configured
+- [ ] *(Optional)* Stripe & Paddle webhooks registered
 
 ---
 
