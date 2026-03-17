@@ -1,12 +1,48 @@
-# 📊 Schedula Project Status — Complete MVP
+# 📊 Schedula Project Status — v2.0 Subscription Model
 
 **Status**: ✅ **COMPLETE**
-**Version**: 0.1.0 (Initial Release)
-**Last Updated**: March 15, 2025
+**Version**: 2.0.0 (Subscription & Monetization)
+**Last Updated**: March 17, 2025
 
 ---
 
-## 🎉 What's Been Built
+## 🎉 v2.0 — Subscription & Monetization (New)
+
+### Phase 1: Plan Limits & Metering ✅
+- Tier-based limits (Free: 10 batches, 1 admin; Pro: 50 batches, 5 admins; Institution: unlimited)
+- `plan` column on `organizations` table
+- `PlanLimits` struct and enforcement in hub/Tauri
+- Structured `plan_limit_exceeded` error responses
+- Upgrade prompt component in frontend
+
+### Phase 2: Licensing Server & Token Validation ✅
+- Standalone Axum licensing server (`license-server/`)
+- RS256 JWT tokens for license verification
+- Hub server validates tokens locally (no network call per request)
+- 7-day offline grace period with background re-validation
+- License activation UI in hub admin dashboard
+- `licenses` table with `customers` table (tracks Stripe/Paddle customer IDs)
+
+### Phase 3: Stripe Checkout & Subscriptions ✅
+- `POST /billing/checkout` → Stripe Checkout Session
+- `GET /billing/portal` → Stripe Customer Portal
+- Stripe webhook handlers for subscription lifecycle
+- License token delivery via email (lettre 0.11 + async SMTP)
+- 14-day free trial on first subscription
+- Cancellation grace period (schedule downgrade at period end)
+- Landing page: pricing section with monthly/annual toggle
+
+### Phase 4: Invoice & Paddle Integration ✅
+- `POST /billing/invoice-request` endpoint for institutional procurement
+- Admin dashboard for manual invoice payment & license issuance
+- Paddle Billing v2 checkout integration (`Paddle.js` embedded)
+- Paddle webhook handlers: `subscription.created/updated/canceled`, `transaction.payment_failed`
+- Sales notifications (email + Slack webhook)
+- Landing page: invoice request modal, Paddle checkout buttons
+
+---
+
+## 🎉 What's Been Built (v1.0)
 
 ### Core Application (18 commits)
 
@@ -243,31 +279,39 @@ See [RELEASE_GUIDE.md](RELEASE_GUIDE.md) for detailed steps
 
 ---
 
-## 🚀 Next Steps (Optional Enhancements)
+## 🚀 Next Steps (v2.1+)
 
-### For v0.2.0
+### Monetization & Operations
+- [ ] Analytics dashboard (usage metrics per organization)
+- [ ] Usage-based billing (batch/user overage charges)
+- [ ] Team management (add users to organization)
+- [ ] API rate limiting & quota enforcement
+- [ ] Payment retry logic & dunning management
+- [ ] Invoice & PO custom logic (approval workflow)
+
+### Product Enhancements
+- [ ] Web hub server dashboard (alternative to admin panel)
+- [ ] Mobile app for schedule viewing
+- [ ] Real-time schedule change notifications
+- [ ] Drag-and-drop schedule editing (override constraints)
 - [ ] Exam scheduling module
-- [ ] Email notifications on schedule changes
-- [ ] Import/export from common formats (XLSX, CSV)
-- [ ] Drag-and-drop schedule editing
-- [ ] Conflict resolution UI (manual overrides)
-- [ ] Performance metrics & analytics
+- [ ] Conflict resolution UI (manual conflict override)
+- [ ] Advanced reporting (PDF timetables, analytics)
 
-### For v1.0.0
-- [ ] Web version (React/Next.js)
-- [ ] Cloud sync (optional)
-- [ ] Student-facing mobile app
-- [ ] API server (REST/GraphQL)
-- [ ] Institutional branding (white-label)
-- [ ] Advanced reporting (PDF timetables)
-
-### Long-term
+### Distribution & Platform
+- [ ] Windows & Linux support (Tauri native builds)
 - [ ] Mac App Store distribution
-- [ ] Windows & Linux support
-- [ ] Exam invigilation scheduler
-- [ ] Substitute teacher engine
-- [ ] Real-time collaboration
+- [ ] Docker container for hub server deployment
+- [ ] Kubernetes-ready deployment manifests
+- [ ] White-label license option for institutional partners
+
+### Long-term Vision
 - [ ] AI-powered conflict resolution
+- [ ] Real-time collaboration (multi-user editing)
+- [ ] Student mobile app (view schedule, get notifications)
+- [ ] Integration with calendar systems (iCal, Google Calendar)
+- [ ] Exam invigilation scheduler
+- [ ] Substitute teacher & room assignment
 
 ---
 
@@ -353,16 +397,19 @@ These are intentional scoping decisions for an MVP, not bugs.
 
 ## 🎯 Bottom Line
 
-**Schedula is production-ready.** It:
+**Schedula is production-ready with subscription monetization.** It:
 
+- **Free tier** — Unlimited, single-machine desktop app for individual use
+- **Pro tier** ($29/mo) — Multi-machine hub server with WebSocket sync, bulk import, advanced solver
+- **Institution tier** ($99/mo) — Enterprise features: unlimited scale, multiple orgs, priority support
 - Generates conflict-free schedules in seconds
 - Supports realistic academic constraints
 - Has a clean, intuitive user interface
-- Is fully documented and tested
-- Can be downloaded and used immediately
-- Is open-source and extensible
+- Fully documented and tested
+- Can be deployed immediately (desktop or self-hosted hub)
+- Extensible for custom institutional requirements
 
-Users can start scheduling their semesters today. 🎉
+**v2.0 ready for launch.** Institutions can download free app or subscribe for multi-machine sync. 🎉
 
 ---
 
@@ -375,4 +422,5 @@ Users can start scheduling their semesters today. 🎉
 ---
 
 **Built with ❤️ for academics worldwide**
-**Version 0.1.0 · March 2025**
+**Version 2.0.0 · March 2025**
+**Free desktop app + Pro/Institution subscription plans with multi-machine sync**
