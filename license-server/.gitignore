@@ -1,0 +1,10 @@
+target/
+
+# Never commit the private signing key
+keys/private.pem
+
+# Local DB
+*.db
+
+# Environment
+.env
