@@ -10,17 +10,19 @@ pub fn db_err(e: impl std::fmt::Display) -> String { e.to_string() }
 
 // ─── Plan helpers ─────────────────────────────────────────────────────────────
 
-pub fn get_org_plan(conn: &Connection, _org_id: Option<i64>) -> String {
-    // Active hub-level license takes priority over the org.plan column
-    crate::license::effective_plan(conn)
+/// Read the current plan from the **in-memory cache** (already RS256-verified).
+/// Never reads from the `plan` text column in SQLite — that column can be
+/// edited directly by anyone with filesystem access and must not be trusted.
+pub fn get_org_plan(cached_plan: &str) -> String {
+    cached_plan.to_string()
 }
 
 fn plan_limit_err(e: PlanLimitError) -> String {
     e.to_json_string()
 }
 
-pub fn get_plan(conn: &Connection, sess: &SessionPayload) -> Result<PlanInfo, String> {
-    let plan = get_org_plan(conn, sess.org_id);
+pub fn get_plan(cached_plan: &str, _sess: &SessionPayload) -> Result<PlanInfo, String> {
+    let plan   = get_org_plan(cached_plan);
     let limits = PlanLimits::for_plan(&plan);
     Ok(PlanInfo { plan, limits })
 }
@@ -289,7 +291,7 @@ pub fn get_users(conn: &Connection, sess: &SessionPayload) -> Result<Vec<User>, 
     rows.map_err(db_err)
 }
 
-pub fn create_user(conn: &Connection, sess: &SessionPayload, user: NewUser) -> Result<i64, String> {
+pub fn create_user(conn: &Connection, sess: &SessionPayload, user: NewUser, cached_plan: &str) -> Result<i64, String> {
     require_super_admin(sess)?;
 
     if user.role == "super_admin" {
@@ -298,7 +300,7 @@ pub fn create_user(conn: &Connection, sess: &SessionPayload, user: NewUser) -> R
 
     if user.role == "admin" {
         let org_id = user.org_id;
-        let plan = get_org_plan(conn, org_id);
+        let plan = get_org_plan(cached_plan);
         let limits = PlanLimits::for_plan(&plan);
         if limits.max_admins >= 0 {
             let current: i64 = conn.query_row(
@@ -594,10 +596,10 @@ pub fn get_batches(conn: &Connection, sess: &SessionPayload) -> Result<Vec<Batch
     load_batches_scoped(conn, org_id_filter(sess))
 }
 
-pub fn create_batch(conn: &Connection, sess: &SessionPayload, batch: NewBatch) -> Result<i64, String> {
+pub fn create_batch(conn: &Connection, sess: &SessionPayload, batch: NewBatch, cached_plan: &str) -> Result<i64, String> {
     {
         let org_id = batch.org_id.or(sess.org_id);
-        let plan = get_org_plan(conn, org_id);
+        let plan = get_org_plan(cached_plan);
         let limits = PlanLimits::for_plan(&plan);
         if limits.max_batches >= 0 {
             let current: i64 = conn.query_row(
@@ -659,6 +661,7 @@ pub fn generate_schedule(
     semester_id: Option<i64>,
     description: Option<String>,
     algorithm: Option<String>,
+    cached_plan: &str,
 ) -> Result<Value, String> {
     let scope = org_id_filter(sess);
     let courses = load_courses_scoped(conn, scope)?;
@@ -685,7 +688,7 @@ pub fn generate_schedule(
     let input = SchedulerInput { courses, lecturers, rooms, batches, working_days };
     let use_csp = algorithm.as_deref() == Some("csp");
     if use_csp {
-        let plan = get_org_plan(conn, sess.org_id);
+        let plan = get_org_plan(cached_plan);
         let limits = PlanLimits::for_plan(&plan);
         if !limits.csp_algorithm {
             return Err(plan_limit_err(PlanLimitError::new(plan, "csp_algorithm", 0, 1)));
@@ -1115,8 +1118,8 @@ pub fn get_audit_log(conn: &Connection, limit: i64) -> Result<Vec<AuditEntry>, S
 
 // ── Bulk CSV import ─────────────────────────────────────────────────────────────
 
-pub fn bulk_import_lecturers(conn: &Connection, sess: &SessionPayload, rows: Vec<CsvLecturer>) -> Result<BulkImportResult, String> {
-    let plan = get_org_plan(conn, sess.org_id);
+pub fn bulk_import_lecturers(conn: &Connection, sess: &SessionPayload, rows: Vec<CsvLecturer>, cached_plan: &str) -> Result<BulkImportResult, String> {
+    let plan = get_org_plan(cached_plan);
     if !PlanLimits::for_plan(&plan).bulk_import {
         return Err(plan_limit_err(PlanLimitError::new(plan, "bulk_import", 0, 1)));
     }
@@ -1141,8 +1144,8 @@ pub fn bulk_import_lecturers(conn: &Connection, sess: &SessionPayload, rows: Vec
     Ok(BulkImportResult { inserted, skipped, errors })
 }
 
-pub fn bulk_import_rooms(conn: &Connection, sess: &SessionPayload, rows: Vec<CsvRoom>) -> Result<BulkImportResult, String> {
-    let plan = get_org_plan(conn, sess.org_id);
+pub fn bulk_import_rooms(conn: &Connection, sess: &SessionPayload, rows: Vec<CsvRoom>, cached_plan: &str) -> Result<BulkImportResult, String> {
+    let plan = get_org_plan(cached_plan);
     if !PlanLimits::for_plan(&plan).bulk_import {
         return Err(plan_limit_err(PlanLimitError::new(plan, "bulk_import", 0, 1)));
     }
@@ -1166,8 +1169,8 @@ pub fn bulk_import_rooms(conn: &Connection, sess: &SessionPayload, rows: Vec<Csv
     Ok(BulkImportResult { inserted, skipped, errors })
 }
 
-pub fn bulk_import_courses(conn: &Connection, sess: &SessionPayload, rows: Vec<CsvCourse>) -> Result<BulkImportResult, String> {
-    let plan = get_org_plan(conn, sess.org_id);
+pub fn bulk_import_courses(conn: &Connection, sess: &SessionPayload, rows: Vec<CsvCourse>, cached_plan: &str) -> Result<BulkImportResult, String> {
+    let plan = get_org_plan(cached_plan);
     if !PlanLimits::for_plan(&plan).bulk_import {
         return Err(plan_limit_err(PlanLimitError::new(plan, "bulk_import", 0, 1)));
     }

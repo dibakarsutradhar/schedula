@@ -19,7 +19,7 @@ use serde::Deserialize;
 use serde_json::json;
 use std::{
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, RwLock},
     sync::atomic::{AtomicUsize, Ordering},
     time::Instant,
 };
@@ -32,13 +32,19 @@ const HUB_UI: &str = include_str!("../ui/index.html");
 
 #[derive(Clone)]
 struct AppState {
-    db:         Arc<Mutex<Connection>>,
-    jwt_secret: String,
-    tx:         broadcast::Sender<String>,
-    db_path:    PathBuf,
-    ws_count:   Arc<AtomicUsize>,
-    start_time: Arc<Instant>,
-    listen_addr: String,
+    db:           Arc<Mutex<Connection>>,
+    jwt_secret:   String,
+    tx:           broadcast::Sender<String>,
+    db_path:      PathBuf,
+    ws_count:     Arc<AtomicUsize>,
+    start_time:   Arc<Instant>,
+    listen_addr:  String,
+    /// In-memory plan cache — populated at startup from a verified JWT and
+    /// refreshed by the background validation loop.  All feature gates read
+    /// this instead of hitting the DB, so SQLite manipulation has zero effect
+    /// at runtime (takes effect only after a hub restart, where it is
+    /// re-derived from JWT verification again).
+    current_plan: Arc<RwLock<String>>,
 }
 
 #[derive(Parser)]
@@ -142,8 +148,8 @@ async fn plan_handler(
     State(state): State<AppState>,
     Extension(sess): Extension<SessionPayload>,
 ) -> Response {
-    let conn = state.db.lock().unwrap();
-    to_response(handlers::get_plan(&conn, &sess))
+    let cached_plan = state.current_plan.read().unwrap().clone();
+    to_response(handlers::get_plan(&cached_plan, &sess))
 }
 
 // ─── License handlers ─────────────────────────────────────────────────────────
@@ -245,8 +251,9 @@ async fn create_user_handler(
         role: body.role,
         org_id: body.org_id,
     };
+    let cached_plan = state.current_plan.read().unwrap().clone();
     let conn = state.db.lock().unwrap();
-    let result = handlers::create_user(&conn, &sess, user);
+    let result = handlers::create_user(&conn, &sess, user, &cached_plan);
     if result.is_ok() { broadcast_change(&state.tx, "users", "create"); }
     to_response(result)
 }
@@ -540,8 +547,9 @@ async fn create_batch_handler(
     Extension(sess): Extension<SessionPayload>,
     Json(body): Json<models::NewBatch>,
 ) -> Response {
+    let cached_plan = state.current_plan.read().unwrap().clone();
     let conn = state.db.lock().unwrap();
-    let result = handlers::create_batch(&conn, &sess, body);
+    let result = handlers::create_batch(&conn, &sess, body, &cached_plan);
     if result.is_ok() { broadcast_change(&state.tx, "batches", "create"); }
     to_response(result)
 }
@@ -584,8 +592,9 @@ async fn generate_schedule_handler(
     Extension(sess): Extension<SessionPayload>,
     Json(body): Json<GenerateScheduleBody>,
 ) -> Response {
+    let cached_plan = state.current_plan.read().unwrap().clone();
     let conn = state.db.lock().unwrap();
-    let result = handlers::generate_schedule(&conn, &sess, body.schedule_name, body.semester_id, body.description, body.algorithm);
+    let result = handlers::generate_schedule(&conn, &sess, body.schedule_name, body.semester_id, body.description, body.algorithm, &cached_plan);
     if result.is_ok() { broadcast_change(&state.tx, "schedules", "create"); }
     to_response(result)
 }
@@ -925,8 +934,9 @@ async fn bulk_import_lecturers_handler(
     Extension(sess): Extension<SessionPayload>,
     Json(rows): Json<Vec<models::CsvLecturer>>,
 ) -> Response {
+    let cached_plan = state.current_plan.read().unwrap().clone();
     let conn = state.db.lock().unwrap();
-    let result = handlers::bulk_import_lecturers(&conn, &sess, rows);
+    let result = handlers::bulk_import_lecturers(&conn, &sess, rows, &cached_plan);
     if result.is_ok() { broadcast_change(&state.tx, "lecturers", "import"); }
     to_response(result)
 }
@@ -936,8 +946,9 @@ async fn bulk_import_rooms_handler(
     Extension(sess): Extension<SessionPayload>,
     Json(rows): Json<Vec<models::CsvRoom>>,
 ) -> Response {
+    let cached_plan = state.current_plan.read().unwrap().clone();
     let conn = state.db.lock().unwrap();
-    let result = handlers::bulk_import_rooms(&conn, &sess, rows);
+    let result = handlers::bulk_import_rooms(&conn, &sess, rows, &cached_plan);
     if result.is_ok() { broadcast_change(&state.tx, "rooms", "import"); }
     to_response(result)
 }
@@ -947,8 +958,9 @@ async fn bulk_import_courses_handler(
     Extension(sess): Extension<SessionPayload>,
     Json(rows): Json<Vec<models::CsvCourse>>,
 ) -> Response {
+    let cached_plan = state.current_plan.read().unwrap().clone();
     let conn = state.db.lock().unwrap();
-    let result = handlers::bulk_import_courses(&conn, &sess, rows);
+    let result = handlers::bulk_import_courses(&conn, &sess, rows, &cached_plan);
     if result.is_ok() { broadcast_change(&state.tx, "courses", "import"); }
     to_response(result)
 }
@@ -975,24 +987,27 @@ async fn main() {
     let db_path = PathBuf::from(&args.db_path);
     let conn = db::open(&db_path).expect("Failed to open database");
 
-    // Startup license check: expire any lapsed tokens, log current plan
+    // Startup license check: expire lapsed tokens, derive plan from JWT
     license::startup_license_check(&conn);
+    let initial_plan = license::effective_plan(&conn);  // RS256-verified
 
     let (tx, _) = broadcast::channel(64);
     let listen_addr = format!("0.0.0.0:{}", args.port);
+    let current_plan = Arc::new(RwLock::new(initial_plan));
 
     let state = AppState {
         db: Arc::new(Mutex::new(conn)),
         jwt_secret,
         tx,
         db_path,
-        ws_count:    Arc::new(AtomicUsize::new(0)),
-        start_time:  Arc::new(Instant::now()),
-        listen_addr: listen_addr.clone(),
+        ws_count:     Arc::new(AtomicUsize::new(0)),
+        start_time:   Arc::new(Instant::now()),
+        listen_addr:  listen_addr.clone(),
+        current_plan: current_plan.clone(),
     };
 
-    // Background license re-validation every 24 h
-    tokio::spawn(license::background_validation_loop(state.db.clone()));
+    // Background license re-validation every 24 h — also refreshes the cache
+    tokio::spawn(license::background_validation_loop(state.db.clone(), current_plan));
 
     // Public routes (no auth required)
     let public_routes = Router::new()

@@ -4,7 +4,7 @@
 /// (no network call per request).  A background task re-validates against the
 /// licensing server every 24 h; if unreachable, a 7-day grace period applies.
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use rusqlite::{Connection, params};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use crate::models::*;
@@ -93,14 +93,31 @@ pub fn get_license_info(conn: &Connection) -> LicenseInfo {
     }
 }
 
-/// Effective plan from active license (falls back to PLAN_FREE).
+/// Effective plan derived from the stored JWT — **re-verifies the RS256
+/// signature on every call**.  Trusting the plain-text `plan` column would
+/// allow a sysadmin with SQLite access to escalate their own plan by editing
+/// a single field; verifying the token means only a JWT signed by our private
+/// key is accepted.
+///
+/// Attack surfaces closed:
+///   `UPDATE licenses SET plan='institution'` → ignored (we read the token)
+///   `UPDATE licenses SET status='active'`   → JWT still verified; forgery fails
+///   Inserting a fabricated row             → RS256 sig check fails → Free
+///   Deleting all rows                      → no token → Free (correct)
 pub fn effective_plan(conn: &Connection) -> String {
-    conn.query_row(
-        "SELECT plan FROM licenses WHERE status IN ('active','grace')
+    // Read the raw JWT token — not the convenience `plan` text column.
+    let token: Result<String, _> = conn.query_row(
+        "SELECT token FROM licenses WHERE status IN ('active','grace')
          ORDER BY activated_at DESC LIMIT 1",
         [],
-        |r| r.get::<_, String>(0),
-    ).unwrap_or_else(|_| PLAN_FREE.to_string())
+        |r| r.get(0),
+    );
+    match token {
+        Ok(t) => validate_token(&t)
+            .map(|claims| claims.plan)
+            .unwrap_or_else(|_| PLAN_FREE.to_string()),
+        Err(_) => PLAN_FREE.to_string(),
+    }
 }
 
 /// Store a validated license JWT in the database.
@@ -173,8 +190,12 @@ fn apply_grace_or_expire(conn: &Connection) {
 // ─── Background re-validation ─────────────────────────────────────────────────
 
 /// Spawned as a tokio task on hub startup.  Validates the active license
-/// against the licensing server every 24 hours.
-pub async fn background_validation_loop(db: Arc<Mutex<Connection>>) {
+/// against the licensing server every 24 hours and refreshes the in-memory
+/// plan cache so feature gates reflect the updated state immediately.
+pub async fn background_validation_loop(
+    db:           Arc<Mutex<Connection>>,
+    current_plan: Arc<RwLock<String>>,
+) {
     // First run after 24 h; subsequent runs on 24 h intervals
     loop {
         tokio::time::sleep(tokio::time::Duration::from_secs(24 * 3600)).await;
@@ -204,11 +225,11 @@ pub async fn background_validation_loop(db: Arc<Mutex<Connection>>) {
             Ok(resp) if resp.status().is_success() => {
                 let conn = db.lock().unwrap();
                 touch_validation(&conn);
-                // Re-validate signature locally too (token may have been refreshed)
-                tracing::info!("License re-validated successfully");
+                let plan = effective_plan(&conn);  // re-derives from JWT signature
+                *current_plan.write().unwrap() = plan.clone();
+                tracing::info!("License re-validated — plan={}", plan);
             }
             Ok(resp) => {
-                // Server reachable but rejected the token (revoked, etc.)
                 let status = resp.status();
                 tracing::warn!("License validation rejected by server: {}", status);
                 let conn = db.lock().unwrap();
@@ -216,11 +237,15 @@ pub async fn background_validation_loop(db: Arc<Mutex<Connection>>) {
                     "UPDATE licenses SET status='revoked' WHERE status IN ('active','grace')",
                     [],
                 );
+                *current_plan.write().unwrap() = PLAN_FREE.to_string();
             }
             Err(e) => {
                 tracing::warn!("License server unreachable: {} — applying grace period logic", e);
                 let conn = db.lock().unwrap();
                 apply_grace_or_expire(&conn);
+                // Re-derive from JWT after grace logic (may have downgraded)
+                let plan = effective_plan(&conn);
+                *current_plan.write().unwrap() = plan;
             }
         }
     }
