@@ -19,15 +19,16 @@
 #   make test-license   - Run license-server tests only
 #   make check          - cargo check all Rust crates (fast compile check)
 #
-#   make keys-gen       - Generate a new RS256 key pair in license-server/keys/
-#   make install        - Install Node dependencies
-#   make clean          - Clean all build artefacts
-#   make help           - Show this help
+#   make keys-gen         - Generate a new RS256 key pair in license-server/keys/
+#   make deploy-license   - Deploy license server to Fly.io  (requires flyctl)
+#   make install          - Install Node dependencies
+#   make clean            - Clean all build artefacts
+#   make help             - Show this help
 
 .PHONY: dev dev-all tauri hub license landing \
         build build-hub build-license build-all \
         test test-tauri test-hub test-license check \
-        keys-gen install clean help
+        keys-gen deploy-license install clean help
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
@@ -188,6 +189,17 @@ check:
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
+## Deploy license server to Fly.io
+## First-time setup:
+##   fly launch --no-deploy --name schedula-license (inside license-server/)
+##   fly volumes create license_data --size 1 --region sin
+##   fly secrets set SCHEDULA_ADMIN_KEY=... STRIPE_SECRET_KEY=... etc.
+## Subsequent deploys: make deploy-license
+deploy-license: _check_license_keys
+	@command -v fly > /dev/null 2>&1 || \
+	  (echo "Error: flyctl not found. Install from https://fly.io/docs/flyctl/install/" && exit 1)
+	cd $(LICENSE_DIR) && fly deploy
+
 ## Generate a new RS256 key pair in license-server/keys/
 ## WARNING: replaces existing keys — all issued JWTs will become invalid
 keys-gen:
@@ -258,6 +270,9 @@ help:
 	@echo ""
 	@echo "  Keys"
 	@echo "    make keys-gen      Generate new RS256 key pair (invalidates all JWTs!)"
+	@echo ""
+	@echo "  Deploy"
+	@echo "    make deploy-license  Deploy license server to Fly.io"
 	@echo ""
 	@echo "  Other"
 	@echo "    make install       Install Node dependencies"

@@ -1,0 +1,59 @@
+# Fly.io deployment config for Schedula License Server
+# Deploy with: fly deploy  (from the license-server/ directory)
+# First-time: fly launch --no-deploy  (creates the app, then edit this file)
+
+app    = "schedula-license"
+region = "sin"        # Singapore — change to nearest: ams, fra, iad, lax, nrt, syd
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# ── HTTP service ──────────────────────────────────────────────────────────────
+[[services]]
+  internal_port = 8080
+  protocol      = "tcp"
+  auto_stop_machines  = false   # must stay running for daily key rotation
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    port     = 80
+    handlers = ["http"]
+    [services.ports.force_https]
+      enabled = true
+
+  [[services.ports]]
+    port     = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type       = "requests"
+    soft_limit = 100
+    hard_limit = 200
+
+  [[services.http_checks]]
+    interval       = "30s"
+    timeout        = "5s"
+    grace_period   = "10s"
+    method         = "GET"
+    path           = "/health"
+    protocol       = "https"
+
+# ── Machine ───────────────────────────────────────────────────────────────────
+[[vm]]
+  size   = "shared-cpu-1x"
+  memory = "256mb"
+
+# ── Persistent volume for SQLite ──────────────────────────────────────────────
+# Create once with: fly volumes create license_data --size 1 --region sin
+[[mounts]]
+  source      = "license_data"
+  destination = "/data"
+
+# ── Environment ───────────────────────────────────────────────────────────────
+# Non-secret config goes here.
+# Secrets (SCHEDULA_ADMIN_KEY, STRIPE_*, SMTP_*, PADDLE_*) go in:
+#   fly secrets set SCHEDULA_ADMIN_KEY="..." STRIPE_SECRET_KEY="..." etc.
+[env]
+  APP_URL = "https://schedula.app"
