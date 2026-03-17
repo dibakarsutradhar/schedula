@@ -26,3 +26,4 @@ lettre           = { version = "0.11", features = ["tokio1-native-tls"] }
 hmac             = "0.12"
 sha2             = "0.10"
 hex              = "0.4"
+rand             = "0.8"

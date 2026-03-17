@@ -40,11 +40,17 @@ struct AppState {
     start_time:   Arc<Instant>,
     listen_addr:  String,
     /// In-memory plan cache — populated at startup from a verified JWT and
-    /// refreshed by the background validation loop.  All feature gates read
-    /// this instead of hitting the DB, so SQLite manipulation has zero effect
-    /// at runtime (takes effect only after a hub restart, where it is
+    /// refreshed by the background refresh loop every 24 h.  All feature gates
+    /// read this instead of hitting the DB, so SQLite manipulation has zero
+    /// runtime effect (takes effect only after a hub restart, where it is
     /// re-derived from JWT verification again).
     current_plan: Arc<RwLock<String>>,
+
+    /// Today's 256-bit symmetric key (hex), received from the license server
+    /// during the last successful /v1/refresh call.  Empty string means no
+    /// successful refresh has occurred yet (or the license was revoked).
+    /// Available to the API layer for HMAC signing / app-side validation.
+    current_secret: Arc<RwLock<String>>,
 }
 
 #[derive(Parser)]
@@ -148,8 +154,9 @@ async fn plan_handler(
     State(state): State<AppState>,
     Extension(sess): Extension<SessionPayload>,
 ) -> Response {
-    let cached_plan = state.current_plan.read().unwrap().clone();
-    to_response(handlers::get_plan(&cached_plan, &sess))
+    let cached_plan   = state.current_plan.read().unwrap().clone();
+    let cached_secret = state.current_secret.read().unwrap().clone();
+    to_response(handlers::get_plan(&cached_plan, &cached_secret, &sess))
 }
 
 // ─── License handlers ─────────────────────────────────────────────────────────
@@ -987,27 +994,43 @@ async fn main() {
     let db_path = PathBuf::from(&args.db_path);
     let conn = db::open(&db_path).expect("Failed to open database");
 
-    // Startup license check: expire lapsed tokens, derive plan from JWT
+    // Startup: expire hard-lapsed tokens, derive initial plan from cached JWT
     license::startup_license_check(&conn);
-    let initial_plan = license::effective_plan(&conn);  // RS256-verified
+    let initial_plan   = license::effective_plan(&conn); // RS256-verified, grace-aware
+
+    // Recover the last known secret key from the DB (may be empty on first run)
+    let initial_secret: String = conn.query_row(
+        "SELECT COALESCE(secret_key, '') FROM licenses
+         WHERE status IN ('active','grace')
+         ORDER BY activated_at DESC LIMIT 1",
+        [],
+        |r| r.get(0),
+    ).unwrap_or_default();
 
     let (tx, _) = broadcast::channel(64);
-    let listen_addr = format!("0.0.0.0:{}", args.port);
-    let current_plan = Arc::new(RwLock::new(initial_plan));
+    let listen_addr    = format!("0.0.0.0:{}", args.port);
+    let current_plan   = Arc::new(RwLock::new(initial_plan));
+    let current_secret = Arc::new(RwLock::new(initial_secret));
 
     let state = AppState {
         db: Arc::new(Mutex::new(conn)),
         jwt_secret,
         tx,
         db_path,
-        ws_count:     Arc::new(AtomicUsize::new(0)),
-        start_time:   Arc::new(Instant::now()),
-        listen_addr:  listen_addr.clone(),
-        current_plan: current_plan.clone(),
+        ws_count:       Arc::new(AtomicUsize::new(0)),
+        start_time:     Arc::new(Instant::now()),
+        listen_addr:    listen_addr.clone(),
+        current_plan:   current_plan.clone(),
+        current_secret: current_secret.clone(),
     };
 
-    // Background license re-validation every 24 h — also refreshes the cache
-    tokio::spawn(license::background_validation_loop(state.db.clone(), current_plan));
+    // Background refresh: calls /v1/refresh immediately on startup, then every 24 h.
+    // Updates current_plan and current_secret caches on every successful refresh.
+    tokio::spawn(license::background_refresh_loop(
+        state.db.clone(),
+        current_plan,
+        current_secret,
+    ));
 
     // Public routes (no auth required)
     let public_routes = Router::new()

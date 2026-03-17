@@ -5,6 +5,7 @@
 /// Routes:
 ///   POST /v1/issue             — (admin-key) issue a new license JWT
 ///   POST /v1/validate          — validate a token (called by hub on 24 h re-check)
+///   POST /v1/refresh           — daily refresh: returns new 48-hour JWT + today's symmetric key
 ///   GET  /v1/licenses          — (admin-key) list all issued licenses
 ///   DELETE /v1/licenses/:jti   — (admin-key) revoke a license
 ///   GET  /health
@@ -50,6 +51,7 @@ use clap::Parser;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+use rand::RngCore;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
@@ -223,6 +225,28 @@ struct LicenseRecord {
     revoked:    bool,
 }
 
+/// POST /v1/refresh — daily token refresh request from hub or app
+#[derive(Debug, Deserialize)]
+struct RefreshRequest {
+    token: String,
+}
+
+/// Response body for /v1/refresh
+#[derive(Debug, Serialize)]
+struct RefreshResponse {
+    /// A new RS256-signed JWT valid for 48 h (same JTI, fresh expiry)
+    new_token:  String,
+    /// Today's 256-bit HMAC key (hex-encoded) — rotates at UTC midnight
+    secret_key: String,
+    /// UTC date this key is valid for: "YYYY-MM-DD"
+    key_date:   String,
+    /// Plan from the original license claims
+    plan:       String,
+    org_name:   Option<String>,
+    /// ISO-8601 expiry of new_token (48 h from now)
+    expires_at: String,
+}
+
 // ─── DB ───────────────────────────────────────────────────────────────────────
 
 fn open_db(path: &str) -> Connection {
@@ -238,6 +262,15 @@ fn open_db(path: &str) -> Connection {
             issued_at  TEXT    NOT NULL DEFAULT (datetime('now')),
             expires_at TEXT,
             revoked    INTEGER NOT NULL DEFAULT 0
+        );
+
+        -- Daily symmetric key rotation table.
+        -- Each row stores one 256-bit HMAC key valid for a UTC calendar day.
+        -- Rows older than 8 days are purged automatically by the rotation task.
+        CREATE TABLE IF NOT EXISTS daily_keys (
+            key_date   TEXT PRIMARY KEY,           -- YYYY-MM-DD (UTC)
+            key_hex    TEXT NOT NULL,              -- 256-bit key, hex-encoded (64 chars)
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
         CREATE TABLE IF NOT EXISTS customers (
@@ -485,6 +518,169 @@ async fn revoke_handler(
     Json(serde_json::json!({"revoked": true, "jti": jti})).into_response()
 }
 
+// ─── Daily key rotation ────────────────────────────────────────────────────────
+
+/// Generates today's daily symmetric key if it doesn't already exist,
+/// then purges keys older than 8 days.  Called once at startup and once at
+/// every UTC midnight thereafter.
+fn ensure_todays_key(conn: &Connection) {
+    let today = chrono::Utc::now().date_naive().to_string(); // "YYYY-MM-DD"
+
+    let exists: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM daily_keys WHERE key_date=?1",
+        params![today],
+        |r| r.get(0),
+    ).unwrap_or(0);
+
+    if exists == 0 {
+        let mut raw = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut raw);
+        let key_hex = hex::encode(raw);
+        conn.execute(
+            "INSERT OR IGNORE INTO daily_keys (key_date, key_hex) VALUES (?1, ?2)",
+            params![today, key_hex],
+        ).ok();
+        tracing::info!("Daily key generated for {}", today);
+    }
+
+    // Purge keys older than 8 days (keeps last week + today + one buffer day)
+    let cutoff = (chrono::Utc::now() - chrono::Duration::days(8))
+        .date_naive().to_string();
+    conn.execute(
+        "DELETE FROM daily_keys WHERE key_date < ?1",
+        params![cutoff],
+    ).ok();
+}
+
+/// Background task: ensures a fresh key exists each UTC day.
+/// Wakes up at 00:01 UTC to generate the next day's key and purge stale ones.
+async fn daily_key_rotation_task(db: Arc<Mutex<Connection>>) {
+    loop {
+        // Sleep until 00:01:00 UTC tomorrow
+        let now    = chrono::Utc::now();
+        let target = (now + chrono::Duration::days(1))
+            .date_naive()
+            .and_hms_opt(0, 1, 0)
+            .unwrap()
+            .and_utc();
+        let secs = (target - now).num_seconds().max(1) as u64;
+        tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
+
+        let conn = db.lock().unwrap();
+        ensure_todays_key(&conn);
+    }
+}
+
+// ─── Refresh handler ───────────────────────────────────────────────────────────
+
+/// POST /v1/refresh — daily credential refresh for hub and desktop clients.
+///
+/// The caller sends their current license JWT (which may already be expired
+/// within the 48-hour token window).  The server:
+///   1. Verifies the RS256 signature (always — prevents forged tokens).
+///   2. Checks the license is not revoked in the DB.
+///   3. Returns today's 256-bit symmetric key + a fresh 48-hour JWT.
+///
+/// The caller should call this every ~24 h.  Missing one call leaves a 24-hour
+/// buffer (the new token is valid 48 h).  Missing >7 days triggers the hub's
+/// grace-period downgrade.
+async fn refresh_handler(
+    State(state): State<AppState>,
+    Json(body):   Json<RefreshRequest>,
+) -> Response {
+    // ── Step 1: verify RS256 signature (exp=0 perpetual tokens accepted) ──────
+    let mut validation = Validation::new(Algorithm::RS256);
+    validation.set_issuer(&["schedula-license"]);
+    validation.validate_exp = false; // we accept expired tokens during the grace window
+
+    let decoded = match decode::<LicenseClaims>(&body.token, &state.decoding_key, &validation) {
+        Ok(d)  => d,
+        Err(e) => return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({
+            "error": format!("Invalid token signature: {e}")
+        }))).into_response(),
+    };
+    let claims = decoded.claims;
+
+    // ── Step 2: check revocation ──────────────────────────────────────────────
+    let conn = state.db.lock().unwrap();
+    let revoked: bool = conn.query_row(
+        "SELECT revoked FROM licenses WHERE jti=?1",
+        params![claims.jti],
+        |r| r.get::<_, i64>(0),
+    ).map(|v| v == 1).unwrap_or(true); // treat missing license as revoked
+
+    if revoked {
+        tracing::warn!("Refresh rejected — license revoked: jti={}", claims.jti);
+        return (StatusCode::FORBIDDEN, Json(serde_json::json!({
+            "error": "License has been revoked"
+        }))).into_response();
+    }
+
+    // ── Step 3: get today's symmetric key ─────────────────────────────────────
+    let today = chrono::Utc::now().date_naive().to_string();
+    let secret_key: String = match conn.query_row(
+        "SELECT key_hex FROM daily_keys WHERE key_date=?1",
+        params![today],
+        |r| r.get(0),
+    ) {
+        Ok(k) => k,
+        Err(_) => {
+            tracing::error!("No daily key for {} — rotation task may not be running", today);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                "error": "Daily key unavailable — contact support"
+            }))).into_response();
+        }
+    };
+
+    // ── Step 4: issue a fresh 48-hour JWT (same JTI, refreshed expiry) ────────
+    let now     = chrono::Utc::now().timestamp();
+    let new_exp = now + 2 * 86_400; // 48 h
+
+    let new_claims = LicenseClaims {
+        iss:      "schedula-license".into(),
+        sub:      claims.jti.clone(),
+        plan:     claims.plan.clone(),
+        org_name: claims.org_name.clone(),
+        exp:      new_exp,
+        iat:      now,
+        jti:      claims.jti.clone(), // same identity
+    };
+
+    let mut header = Header::new(Algorithm::RS256);
+    header.kid = Some("schedula-v1".into());
+
+    let new_token = match encode(&header, &new_claims, &state.encoding_key) {
+        Ok(t)  => t,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+            "error": format!("Failed to sign refreshed token: {e}")
+        }))).into_response(),
+    };
+
+    let expires_at = chrono::DateTime::from_timestamp(new_exp, 0)
+        .map(|d| d.to_rfc3339())
+        .unwrap_or_default();
+
+    // Persist the refreshed token so it can be validated on next /v1/validate call
+    conn.execute(
+        "UPDATE licenses SET token=?1, expires_at=?2 WHERE jti=?3",
+        params![new_token, expires_at, claims.jti],
+    ).ok();
+
+    tracing::info!(
+        "Token refreshed: plan={} jti={} key_date={}",
+        claims.plan, claims.jti, today
+    );
+
+    Json(RefreshResponse {
+        new_token,
+        secret_key,
+        key_date:   today,
+        plan:       claims.plan,
+        org_name:   claims.org_name,
+        expires_at,
+    }).into_response()
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 #[tokio::main]
@@ -509,6 +705,9 @@ async fn main() {
         .expect("Invalid RSA public key");
 
     let conn = open_db(&args.db_path);
+
+    // Ensure today's symmetric key exists on startup
+    ensure_todays_key(&conn);
 
     let billing = Arc::new(billing::BillingConfig {
         http:                  reqwest::Client::new(),
@@ -545,10 +744,14 @@ async fn main() {
         billing,
     };
 
+    // Spawn daily key rotation: wakes at UTC midnight to generate the next day's key
+    tokio::spawn(daily_key_rotation_task(state.db.clone()));
+
     let app = Router::new()
         // ── License management ──────────────────────────────────────────────
         .route("/v1/issue",           post(issue_handler))
         .route("/v1/validate",        post(validate_handler))
+        .route("/v1/refresh",         post(refresh_handler))
         .route("/v1/licenses",        get(list_licenses_handler))
         .route("/v1/licenses/:jti",   delete(revoke_handler))
         // ── Billing / Stripe ─────────────────────────────────────────────────

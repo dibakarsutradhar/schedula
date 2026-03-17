@@ -508,10 +508,19 @@ impl PlanLimits {
 }
 
 /// Returned by GET /api/plan (and the Tauri get_plan command).
+///
+/// `secret_key` is today's 256-bit HMAC key (hex) from the license server.
+/// The desktop app uses this to sign requests or prove active subscription.
+/// Empty string means the hub has not yet completed a successful refresh
+/// (e.g. first boot with no network, or a revoked license).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlanInfo {
-    pub plan: String,
-    pub limits: PlanLimits,
+    pub plan:       String,
+    pub limits:     PlanLimits,
+    /// Today's symmetric key (hex-encoded 256-bit).  Only present on Pro/Institution.
+    pub secret_key: String,
+    /// UTC date the key is valid for: "YYYY-MM-DD".  Empty if no refresh yet.
+    pub key_date:   String,
 }
 
 /// Returned by GET /api/license.

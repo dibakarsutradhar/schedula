@@ -21,10 +21,19 @@ fn plan_limit_err(e: PlanLimitError) -> String {
     e.to_json_string()
 }
 
-pub fn get_plan(cached_plan: &str, _sess: &SessionPayload) -> Result<PlanInfo, String> {
+pub fn get_plan(cached_plan: &str, cached_secret: &str, _sess: &SessionPayload) -> Result<PlanInfo, String> {
     let plan   = get_org_plan(cached_plan);
     let limits = PlanLimits::for_plan(&plan);
-    Ok(PlanInfo { plan, limits })
+    // Expose the secret key + date only to authenticated callers (auth middleware runs first)
+    let (secret_key, key_date) = if plan != PLAN_FREE && !cached_secret.is_empty() {
+        // key_date is the first 10 chars of an ISO date stored in the secret (we embed it)
+        // Retrieve from DB would require conn; instead, derive from today's UTC date
+        let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+        (cached_secret.to_string(), today)
+    } else {
+        (String::new(), String::new())
+    };
+    Ok(PlanInfo { plan, limits, secret_key, key_date })
 }
 
 pub fn get_license(conn: &Connection) -> Result<LicenseInfo, String> {

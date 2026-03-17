@@ -22,6 +22,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     migrate_v9(conn)?;
     migrate_v10(conn)?;
     migrate_v11(conn)?;
+    migrate_v12(conn)?;
     Ok(())
 }
 
@@ -297,6 +298,20 @@ fn migrate_v11(conn: &Connection) -> Result<()> {
                               CHECK(status IN ('active','expired','revoked','grace'))
         );
     ")?;
+    Ok(())
+}
+
+// ─── V12: daily key rotation fields on licenses ───────────────────────────────
+fn migrate_v12(conn: &Connection) -> Result<()> {
+    // secret_key: today's 256-bit HMAC key received from the license server (hex)
+    // key_date:   the UTC date (YYYY-MM-DD) the key was issued for
+    let alters = [
+        "ALTER TABLE licenses ADD COLUMN secret_key TEXT",
+        "ALTER TABLE licenses ADD COLUMN key_date   TEXT",
+    ];
+    for sql in &alters {
+        try_alter(conn, sql);
+    }
     Ok(())
 }
 
