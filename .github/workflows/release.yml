@@ -1,173 +1,262 @@
-name: Build and Release
+name: Build & Publish
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v2.1.0)'
+        required: true
 
+env:
+  R2_BUCKET: schedula-downloads
+  R2_PUBLIC_URL: https://downloads.schedula.app
+
+# ──────────────────────────────────────────────────────────────────────────────
+# macOS — Apple Silicon (aarch64)
+# ──────────────────────────────────────────────────────────────────────────────
 jobs:
-  build-macos:
-    name: Build macOS DMGs (ARM64 + Intel)
+  build-macos-arm:
+    name: macOS Apple Silicon (arm64)
     runs-on: macos-latest
-    timeout-minutes: 120
-
+    timeout-minutes: 90
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          targets: aarch64-apple-darwin
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: npm
 
-      - name: Install frontend dependencies
-        run: npm ci
+      - run: npm ci
 
-      - name: Build Tauri app (ARM64)
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+      - name: Build Tauri — arm64
+        run: npm run tauri build -- --target aarch64-apple-darwin
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Schedula ${{ github.ref_name }}'
-          args: --target aarch64-apple-darwin
+          name: macos-arm64
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 1
 
-      - name: Build Tauri app (Intel x86_64)
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+# ──────────────────────────────────────────────────────────────────────────────
+# macOS — Intel (x86_64)
+# ──────────────────────────────────────────────────────────────────────────────
+  build-macos-intel:
+    name: macOS Intel (x86_64)
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Schedula ${{ github.ref_name }}'
-          args: --target x86_64-apple-darwin
+          targets: x86_64-apple-darwin
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build Tauri — x86_64
+        run: npm run tauri build -- --target x86_64-apple-darwin
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-intel
+          path: src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 1
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Windows — x64
+# ──────────────────────────────────────────────────────────────────────────────
   build-windows:
-    name: Build Windows MSI/NSIS
+    name: Windows x64
     runs-on: windows-latest
     timeout-minutes: 90
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
         with:
-          targets: x86_64-pc-windows-msvc
+          node-version: '20'
+          cache: npm
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - run: npm ci
+
+      - name: Build Tauri
+        run: npm run tauri build
+
+      # Prefer NSIS (.exe) over MSI — better UX for end users
+      - name: Upload NSIS artifact
+        uses: actions/upload-artifact@v4
         with:
-          node-version: '18'
+          name: windows-nsis
+          path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          if-no-files-found: warn
+          retention-days: 1
 
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+      - name: Upload MSI artifact (fallback)
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Schedula ${{ github.ref_name }}'
+          name: windows-msi
+          path: src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: warn
+          retention-days: 1
 
-  create-release:
-    name: Create GitHub Release
+# ──────────────────────────────────────────────────────────────────────────────
+# Publish to Cloudflare R2
+# ──────────────────────────────────────────────────────────────────────────────
+  publish:
+    name: Publish to Cloudflare R2
+    needs: [build-macos-arm, build-macos-intel, build-windows]
     runs-on: ubuntu-latest
-    needs: [build-macos, build-windows]
-    if: always()
+    permissions:
+      contents: read
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Get release notes
-        id: release_notes
+      - name: Determine version tag
+        id: ver
         run: |
-          VERSION="${{ github.ref_name }}"
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "tag=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Create release on GitHub
-        uses: softprops/action-gh-release@v1
+      # ── Download all build artifacts ────────────────────────────────────────
+      - name: Download macOS ARM64
+        uses: actions/download-artifact@v4
         with:
-          tag_name: ${{ github.ref_name }}
-          name: 'Schedula ${{ github.ref_name }}'
-          draft: false
-          prerelease: false
-          body: |
-            # Schedula ${{ github.ref_name }}
+          name: macos-arm64
+          path: dist/macos-arm64
 
-            AI-Powered University Timetable Generator
+      - name: Download macOS Intel
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-intel
+          path: dist/macos-intel
 
-            ## Download
+      - name: Download Windows NSIS
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: windows-nsis
+          path: dist/windows
 
-            **macOS (Intel)**: Download `Schedula_${{ github.ref_name }}_x64.dmg` from the assets below
-            **macOS (Apple Silicon)**: Download `Schedula_${{ github.ref_name }}_aarch64.dmg` from the assets below
-            **Windows**: Download `Schedula_${{ github.ref_name }}_x64-setup.exe` from the assets below
+      - name: Download Windows MSI (fallback)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: windows-msi
+          path: dist/windows
 
-            ## Installation
+      # ── Rename to canonical filenames ───────────────────────────────────────
+      - name: Rename artifacts
+        id: art
+        run: |
+          VERSION="${{ steps.ver.outputs.tag }}"
 
-            ### macOS
+          ARM_SRC=$(ls dist/macos-arm64/*.dmg 2>/dev/null | head -1)
+          INTEL_SRC=$(ls dist/macos-intel/*.dmg 2>/dev/null | head -1)
+          WIN_SRC=$(ls dist/windows/*.exe dist/windows/*.msi 2>/dev/null | head -1)
 
-            **Choose the correct version for your Mac:**
-            - **Apple Silicon (M1/M2/M3)**: Download the `aarch64` version
-            - **Intel Mac**: Download the `x64` version
+          ARM_DST="Schedula-${VERSION}-macos-arm64.dmg"
+          INTEL_DST="Schedula-${VERSION}-macos-x64.dmg"
+          WIN_DST="Schedula-${VERSION}-windows-x64-setup.exe"
 
-            To check your architecture: Click the Apple menu → About This Mac → look for "Apple Silicon" or "Intel"
+          [ -n "$ARM_SRC"   ] && cp "$ARM_SRC"   "dist/${ARM_DST}"
+          [ -n "$INTEL_SRC" ] && cp "$INTEL_SRC" "dist/${INTEL_DST}"
+          [ -n "$WIN_SRC"   ] && cp "$WIN_SRC"   "dist/${WIN_DST}"
 
-            1. **Download** the appropriate DMG file from the releases page
-            2. **Mount** the DMG: `open Schedula-*.dmg`
-            3. **Drag** Schedula.app to your Applications folder
-            4. **Launch** from Applications or Spotlight
+          echo "arm_file=${ARM_DST}"   >> $GITHUB_OUTPUT
+          echo "intel_file=${INTEL_DST}" >> $GITHUB_OUTPUT
+          echo "win_file=${WIN_DST}"   >> $GITHUB_OUTPUT
 
-            ### Windows
-
-            1. **Download** the `.exe` installer
-            2. **Run** the installer and follow the setup wizard
-            3. **Launch** from Start menu or desktop shortcut
-
-            ## First Login
-
-            Default credentials:
-            - **Username**: `admin`
-            - **Password**: `admin123`
-
-            ⚠️ **Important**: Change your password immediately in Settings → My Profile
-
-            ## Features
-
-            ✨ Automated conflict-free schedule generation
-            📅 Support for diverse class types (lectures, labs, tutorials)
-            🔄 Biweekly course scheduling
-            📊 Semester calendars with exam/study blocks
-            🎨 Dark/Light theme with custom accent colors
-            💾 JSON backup and CSV export
-            🏢 Multi-organization support with role-based access
-            ⚙️ Comprehensive settings and customization
-
-            ## Documentation
-
-            - [README](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/README.md) — Full guide and troubleshooting
-            - [Usage Guide](#-usage-guide) — Step-by-step setup instructions
-            - [API Reference](#-api-commands-reference) — All available commands
-
-            ## Requirements
-
-            - **macOS** 13.0 or later
-            - **Disk space**: ~200 MB
-
-            ## Support
-
-            - 🐛 [Report issues](https://github.com/${{ github.repository }}/issues)
-            - 💬 [Start a discussion](https://github.com/${{ github.repository }}/discussions)
-
-            ---
-
-            Made with ❤️ for academics worldwide
+      # ── Upload versioned release to R2 ──────────────────────────────────────
+      - name: Upload release files to R2
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: |
+          VERSION="${{ steps.ver.outputs.tag }}"
+          PREFIX="releases/${VERSION}"
+
+          upload() {
+            local file="dist/$1"
+            local key="${PREFIX}/$1"
+            if [ -f "$file" ]; then
+              echo "Uploading $1 …"
+              aws s3 cp "$file" "s3://${R2_BUCKET}/${key}" \
+                --endpoint-url "$R2_ENDPOINT" \
+                --no-progress
+            else
+              echo "Skipping $1 (not found)"
+            fi
+          }
+
+          upload "${{ steps.art.outputs.arm_file }}"
+          upload "${{ steps.art.outputs.intel_file }}"
+          upload "${{ steps.art.outputs.win_file }}"
+
+      # ── Write latest.json manifest ───────────────────────────────────────────
+      - name: Write and upload latest.json
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: |
+          VERSION="${{ steps.ver.outputs.tag }}"
+          DATE=$(date -u +%Y-%m-%d)
+          BASE="${R2_PUBLIC_URL}/releases/${VERSION}"
+
+          cat > latest.json <<EOF
+          {
+            "version": "${VERSION}",
+            "date": "${DATE}",
+            "platforms": {
+              "macos_arm": {
+                "url": "${BASE}/${{ steps.art.outputs.arm_file }}",
+                "filename": "${{ steps.art.outputs.arm_file }}"
+              },
+              "macos_intel": {
+                "url": "${BASE}/${{ steps.art.outputs.intel_file }}",
+                "filename": "${{ steps.art.outputs.intel_file }}"
+              },
+              "windows": {
+                "url": "${BASE}/${{ steps.art.outputs.win_file }}",
+                "filename": "${{ steps.art.outputs.win_file }}"
+              }
+            }
+          }
+          EOF
+
+          # Root latest.json — landing page polls this
+          aws s3 cp latest.json "s3://${R2_BUCKET}/latest.json" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --content-type "application/json" \
+            --cache-control "no-cache, max-age=0"
+
+          # Per-release copy (audit trail)
+          aws s3 cp latest.json "s3://${R2_BUCKET}/releases/${VERSION}/manifest.json" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --content-type "application/json"
+
+          echo "Published Schedula ${VERSION} to R2"
+          echo "Manifest: ${R2_PUBLIC_URL}/latest.json"

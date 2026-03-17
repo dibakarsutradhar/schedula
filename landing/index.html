@@ -619,7 +619,9 @@
     }
     .pill::before { content: '✓'; color: #10b981; font-weight: 600; }
     .oss-ctas { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; align-items: stretch; }
-    .oss-ctas .btn { flex: 1; max-width: 200px; justify-content: center; }
+    .oss-ctas .btn { flex: 1; max-width: 220px; justify-content: center; }
+    .oss-version { font-size: .8125rem; color: var(--muted); margin-bottom: .75rem; min-height: 1.2em; }
+    .oss-arch-note { font-size: .8rem; color: var(--muted); margin-top: 1rem; }
 
     /* ── FOOTER ───────────────────────────────────────────────────────────── */
     footer {
@@ -1484,27 +1486,28 @@
         <span class="pill" role="listitem">No cloud required</span>
         <span class="pill" role="listitem">Data export</span>
       </div>
+      <div id="dl-version-badge" class="oss-version" aria-live="polite"></div>
       <div class="oss-ctas">
-        <a href="https://github.com/dibakarsutradhar/schedula/releases/latest" id="dl-github" class="btn btn-gold btn-lg"
-           target="_blank" rel="noopener noreferrer">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.137 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
-          </svg>
-          View on GitHub
-        </a>
-        <a href="#" id="dl-macos" class="btn btn-outline-dark btn-lg">
+        <a href="#" id="dl-macos-arm" class="btn btn-gold btn-lg" aria-label="Download Schedula for macOS Apple Silicon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97 14.32 22 13.89 21.18 12.37 21.18 10.84 21.18 10.36 21.95 9.1 22 7.78 22.05 6.8 20.68 5.96 19.47 4.25 17 2.94 12.45 4.7 9.39 5.57 7.87 7.13 6.91 8.82 6.88 10.1 6.86 11.32 7.75 12.11 7.75 12.89 7.75 14.37 6.68 15.92 6.84 16.57 6.87 18.39 7.1 19.56 8.82 19.47 8.88 17.39 10.1 17.41 12.63 17.44 15.65 20.06 16.66 20.09 16.67 20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2 16.07 3.17 15.6 4.35 14.9 5.19 14.21 6.04 13.07 6.7 11.95 6.61 11.8 5.46 12.36 4.26 13 3.5Z"/>
           </svg>
-          macOS (.dmg)
+          macOS — Apple Silicon
         </a>
-        <a href="#" id="dl-windows" class="btn btn-outline-dark btn-lg">
+        <a href="#" id="dl-macos-intel" class="btn btn-outline-dark btn-lg" aria-label="Download Schedula for macOS Intel">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97 14.32 22 13.89 21.18 12.37 21.18 10.84 21.18 10.36 21.95 9.1 22 7.78 22.05 6.8 20.68 5.96 19.47 4.25 17 2.94 12.45 4.7 9.39 5.57 7.87 7.13 6.91 8.82 6.88 10.1 6.86 11.32 7.75 12.11 7.75 12.89 7.75 14.37 6.68 15.92 6.84 16.57 6.87 18.39 7.1 19.56 8.82 19.47 8.88 17.39 10.1 17.41 12.63 17.44 15.65 20.06 16.66 20.09 16.67 20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2 16.07 3.17 15.6 4.35 14.9 5.19 14.21 6.04 13.07 6.7 11.95 6.61 11.8 5.46 12.36 4.26 13 3.5Z"/>
+          </svg>
+          macOS — Intel
+        </a>
+        <a href="#" id="dl-windows" class="btn btn-outline-dark btn-lg" aria-label="Download Schedula for Windows">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M3 5.557 10.144 4.6V11.4H3V5.557ZM10.144 19.4 3 18.443V12.6h7.144V19.4ZM11 4.469 21 3v8.4H11V4.469ZM21 12.6V21L11 19.531V12.6H21Z"/>
           </svg>
-          Windows (.msi)
+          Windows (.exe)
         </a>
       </div>
+      <p class="oss-arch-note">Not sure which macOS version? Click  → About This Mac. Look for "Apple M" (Silicon) or "Intel".</p>
     </div>
   </div>
 </section>
@@ -1597,37 +1600,49 @@
   }, { threshold: 0.3 })
   if (demoWrap) demoIO.observe(demoWrap)
 
-  // Fetch Latest Release Downloads
-  async function fetchLatestRelease() {
+  // ── Download links from Cloudflare R2 manifest ──────────────────────────────
+  // Set DOWNLOADS_MANIFEST_URL to your Cloudflare R2 public URL after deploying.
+  // Leave empty to show placeholder download links with no href.
+  const DOWNLOADS_MANIFEST_URL = 'https://downloads.schedula.app/latest.json';
+
+  async function fetchDownloadManifest() {
+    const badge  = document.getElementById('dl-version-badge');
+    const armBtn = document.getElementById('dl-macos-arm');
+    const intBtn = document.getElementById('dl-macos-intel');
+    const winBtn = document.getElementById('dl-windows');
+
+    if (!DOWNLOADS_MANIFEST_URL) return; // no manifest configured — buttons stay as #
+
     try {
-      const REPO = 'dibakarsutradhar/schedula';
-      const response = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`);
-      if (!response.ok) return;
-      
-      const data = await response.json();
-      const assets = data.assets || [];
-      const tag = data.tag_name;
+      const res = await fetch(DOWNLOADS_MANIFEST_URL, { cache: 'no-cache' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
 
-      // Update GitHub Link to specific release
-      const githubLink = document.getElementById('dl-github');
-      if (githubLink) githubLink.href = data.html_url;
+      // Version badge
+      if (badge && data.version) {
+        badge.textContent = `Latest: ${data.version}  ·  Released ${data.date ?? ''}`;
+      }
 
-      const fallbackUrl = `https://github.com/${REPO}/releases`;
+      const p = data.platforms || {};
 
-      // Find DMG (Default to Silicon/aarch64 if available, fallback to x64)
-      const dmg = assets.find(a => a.name.includes('aarch64.dmg')) || assets.find(a => a.name.includes('x64.dmg'));
-      const mc = document.getElementById('dl-macos');
-      if (mc) mc.href = dmg ? dmg.browser_download_url : fallbackUrl;
-
-      // Find Windows Setup EXE
-      const exe = assets.find(a => a.name.includes('x64-setup.exe')) || assets.find(a => a.name.endsWith('.msi'));
-      const win = document.getElementById('dl-windows');
-      if (win) win.href = exe ? exe.browser_download_url : fallbackUrl;
+      if (armBtn && p.macos_arm?.url) {
+        armBtn.href = p.macos_arm.url;
+        armBtn.removeAttribute('onclick');
+      }
+      if (intBtn && p.macos_intel?.url) {
+        intBtn.href = p.macos_intel.url;
+        intBtn.removeAttribute('onclick');
+      }
+      if (winBtn && p.windows?.url) {
+        winBtn.href = p.windows.url;
+        winBtn.removeAttribute('onclick');
+      }
     } catch (e) {
-      console.error('Failed to fetch latest release assets:', e);
+      console.warn('Could not load download manifest:', e.message);
+      if (badge) badge.textContent = 'Download links temporarily unavailable.';
     }
   }
-  fetchLatestRelease();
+  fetchDownloadManifest();
 
   // ── Pricing ─────────────────────────────────────────────────────────────────
   // Set these to your deployed license-server URL and Paddle client token to
