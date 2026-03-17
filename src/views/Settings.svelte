@@ -680,8 +680,8 @@
         <div class="card settings-section">
           <h2>Real-Time Sync</h2>
           <p class="section-desc">
-            Connect all admins at your university to a shared <strong>Hub Server</strong> for real-time updates.
-            IT installs <code>schedula-hub</code> on one dedicated machine; all other admins point their app here.
+            Connect every admin machine to a shared <strong>hub</strong> for real-time updates.
+            One machine runs the hub — all others connect to it. No extra software needed.
           </p>
 
           <div class="sync-status-bar" class:connected={$syncMode.mode === 'server'}>
@@ -736,22 +736,18 @@
         </div>
 
         <div class="card settings-section">
-          <h2>Hub Server Setup</h2>
+          <h2>How to set up a hub</h2>
           <p class="section-desc">
-            Ask IT to install the hub server binary on a dedicated machine:
-          </p>
-          <div class="code-block">
-            <code>schedula-hub --port 7878 --db-path ./schedula.db</code>
-          </div>
-          <p class="section-desc" style="margin-top:12px">
-            The hub server binary is built separately from the main app.<br>
-            Find it in <code>hub-server/</code> of the Schedula source and run <code>cargo build --release</code>.
+            Pick one machine on your network to be the hub — a shared workstation,
+            an IT room PC, or any machine that stays on. Install Schedula on it,
+            then enable Hub Mode there (coming soon). Share the address it shows
+            and every other admin connects by entering it above.
           </p>
           <div class="sync-how">
-            <div class="how-step"><span class="step-num">1</span><span>IT installs &amp; starts <code>schedula-hub</code> on a server machine</span></div>
-            <div class="how-step"><span class="step-num">2</span><span>Each admin opens Settings → Sync and enters the hub URL</span></div>
-            <div class="how-step"><span class="step-num">3</span><span>Admin clicks "Connect to Hub" then logs in</span></div>
-            <div class="how-step"><span class="step-num">4</span><span>All data changes sync in real-time via WebSocket</span></div>
+            <div class="how-step"><span class="step-num">1</span><span>Install Schedula on the designated hub machine</span></div>
+            <div class="how-step"><span class="step-num">2</span><span>On that machine: Settings → Sync → <strong>Enable Hub Mode</strong></span></div>
+            <div class="how-step"><span class="step-num">3</span><span>Copy the hub address it shows (e.g. <code>http://192.168.1.x:7878</code>)</span></div>
+            <div class="how-step"><span class="step-num">4</span><span>On every other machine: paste that address above and click Connect</span></div>
           </div>
         </div>
 
