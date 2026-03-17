@@ -352,8 +352,8 @@
             {/each}
           </div>
           <div class="form-group" style="margin-top:16px; max-width:200px">
-            <label class="form-label">Custom Color</label>
-            <input type="color" value={currentAccent} class="form-input" style="height:40px; padding:4px"
+            <label class="form-label" for="custom-accent-color">Custom Color</label>
+            <input id="custom-accent-color" type="color" value={currentAccent} class="form-input" style="height:40px; padding:4px"
               on:input={e => prefs.setAccent(e.target.value)} />
           </div>
         </div>
@@ -364,8 +364,8 @@
           <h2>Display Name</h2>
           <div class="row" style="align-items:flex-end">
             <div class="form-group">
-              <label class="form-label">Your Name</label>
-              <input class="form-input" bind:value={displayName} placeholder="Enter your name" />
+              <label class="form-label" for="profile-display-name">Your Name</label>
+              <input id="profile-display-name" class="form-input" bind:value={displayName} placeholder="Enter your name" />
             </div>
             <button class="btn btn-primary" on:click={saveDisplayName} disabled={savingProfile || !displayName.trim()}>
               Save
@@ -379,17 +379,17 @@
         <div class="card settings-section">
           <h2>Change Password</h2>
           <div class="form-group">
-            <label class="form-label">Current Password</label>
-            <input class="form-input" type="password" bind:value={oldPassword} />
+            <label class="form-label" for="password-old">Current Password</label>
+            <input id="password-old" class="form-input" type="password" bind:value={oldPassword} />
           </div>
           <div class="row">
             <div class="form-group">
-              <label class="form-label">New Password</label>
-              <input class="form-input" type="password" bind:value={newPassword} />
+              <label class="form-label" for="password-new">New Password</label>
+              <input id="password-new" class="form-input" type="password" bind:value={newPassword} />
             </div>
             <div class="form-group">
-              <label class="form-label">Confirm New Password</label>
-              <input class="form-input" type="password" bind:value={confirmPassword} />
+              <label class="form-label" for="password-confirm">Confirm New Password</label>
+              <input id="password-confirm" class="form-input" type="password" bind:value={confirmPassword} />
             </div>
           </div>
           <div style="display:flex;justify-content:flex-end">
@@ -472,13 +472,13 @@
           <div class="card">
             <h2 style="margin-bottom:16px">{editingOrg.name}</h2>
             <div class="form-group" style="margin-bottom:14px">
-              <label class="form-label">Organization Name *</label>
-              <input class="form-input" bind:value={orgForm.name} />
+              <label class="form-label" for="org-name">Organization Name *</label>
+              <input id="org-name" class="form-input" bind:value={orgForm.name} />
             </div>
             <div class="row" style="margin-bottom:14px">
               <div class="form-group">
-                <label class="form-label">Type</label>
-                <select class="form-select" bind:value={orgForm.org_type}>
+                <label class="form-label" for="org-type">Type</label>
+                <select id="org-type" class="form-select" bind:value={orgForm.org_type}>
                   <option value="university">University</option>
                   <option value="college">College</option>
                   <option value="school">School</option>
@@ -486,13 +486,13 @@
                 </select>
               </div>
               <div class="form-group">
-                <label class="form-label">Contact Email</label>
-                <input class="form-input" type="email" bind:value={orgForm.contact_email} placeholder="admin@university.edu" />
+                <label class="form-label" for="org-email">Contact Email</label>
+                <input id="org-email" class="form-input" type="email" bind:value={orgForm.contact_email} placeholder="admin@university.edu" />
               </div>
             </div>
             <div class="form-group" style="margin-bottom:16px">
-              <label class="form-label">Address</label>
-              <textarea class="form-textarea" bind:value={orgForm.address} rows="2" placeholder="123 Campus Road..."></textarea>
+              <label class="form-label" for="org-address">Address</label>
+              <textarea id="org-address" class="form-textarea" bind:value={orgForm.address} rows="2" placeholder="123 Campus Road..."></textarea>
             </div>
             <div style="display:flex;justify-content:flex-end">
               <button class="btn btn-primary" on:click={saveOrg} disabled={savingOrg || !orgForm.name}>
@@ -509,21 +509,21 @@
         <div class="card">
           <h2 style="margin-bottom:16px">Scheduling Defaults</h2>
           <div class="form-group" style="margin-bottom:14px">
-            <label class="form-label">Working Days</label>
+            <span class="form-label">Working Days</span>
             <DaySelect bind:value={schedSettings.working_days} />
           </div>
           <div class="row" style="margin-bottom:14px">
             <div class="form-group">
-              <label class="form-label">Day Start Slot</label>
-              <select class="form-select" bind:value={schedSettings.day_start_slot}>
+              <label class="form-label" for="sched-start-slot">Day Start Slot</label>
+              <select id="sched-start-slot" class="form-select" bind:value={schedSettings.day_start_slot}>
                 {#each slotLabels.slice(0,8) as label, i}
                   <option value={i}>{label}</option>
                 {/each}
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Day End Slot</label>
-              <select class="form-select" bind:value={schedSettings.day_end_slot}>
+              <label class="form-label" for="sched-end-slot">Day End Slot</label>
+              <select id="sched-end-slot" class="form-select" bind:value={schedSettings.day_end_slot}>
                 {#each slotLabels.slice(1) as label, i}
                   <option value={i}>{label}</option>
                 {/each}
@@ -531,8 +531,8 @@
             </div>
           </div>
           <div class="form-group" style="margin-bottom:16px; max-width:200px">
-            <label class="form-label">Slot Duration (minutes)</label>
-            <select class="form-select" bind:value={schedSettings.slot_duration}>
+            <label class="form-label" for="sched-slot-duration">Slot Duration (minutes)</label>
+            <select id="sched-slot-duration" class="form-select" bind:value={schedSettings.slot_duration}>
               <option value={45}>45 min</option>
               <option value={60}>60 min</option>
               <option value={90}>90 min</option>
@@ -591,8 +591,9 @@
             </p>
             <div class="row" style="align-items:flex-end;max-width:320px">
               <div class="form-group">
-                <label class="form-label">Max Admins</label>
+                <label class="form-label" for="system-max-admins">Max Admins</label>
                 <input
+                  id="system-max-admins"
                   class="form-input"
                   type="number"
                   min="1"
@@ -819,8 +820,8 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label class="form-label">New Password</label>
-          <input class="form-input" type="password" bind:value={resetPwd} placeholder="Min 6 characters" />
+          <label class="form-label" for="reset-password">New Password</label>
+          <input id="reset-password" class="form-input" type="password" bind:value={resetPwd} placeholder="Min 6 characters" />
         </div>
       </div>
       <div class="modal-footer">

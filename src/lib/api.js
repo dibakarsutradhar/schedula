@@ -130,11 +130,18 @@ export const createBatch  = (batch)         => call('create_batch',   { batch },
 export const updateBatch  = (id, batch)     => call('update_batch',   { id, batch },   'PUT',    `/api/batches/${id}`, batch)
 export const deleteBatch  = (id)            => call('delete_batch',   { id },          'DELETE', `/api/batches/${id}`, undefined)
 
+// ── Plan / Subscription ────────────────────────────────────────────────────────
+
+export const getPlan    = ()          => call('get_plan',    {},       'GET',  '/api/plan',               undefined)
+export const getLicense = ()          => call('get_license', {},       'GET',  '/api/license',            undefined)
+export const activateLicense   = (token) => call('activate_license',   { token }, 'POST', '/api/license/activate',   { token })
+export const deactivateLicense = ()      => call('deactivate_license', {},        'POST', '/api/license/deactivate', null)
+
 // ── Scheduler ─────────────────────────────────────────────────────────────────
 
-export const generateSchedule   = (scheduleName, semesterId = null, description = null) =>
-  call('generate_schedule', { scheduleName, semesterId, description }, 'POST', '/api/schedules/generate',
-       { schedule_name: scheduleName, semester_id: semesterId, description })
+export const generateSchedule   = (scheduleName, semesterId = null, description = null, algorithm = null) =>
+  call('generate_schedule', { scheduleName, semesterId, description, algorithm }, 'POST', '/api/schedules/generate',
+       { schedule_name: scheduleName, semester_id: semesterId, description, algorithm })
 
 export const getSchedules       = ()             => call('get_schedules',       {},             'GET',    '/api/schedules',                  undefined)
 export const getScheduleEntries = (scheduleId)   => call('get_schedule_entries', { scheduleId }, 'GET',   `/api/schedules/${scheduleId}/entries`, undefined)

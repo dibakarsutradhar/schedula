@@ -4,6 +4,7 @@
   import SemesterCalendar from '../lib/components/SemesterCalendar.svelte'
   import Reports from '../lib/components/Reports.svelte'
   import Modal from '../lib/components/Modal.svelte'
+  import UpgradePrompt from '../lib/components/UpgradePrompt.svelte'
   import {
     generateSchedule, getSchedules, getScheduleEntries,
     activateSchedule, deleteSchedule, exportScheduleCsv,
@@ -11,7 +12,7 @@
     getUtilizationReport, updateScheduleEntry,
     publishSchedule, revertScheduleToDraft,
     getPreflightWarnings, updateScheduleDescription,
-    getSchedulingSettings,
+    getSchedulingSettings, getPlan,
   } from '../lib/api.js'
   import { session } from '../lib/stores/session.js'
   import { toast } from '../lib/toast.js'
@@ -27,8 +28,13 @@
   let generating = false
   let scheduleName = ''
   let scheduleDescription = ''
+  let selectedAlgorithm = 'greedy'
   let showConflicts = false
   let lastResult = null
+  let generateError = ''
+
+  // Plan info
+  let planInfo = null
 
   // Pre-flight
   let preflightWarnings = []
@@ -96,7 +102,10 @@
         workingDays = s.working_days || ''
       } catch { /* leave empty — Timetable will derive from entries */ }
     }
+    try { planInfo = await getPlan() } catch { /* non-critical */ }
   })
+
+  $: cspAllowed = planInfo?.limits?.csp_algorithm ?? true
 
   async function selectSchedule(id) {
     selectedId = id
@@ -119,8 +128,9 @@
     if (!scheduleName.trim()) { toast('Enter a schedule name', 'error'); return }
     generating = true
     showPreflight = false
+    generateError = ''
     try {
-      lastResult = await generateSchedule(scheduleName.trim(), selectedSemesterId, scheduleDescription.trim() || null)
+      lastResult = await generateSchedule(scheduleName.trim(), selectedSemesterId, scheduleDescription.trim() || null, selectedAlgorithm)
       scheduleName = ''
       scheduleDescription = ''
       toast(`Schedule generated — ${lastResult.entry_count} slots placed`)
@@ -128,7 +138,12 @@
       await selectSchedule(lastResult.schedule_id)
       if (lastResult.unscheduled?.length > 0) showConflicts = true
     } catch (e) {
-      toast('Generation failed: ' + e, 'error')
+      const msg = String(e)
+      if (msg.includes('plan_limit_exceeded')) {
+        generateError = msg
+      } else {
+        toast('Generation failed: ' + e, 'error')
+      }
     } finally {
       generating = false
     }
@@ -395,6 +410,22 @@ ${tables}
         placeholder="Optional notes (e.g. 'First draft, pending room confirmation')"
         style="flex:1"
       />
+      <div class="algo-picker" title="Algorithm: Greedy is faster; CSP handles large/dense datasets better">
+        <label class="algo-opt" class:selected={selectedAlgorithm === 'greedy'}>
+          <input type="radio" name="algo" value="greedy" bind:group={selectedAlgorithm} />
+          ⚡ Greedy
+        </label>
+        <label
+          class="algo-opt"
+          class:selected={selectedAlgorithm === 'csp'}
+          class:algo-locked={!cspAllowed}
+          title={!cspAllowed ? 'CSP algorithm requires Pro or Institution plan' : 'Best for large datasets'}
+          on:click|preventDefault={() => { if (cspAllowed) selectedAlgorithm = 'csp' }}
+        >
+          <input type="radio" name="algo" value="csp" bind:group={selectedAlgorithm} disabled={!cspAllowed} />
+          🧩 CSP{!cspAllowed ? ' 🔒' : ''}
+        </label>
+      </div>
       <button class="btn btn-secondary" on:click={runPreflight} disabled={loadingPreflight} title="Check data quality before generating">
         {loadingPreflight ? '…' : '🔍 Pre-flight'}
       </button>
@@ -402,6 +433,12 @@ ${tables}
         {generating ? '⏳ Generating…' : '⚡ Generate'}
       </button>
     </div>
+
+    {#if generateError}
+      <div style="margin-top:12px">
+        <UpgradePrompt error={generateError} on:dismiss={() => generateError = ''} />
+      </div>
+    {/if}
 
     {#if showPreflight && preflightWarnings.length > 0}
       <div class="preflight-panel" style="margin-top:14px">
@@ -654,6 +691,13 @@ ${tables}
 
 <style>
   .gen-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .algo-picker { display: flex; gap: 4px; border: 1px solid var(--border); border-radius: 8px; padding: 3px; background: var(--surface); }
+  .algo-opt { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s; user-select: none; }
+  .algo-opt input[type="radio"] { display: none; }
+  .algo-opt.selected { background: var(--accent); color: #fff; }
+  .algo-opt:not(.selected):hover { background: var(--hover); }
+  .algo-locked { opacity: 0.5; cursor: not-allowed; }
+  .algo-locked:hover { background: transparent !important; }
   .schedule-layout { display: flex; gap: 20px; min-height: 500px; }
   .schedule-list { width: 220px; flex-shrink: 0; display: flex; flex-direction: column; overflow-y: auto; }
   .sched-item {
