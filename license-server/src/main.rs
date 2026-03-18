@@ -853,10 +853,17 @@ async fn main() {
 
     let args = Args::parse();
 
-    let private_pem = std::fs::read_to_string(&args.private_key)
-        .unwrap_or_else(|_| panic!("Cannot read private key: {}", args.private_key));
-    let public_pem = std::fs::read_to_string(&args.public_key)
-        .unwrap_or_else(|_| panic!("Cannot read public key: {}", args.public_key));
+    // Keys can be supplied as env vars (PRIVATE_KEY_PEM / PUBLIC_KEY_PEM) so that
+    // container deployments (Render, Fly.io) don't need the key files baked into
+    // the image. Env var takes priority; falls back to the --private-key file path.
+    let private_pem = std::env::var("PRIVATE_KEY_PEM").ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| std::fs::read_to_string(&args.private_key)
+            .unwrap_or_else(|_| panic!("Cannot read private key: {} (or set PRIVATE_KEY_PEM env var)", args.private_key)));
+    let public_pem = std::env::var("PUBLIC_KEY_PEM").ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| std::fs::read_to_string(&args.public_key)
+            .unwrap_or_else(|_| panic!("Cannot read public key: {} (or set PUBLIC_KEY_PEM env var)", args.public_key)));
 
     let encoding_key = EncodingKey::from_rsa_pem(private_pem.as_bytes())
         .expect("Invalid RSA private key");

@@ -30,6 +30,10 @@ services:
       # ── Required ──────────────────────────────────────────────────────────────
       - key: SCHEDULA_ADMIN_KEY
         sync: false          # set in Render dashboard → Environment
+      - key: PRIVATE_KEY_PEM
+        sync: false          # paste contents of license-server/keys/private.pem
+      - key: PUBLIC_KEY_PEM
+        sync: false          # paste contents of license-server/keys/public.pem
 
       # ── Stripe (set when you add billing) ────────────────────────────────────
       - key: STRIPE_SECRET_KEY
