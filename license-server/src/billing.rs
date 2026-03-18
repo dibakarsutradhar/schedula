@@ -332,11 +332,12 @@ pub async fn success_handler() -> impl IntoResponse {
 <body>
   <div class="card">
     <div class="icon">✓</div>
-    <h1>You're all set!</h1>
-    <p>Your Schedula subscription is now active. Check your email — your activation code will arrive shortly.</p>
-    <p>Once you receive it, open the Schedula app on your hub machine and go to<br>
-       <code>Settings → Sync → License → Enter activation code</code></p>
-    <p style="margin-top:2rem"><a href="/">← Back to Schedula</a></p>
+    <h1>Payment confirmed!</h1>
+    <p>Your Schedula license is activating automatically.<br>
+       Switch back to the app — it will update within a few seconds.</p>
+    <p style="margin-top:1.5rem;font-size:.85rem;color:#64748b">
+      You can close this tab.
+    </p>
   </div>
 </body>
 </html>"#)

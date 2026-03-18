@@ -35,7 +35,27 @@ services:
       - key: PUBLIC_KEY_PEM
         sync: false          # paste contents of license-server/keys/public.pem
 
-      # ── Stripe (set when you add billing) ────────────────────────────────────
+      # ── Stripe ───────────────────────────────────────────────────────────────
+      # How to get these values:
+      #
+      # 1. stripe.com → Developers → API keys
+      #      STRIPE_SECRET_KEY       = "Secret key"  (sk_live_... or sk_test_...)
+      #
+      # 2. stripe.com → Developers → Webhooks → Add endpoint
+      #      URL:    https://schedula-license.onrender.com/billing/webhook
+      #      Events: customer.subscription.created
+      #              customer.subscription.updated
+      #              customer.subscription.deleted
+      #              invoice.payment_failed
+      #      STRIPE_WEBHOOK_SECRET   = "Signing secret" shown after saving
+      #
+      # 3. stripe.com → Product catalog → Create products
+      #      Create "Schedula Pro" with Monthly + Annual prices
+      #      Create "Schedula Institution" with Monthly + Annual prices
+      #      STRIPE_PRICE_PRO_MONTHLY  = price_...
+      #      STRIPE_PRICE_PRO_ANNUAL   = price_...
+      #      STRIPE_PRICE_INST_MONTHLY = price_...
+      #      STRIPE_PRICE_INST_ANNUAL  = price_...
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
@@ -49,6 +69,7 @@ services:
       - key: STRIPE_PRICE_INST_ANNUAL
         sync: false
 
-      # ── App URL (update when you own schedula.app) ────────────────────────────
+      # ── App URL ───────────────────────────────────────────────────────────────
+      # Used for Stripe success/cancel redirect URLs. Update when you own the domain.
       - key: APP_URL
         value: https://schedula-license.onrender.com
