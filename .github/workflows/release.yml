@@ -219,11 +219,11 @@ jobs:
 # Publish to Cloudflare R2
 # ──────────────────────────────────────────────────────────────────────────────
   publish:
-    name: Publish to Cloudflare R2
+    name: Publish to Cloudflare R2 + GitHub Releases
     needs: [build-macos-arm, build-macos-intel, build-windows, build-linux]
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write   # required to create GitHub Releases and upload assets
 
     steps:
       - name: Determine version tag
@@ -305,6 +305,47 @@ jobs:
           echo "win_file=${WIN_DST}"       >> $GITHUB_OUTPUT
           echo "deb_file=${DEB_DST}"       >> $GITHUB_OUTPUT
           echo "appimg_file=${APPIMG_DST}" >> $GITHUB_OUTPUT
+
+      # ── Create GitHub Release and upload all assets ─────────────────────────
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.ver.outputs.tag }}"
+
+          # Build asset list — skip files that weren't produced
+          ASSETS=()
+          for f in \
+            "${{ steps.art.outputs.arm_file }}" \
+            "${{ steps.art.outputs.intel_file }}" \
+            "${{ steps.art.outputs.win_file }}" \
+            "${{ steps.art.outputs.deb_file }}" \
+            "${{ steps.art.outputs.appimg_file }}"; do
+            [ -f "dist/$f" ] && ASSETS+=("dist/$f")
+          done
+
+          # Create release (draft=false, prerelease if tag contains -)
+          IS_PRE=$([[ "$VERSION" == *"-"* ]] && echo "--prerelease" || echo "")
+
+          gh release create "$VERSION" \
+            --repo "${{ github.repository }}" \
+            --title "Schedula $VERSION" \
+            --notes "## Downloads
+
+| Platform | File |
+|----------|------|
+| macOS — Apple Silicon | \`${{ steps.art.outputs.arm_file }}\` |
+| macOS — Intel         | \`${{ steps.art.outputs.intel_file }}\` |
+| Windows x64           | \`${{ steps.art.outputs.win_file }}\` |
+| Linux x64 (.deb)      | \`${{ steps.art.outputs.deb_file }}\` |
+| Linux x64 (.AppImage) | \`${{ steps.art.outputs.appimg_file }}\` |
+
+**macOS:** Open the .dmg and drag Schedula to Applications.
+**Windows:** Run the setup .exe (click "More info → Run anyway" if SmartScreen appears).
+**Linux .deb:** \`sudo dpkg -i schedula.deb\`
+**Linux .AppImage:** \`chmod +x schedula.AppImage && ./schedula.AppImage\`" \
+            $IS_PRE \
+            "${ASSETS[@]}"
 
       # ── Apply CORS policy on R2 bucket ──────────────────────────────────────
       - name: Set R2 bucket CORS policy
