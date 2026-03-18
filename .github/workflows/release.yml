@@ -48,7 +48,7 @@ jobs:
       - name: Build Tauri — arm64
         run: >
           npm run tauri build -- --target aarch64-apple-darwin
-          --config '{"bundle":{"macOS":{"signingIdentity":null}}}'
+          --config src-tauri/tauri.macos-ci.conf.json
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -91,7 +91,7 @@ jobs:
       - name: Build Tauri — x86_64
         run: >
           npm run tauri build -- --target x86_64-apple-darwin
-          --config '{"bundle":{"macOS":{"signingIdentity":null}}}'
+          --config src-tauri/tauri.macos-ci.conf.json
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
