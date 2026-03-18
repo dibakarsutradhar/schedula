@@ -15,6 +15,10 @@ pub struct HubStatus {
 
 const HUB_PORT: u16 = 7878;
 
+/// License server URL passed to the hub sidecar at startup.
+/// Update this when moving to a custom domain (e.g. https://license.schedula.app).
+const LICENSE_SERVER_URL: &str = "https://schedula-license.onrender.com";
+
 fn hub_db_path(app: &AppHandle) -> String {
     app.path()
         .app_data_dir()
@@ -52,7 +56,8 @@ pub fn start_hub_mode(
         .shell()
         .sidecar("schedula-hub")
         .map_err(|e| e.to_string())?
-        .args(["--port", &port_str, "--db-path", &db_path])
+        .args(["--port", &port_str, "--db-path", &db_path,
+               "--license-url", LICENSE_SERVER_URL])
         .spawn()
         .map_err(|e| e.to_string())?;
 

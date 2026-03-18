@@ -67,6 +67,10 @@ struct Args {
     db_path: String,
     #[arg(long, default_value = "")]
     jwt_secret: String,
+    /// License server base URL. Overrides the SCHEDULA_LICENSE_URL env var and
+    /// the compiled-in default. Set this to your Render / Fly.io deployment URL.
+    #[arg(long, env = "SCHEDULA_LICENSE_URL", default_value = "")]
+    license_url: String,
 }
 
 fn to_response<T: serde::Serialize>(result: Result<T, String>) -> Response {
@@ -1064,6 +1068,12 @@ async fn main() {
             secret
         }
     };
+
+    // If --license-url was given (non-empty), propagate it so all license.rs
+    // functions that read SCHEDULA_LICENSE_URL pick it up automatically.
+    if !args.license_url.is_empty() {
+        std::env::set_var("SCHEDULA_LICENSE_URL", &args.license_url);
+    }
 
     let db_path = PathBuf::from(&args.db_path);
     let conn = db::open(&db_path).expect("Failed to open database");

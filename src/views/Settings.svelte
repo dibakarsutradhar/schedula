@@ -53,9 +53,10 @@
   }
 
   // ── Hub Mode (sidecar) ────────────────────────────────────────────────────────
-  let hubRunning  = false
-  let hubUrl      = null
-  let hubLoading  = false
+  let hubRunning    = false  // Hub Mode explicitly enabled — URL shown for sharing
+  let hubSidecarUp  = false  // Hub process is running (may be silent, not necessarily in Hub Mode)
+  let hubUrl        = null
+  let hubLoading    = false
 
   // ── License ───────────────────────────────────────────────────────────────────
   let licenseInfo      = null   // { active, plan, org_name, expires_at, status }
@@ -63,27 +64,44 @@
   let licenseLoading   = false
   let checkoutPending  = false  // true while polling for checkout completion
   let checkoutPollTimer = null
+  let planLoading      = true   // true while plan is being detected on mount
+
+  // Reactive: is the current plan paid (Pro or Institution)?
+  $: isPaidPlan = licenseInfo?.plan === 'pro' || licenseInfo?.plan === 'institution'
 
   function activeHubUrl() {
-    if (hubRunning) return 'http://localhost:7878'
+    if (hubRunning || hubSidecarUp) return 'http://localhost:7878'
     if ($syncMode.mode === 'server' && $syncMode.serverUrl) return $syncMode.serverUrl.replace(/\/$/, '')
     return null
   }
 
   async function fetchLicenseInfo() {
     const url = activeHubUrl()
-    if (!url) { licenseInfo = null; return }
+    if (!url) { licenseInfo = null; planLoading = false; return }
     try {
       const res = await fetch(`${url}/api/license`)
       if (res.ok) licenseInfo = await res.json()
     } catch { licenseInfo = null }
+    planLoading = false
   }
 
   async function activateLicense() {
     const token = licenseToken.trim()
     if (!token) { toast('Paste your license token first', 'error'); return }
+    // Silently start the sidecar if it isn't up yet (same pattern as startCheckout)
+    if (!hubSidecarUp) {
+      try {
+        await invoke('start_hub_mode')
+        hubSidecarUp = true
+        const ready = await waitForHub(8000)
+        if (!ready) { toast('Hub server not ready — try again', 'error'); return }
+      } catch (e) {
+        toast('Could not start hub: ' + e, 'error')
+        return
+      }
+    }
     const url = activeHubUrl()
-    if (!url) { toast('Enable Hub Mode or connect to a hub first', 'error'); return }
+    if (!url) { toast('Could not connect to hub', 'error'); return }
     licenseLoading = true
     try {
       const res = await fetch(`${url}/api/license/activate`, {
@@ -119,6 +137,18 @@
   }
 
   async function startCheckout(plan) {
+    // Silently start hub sidecar if not already running (needed for free users doing checkout)
+    if (!hubSidecarUp) {
+      try {
+        await invoke('start_hub_mode')
+        hubSidecarUp = true
+        const ready = await waitForHub(8000)
+        if (!ready) { toast('Hub server not ready — try again', 'error'); return }
+      } catch (e) {
+        toast('Could not start checkout: ' + e, 'error')
+        return
+      }
+    }
     const url = activeHubUrl()
     if (!url) { toast('Enable Hub Mode or connect to a hub first', 'error'); return }
     licenseLoading = true
@@ -175,11 +205,37 @@
     return 'plan-badge-institution'
   }
 
+  async function waitForHub(maxMs = 8000) {
+    const deadline = Date.now() + maxMs
+    while (Date.now() < deadline) {
+      try {
+        const r = await fetch('http://localhost:7878/health', { signal: AbortSignal.timeout(1000) })
+        if (r.ok) return true
+      } catch { /* not yet */ }
+      await new Promise(r => setTimeout(r, 400))
+    }
+    return false
+  }
+
+  async function initSidecar() {
+    if (hubSidecarUp) return
+    try {
+      await invoke('start_hub_mode')
+      hubSidecarUp = true
+      await waitForHub(8000)
+      await fetchLicenseInfo() // also clears planLoading
+    } catch {
+      // sidecar binary not available in dev without build — ignore
+      planLoading = false
+    }
+  }
+
   async function checkHubStatus() {
     try {
       const status = await invoke('get_hub_status')
-      hubRunning = status.running
-      hubUrl     = status.url ?? null
+      hubSidecarUp = status.running
+      hubRunning   = status.running
+      hubUrl       = status.url ?? null
     } catch (e) {
       // sidecar not available in dev without binary — ignore silently
     }
@@ -189,8 +245,9 @@
     hubLoading = true
     try {
       const status = await invoke('start_hub_mode')
-      hubRunning = status.running
-      hubUrl     = status.url ?? null
+      hubSidecarUp = true
+      hubRunning   = status.running
+      hubUrl       = status.url ?? null
       toast('Hub mode enabled — share the address with other admins', 'success')
       await fetchLicenseInfo()
     } catch (e) {
@@ -204,8 +261,9 @@
     hubLoading = true
     try {
       await invoke('stop_hub_mode')
-      hubRunning = false
-      hubUrl     = null
+      hubRunning   = false
+      hubSidecarUp = false
+      hubUrl       = null
       toast('Hub mode stopped')
     } catch (e) {
       toast('Failed to stop hub: ' + e, 'error')
@@ -333,7 +391,7 @@
   }
 
   // ── Scheduling ───────────────────────────────────────────────────────────────
-  let schedSettings = { org_id: 0, working_days: 'Mon,Tue,Wed,Thu,Fri', day_start_slot: 0, day_end_slot: 7, slot_duration: 60 }
+  let schedSettings = { org_id: 0, working_days: 'Mon,Tue,Wed,Thu,Fri', day_start_slot: 0, day_end_slot: 7, slot_duration: 60, algorithm: 'greedy' }
   let savingScheds = false
   const slotLabels = ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00','17:00']
 
@@ -342,7 +400,8 @@
     if (!orgId && !isSuperAdmin($session)) return
     const id = orgId ?? (orgs[0]?.id ?? null)
     if (!id) return
-    schedSettings = await getSchedulingSettings(id)
+    const loaded = await getSchedulingSettings(id)
+    schedSettings = { algorithm: 'greedy', ...loaded }
   }
 
   async function saveSchedSettings() {
@@ -442,7 +501,11 @@
     appInfo = await getAppInfo()
     if (isSuperAdmin($session)) await loadSystemSettings()
     await checkHubStatus()
-    await fetchLicenseInfo()
+    if (!hubSidecarUp) {
+      initSidecar() // fire-and-forget: starts hub silently, fetches license, clears planLoading
+    } else {
+      await fetchLicenseInfo() // already running — fetch plan immediately
+    }
   })
 
   function switchTab(t) {
@@ -454,6 +517,7 @@
     if (t === 'audit') loadAuditLog()
     if (t === 'about') getAppInfo().then(i => appInfo = i)
     if (t === 'sync') syncUrlInput = $syncMode.serverUrl || ''
+    if (t === 'plan') fetchLicenseInfo()
   }
 
   function fmtBytes(b) {
@@ -482,6 +546,7 @@
         { id: 'scheduling', icon: '⚙️', label: 'Scheduling' },
         { id: 'data',       icon: '💾', label: 'Data' },
         { id: 'sync',       icon: '🔄', label: 'Sync' },
+        { id: 'plan',       icon: '💎', label: 'Plan' },
         ...(isSuperAdmin($session) ? [{ id: 'system', icon: '🔧', label: 'System' }] : []),
         { id: 'audit',      icon: '📋', label: 'Audit Log' },
         { id: 'about',      icon: 'ℹ️', label: 'About' },
@@ -720,6 +785,42 @@
           </div>
         </div>
 
+        <div class="card settings-section algo-card" class:feature-locked={!isPaidPlan && !planLoading}>
+          {#if !isPaidPlan && !planLoading}
+            <div class="pro-lock-overlay">
+              <span class="pro-lock-icon">🔒</span>
+              <strong>Pro feature</strong>
+              <p>Upgrade to Pro or Institution to choose the scheduling algorithm.</p>
+              <button class="btn btn-primary btn-sm" style="margin-top:8px" on:click={() => switchTab('plan')}>View Plans</button>
+            </div>
+          {/if}
+          <h2 style="margin-bottom:6px">Scheduling Algorithm</h2>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+            Choose how Schedula generates timetables.
+          </p>
+          <div class="algo-options">
+            <label class="algo-option" class:selected={schedSettings.algorithm === 'greedy'}>
+              <input type="radio" bind:group={schedSettings.algorithm} value="greedy" disabled={!isPaidPlan} />
+              <div class="algo-info">
+                <strong>Greedy</strong>
+                <p>Fast heuristic — great for most schools. Generates in seconds.</p>
+              </div>
+            </label>
+            <label class="algo-option" class:selected={schedSettings.algorithm === 'csp'}>
+              <input type="radio" bind:group={schedSettings.algorithm} value="csp" disabled={!isPaidPlan} />
+              <div class="algo-info">
+                <strong>Constraint Satisfaction (CSP)</strong>
+                <p>Thorough solver — handles complex constraints better. Takes longer but yields fewer conflicts.</p>
+              </div>
+            </label>
+          </div>
+          {#if isPaidPlan}
+            <div style="display:flex;justify-content:flex-end;margin-top:16px">
+              <button class="btn btn-primary" on:click={saveSchedSettings} disabled={savingScheds}>Save</button>
+            </div>
+          {/if}
+        </div>
+
       <!-- ── Data ── -->
       {:else if tab === 'data'}
         <div class="card settings-section">
@@ -914,7 +1015,28 @@
             will connect to the address shown below.
           </p>
 
-          {#if hubRunning}
+          {#if planLoading}
+            <div class="hub-plan-loading">
+              <span class="checkout-spinner"></span>
+              <span>Detecting plan…</span>
+            </div>
+          {:else if !isPaidPlan && !hubRunning}
+            <!-- Free plan gate -->
+            <div class="hub-plan-gate">
+              <div class="hub-gate-header">
+                <span class="hub-gate-lock">🔒</span>
+                <div>
+                  <strong>Pro or Institution plan required</strong>
+                  <p class="hub-gate-desc">Hub Mode enables real-time sync across all admin machines in your organization.</p>
+                </div>
+              </div>
+              <div class="hub-gate-actions">
+                <button class="btn btn-primary" on:click={() => switchTab('plan')}>
+                  View Plans
+                </button>
+              </div>
+            </div>
+          {:else if hubRunning}
             <div class="hub-mode-active">
               <div class="hub-status-indicator">
                 <span class="hub-dot on"></span>
@@ -932,6 +1054,7 @@
               </div>
             </div>
           {:else}
+            <!-- Paid plan, hub not yet started -->
             <div class="sync-how" style="margin-bottom: 16px">
               <div class="how-step"><span class="step-num">1</span><span>On the designated hub machine: enable Hub Mode below</span></div>
               <div class="how-step"><span class="step-num">2</span><span>Copy the address it shows</span></div>
@@ -943,83 +1066,155 @@
           {/if}
         </div>
 
-        <!-- ── License ── -->
+        <!-- License info is in the Plan tab -->
         <div class="card settings-section">
-          <h2>License</h2>
-
-          {#if activeHubUrl()}
-            <!-- Current license status -->
+          <div class="plan-inline-hint">
             {#if licenseInfo}
-              <div class="license-status-row">
-                <span class="plan-badge {planBadgeClass(licenseInfo.plan)}">{capitalize(licenseInfo.plan)}</span>
+              <span class="plan-badge {planBadgeClass(licenseInfo.plan)}">{capitalize(licenseInfo.plan)}</span>
+              {#if licenseInfo.active}
+                <span class="license-state active">Active</span>
+              {:else}
+                <span class="license-state inactive">Inactive</span>
+              {/if}
+            {:else}
+              <span class="plan-badge plan-badge-free">Free</span>
+            {/if}
+            <button class="btn btn-secondary btn-sm" style="margin-left:auto" on:click={() => switchTab('plan')}>
+              Manage Plan →
+            </button>
+          </div>
+        </div>
+
+      <!-- ── Plan ── -->
+      {:else if tab === 'plan'}
+        <!-- Current plan status -->
+        <div class="card settings-section">
+          <h2>Your Plan</h2>
+          {#if planLoading}
+            <div class="hub-plan-loading">
+              <span class="checkout-spinner"></span>
+              <span>Loading plan info…</span>
+            </div>
+          {:else if licenseInfo}
+            <div class="plan-status-card">
+              <div class="plan-status-header">
+                <span class="plan-badge {planBadgeClass(licenseInfo.plan)} plan-badge-lg">{capitalize(licenseInfo.plan)}</span>
                 {#if licenseInfo.active}
-                  <span class="license-state active">Active</span>
-                  {#if licenseInfo.org_name}
-                    <span class="license-org">{licenseInfo.org_name}</span>
-                  {/if}
-                  {#if licenseInfo.expires_at}
-                    <span class="license-expiry">Expires {new Date(licenseInfo.expires_at).toLocaleDateString()}</span>
-                  {:else}
-                    <span class="license-expiry">Perpetual</span>
-                  {/if}
+                  <span class="license-state active">● Active</span>
                 {:else}
-                  <span class="license-state inactive">{licenseInfo.status === 'none' ? 'No license' : licenseInfo.status}</span>
+                  <span class="license-state inactive">○ {licenseInfo.status === 'none' ? 'No active license' : licenseInfo.status}</span>
                 {/if}
               </div>
-            {/if}
-
-            <!-- Checkout in progress -->
-            {#if checkoutPending}
-              <div class="license-checkout-pending">
-                <span class="checkout-spinner"></span>
-                <span>Waiting for payment… Your license will activate automatically once checkout is complete.</span>
-                <button class="btn btn-sm" on:click={() => { clearInterval(checkoutPollTimer); checkoutPending = false }}>Cancel</button>
-              </div>
-            {:else if !licenseInfo?.active}
-              <!-- Upgrade buttons -->
-              <p class="section-desc" style="margin-bottom:14px">
-                Click to open Stripe checkout in your browser. Your license activates automatically after payment — no codes to copy.
-              </p>
-              <div class="license-upgrade-row">
-                <button class="btn btn-primary" disabled={licenseLoading} on:click={() => startCheckout('pro')}>
-                  {licenseLoading ? 'Opening…' : 'Upgrade to Pro'}
-                </button>
-                <button class="btn btn-institution" disabled={licenseLoading} on:click={() => startCheckout('institution')}>
-                  {licenseLoading ? 'Opening…' : 'Upgrade to Institution'}
-                </button>
-              </div>
-
-              <!-- Fallback: manual activation code -->
-              <details class="license-manual-fallback">
-                <summary>Already have an activation code?</summary>
-                <div class="license-form" style="margin-top:10px">
-                  <input
-                    class="form-input license-code-input"
-                    bind:value={licenseToken}
-                    placeholder="SCHED-XXXX-XXXX-XXXX-XXXX"
-                    spellcheck="false"
-                    autocomplete="off"
-                    autocapitalize="characters"
-                    on:input={e => licenseToken = e.target.value.toUpperCase()}
-                  />
-                  <button class="btn btn-primary" disabled={licenseLoading || !licenseToken.trim()} on:click={activateLicense}>
-                    {licenseLoading ? 'Activating…' : 'Activate'}
-                  </button>
-                </div>
-              </details>
-            {:else}
-              <div style="margin-top:12px">
-                <button class="btn btn-danger-outline" disabled={licenseLoading} on:click={deactivateLicense}>
-                  {licenseLoading ? 'Working…' : 'Deactivate'}
-                </button>
-              </div>
-            {/if}
+              {#if licenseInfo.active && licenseInfo.org_name}
+                <p style="font-size:13px;color:var(--text-muted);margin:8px 0 0">{licenseInfo.org_name}</p>
+              {/if}
+              {#if licenseInfo.active && licenseInfo.expires_at}
+                <p style="font-size:12px;color:var(--text-muted);margin:4px 0 0">Renews {new Date(licenseInfo.expires_at).toLocaleDateString()}</p>
+              {:else if licenseInfo.active}
+                <p style="font-size:12px;color:var(--text-muted);margin:4px 0 0">Perpetual license</p>
+              {/if}
+            </div>
           {:else}
-            <div class="license-no-hub">
-              <span>Enable Hub Mode above, or connect to a hub, to manage your license.</span>
+            <div class="plan-status-card">
+              <div class="plan-status-header">
+                <span class="plan-badge plan-badge-free plan-badge-lg">Free</span>
+                <span class="license-state inactive">○ No active license</span>
+              </div>
             </div>
           {/if}
         </div>
+
+        <!-- Checkout in progress -->
+        {#if checkoutPending}
+          <div class="card settings-section">
+            <div class="license-checkout-pending">
+              <span class="checkout-spinner"></span>
+              <span>Waiting for payment… Your license will activate automatically once checkout is complete.</span>
+              <button class="btn btn-sm" on:click={() => { clearInterval(checkoutPollTimer); checkoutPending = false }}>Cancel</button>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Upgrade options (only when no active paid plan) -->
+        {#if !isPaidPlan}
+          <div class="card settings-section">
+            <h2>Upgrade</h2>
+            <p class="section-desc" style="margin-bottom:20px">
+              Unlock Hub Mode, advanced algorithms, and priority support.
+              Your license activates automatically after payment — no codes to copy.
+            </p>
+
+            <div class="plan-cards">
+              <!-- Pro -->
+              <div class="plan-card">
+                <div class="plan-card-header">
+                  <span class="plan-badge plan-badge-pro plan-badge-lg">Pro</span>
+                  <div class="plan-price">$19<span>/mo</span></div>
+                </div>
+                <ul class="plan-features">
+                  <li>✓ Hub Mode (real-time multi-machine sync)</li>
+                  <li>✓ CSP scheduling algorithm</li>
+                  <li>✓ Priority support</li>
+                  <li>✓ Up to 10 admin accounts</li>
+                </ul>
+                <button class="btn btn-primary" style="width:100%;margin-top:auto"
+                  disabled={licenseLoading || checkoutPending}
+                  on:click={() => startCheckout('pro')}>
+                  {licenseLoading ? 'Opening checkout…' : 'Upgrade to Pro'}
+                </button>
+              </div>
+
+              <!-- Institution -->
+              <div class="plan-card plan-card-institution">
+                <div class="plan-card-header">
+                  <span class="plan-badge plan-badge-institution plan-badge-lg">Institution</span>
+                  <div class="plan-price plan-price-institution">$79<span>/mo</span></div>
+                </div>
+                <ul class="plan-features">
+                  <li>✓ Everything in Pro</li>
+                  <li>✓ Unlimited admin accounts</li>
+                  <li>✓ Multi-organization support</li>
+                  <li>✓ Dedicated onboarding</li>
+                </ul>
+                <button class="btn btn-institution" style="width:100%;margin-top:auto"
+                  disabled={licenseLoading || checkoutPending}
+                  on:click={() => startCheckout('institution')}>
+                  {licenseLoading ? 'Opening checkout…' : 'Upgrade to Institution'}
+                </button>
+              </div>
+            </div>
+
+            <!-- Fallback: manual activation -->
+            <details class="license-manual-fallback" style="margin-top:20px">
+              <summary>Already have an activation code?</summary>
+              <div class="license-form" style="margin-top:10px">
+                <input
+                  class="form-input license-code-input"
+                  bind:value={licenseToken}
+                  placeholder="SCHED-XXXX-XXXX-XXXX-XXXX"
+                  spellcheck="false"
+                  autocomplete="off"
+                  autocapitalize="characters"
+                  on:input={e => licenseToken = e.target.value.toUpperCase()}
+                />
+                <button class="btn btn-primary" disabled={licenseLoading || !licenseToken.trim()} on:click={activateLicense}>
+                  {licenseLoading ? 'Activating…' : 'Activate'}
+                </button>
+              </div>
+            </details>
+          </div>
+        {:else}
+          <!-- Active paid plan — show deactivate -->
+          <div class="card settings-section">
+            <h2>License Management</h2>
+            <p class="section-desc" style="margin-bottom:14px">
+              To transfer your license to another machine, deactivate it here first.
+            </p>
+            <button class="btn btn-danger-outline" disabled={licenseLoading} on:click={deactivateLicense}>
+              {licenseLoading ? 'Working…' : 'Deactivate License'}
+            </button>
+          </div>
+        {/if}
 
       <!-- ── About ── -->
       {:else if tab === 'about'}
@@ -1205,6 +1400,21 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* Hub plan gate */
+  .hub-plan-loading {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--text-muted); padding: 8px 0;
+  }
+  .hub-plan-gate {
+    padding: 16px; background: rgba(255,255,255,.03); border: 1px solid var(--border);
+    border-radius: 8px; display: flex; flex-direction: column; gap: 14px;
+  }
+  .hub-gate-header { display: flex; align-items: flex-start; gap: 12px; }
+  .hub-gate-lock { font-size: 20px; flex-shrink: 0; }
+  .hub-gate-header strong { font-size: 13px; color: var(--text); }
+  .hub-gate-desc { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
+  .hub-gate-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
   /* Manual fallback */
   .license-manual-fallback { margin-top: 4px; }
   .license-manual-fallback summary {
@@ -1213,4 +1423,71 @@
   }
   .license-manual-fallback summary::before { content: '›'; transition: transform .15s; }
   .license-manual-fallback[open] summary::before { transform: rotate(90deg); }
+
+  /* Plan tab inline hint (inside Sync tab) */
+  .plan-inline-hint {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    font-size: 13px;
+  }
+
+  /* Plan tab status */
+  .plan-badge-lg { font-size: 13px; padding: 4px 12px; }
+  .plan-status-card { padding: 4px 0; }
+  .plan-status-header { display: flex; align-items: center; gap: 12px; }
+
+  /* Plan cards grid */
+  .plan-cards {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-top: 4px;
+  }
+  .plan-card {
+    display: flex; flex-direction: column; gap: 14px;
+    padding: 20px; border-radius: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+  }
+  .plan-card-institution {
+    border-color: rgba(139,92,246,.35);
+    background: rgba(139,92,246,.06);
+  }
+  .plan-card-header { display: flex; align-items: center; justify-content: space-between; }
+  .plan-price {
+    font-size: 22px; font-weight: 700; color: var(--text);
+  }
+  .plan-price span { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+  .plan-price-institution { color: #c4b5fd; }
+  .plan-features {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 7px;
+    font-size: 12px; color: var(--text-muted); flex: 1;
+  }
+  .plan-features li { color: var(--text); }
+
+  /* Algorithm picker */
+  .algo-card { position: relative; overflow: hidden; }
+  .feature-locked { pointer-events: none; }
+  .feature-locked .algo-options,
+  .feature-locked h2,
+  .feature-locked p { filter: blur(3px); user-select: none; }
+  .pro-lock-overlay {
+    position: absolute; inset: 0; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(var(--surface-rgb, 15,15,25), .82);
+    backdrop-filter: blur(2px);
+    text-align: center; padding: 20px; gap: 6px;
+    pointer-events: all;
+  }
+  .pro-lock-icon { font-size: 28px; }
+  .pro-lock-overlay strong { font-size: 14px; color: var(--text); }
+  .pro-lock-overlay p { font-size: 12px; color: var(--text-muted); margin: 0; max-width: 260px; }
+  .algo-options { display: flex; flex-direction: column; gap: 10px; }
+  .algo-option {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 16px; border-radius: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    cursor: pointer; transition: border-color .15s;
+  }
+  .algo-option.selected { border-color: var(--accent); background: rgba(var(--accent-rgb,108,99,255),.08); }
+  .algo-option input[type="radio"] { margin-top: 2px; flex-shrink: 0; accent-color: var(--accent); }
+  .algo-info strong { font-size: 13px; color: var(--text); }
+  .algo-info p { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
 </style>

@@ -373,8 +373,9 @@ pub async fn activate_with_code(code: &str) -> Result<(LicenseClaims, String), S
         .unwrap_or_else(|_| DEFAULT_LICENSE_URL.to_string());
     let url = format!("{}/v1/activate", license_url);
 
+    // 45 s timeout: licence server may be on Render free tier (cold start ~30 s)
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
+        .timeout(std::time::Duration::from_secs(45))
         .build()
         .map_err(|e| e.to_string())?;
 

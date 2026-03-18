@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: schedula-license
+    runtime: docker
+    dockerfilePath: ./license-server/Dockerfile
+    dockerContext: ./license-server
+    plan: free          # upgrade to starter ($7/mo) to add the persistent disk below
+    healthCheckPath: /health
+
+    # ── Persistent disk (requires Starter plan or above) ──────────────────────
+    # Uncomment once you upgrade — the free plan has ephemeral storage only,
+    # meaning the license DB is reset on every restart/deploy.
+    #
+    # disk:
+    #   name: license-data
+    #   mountPath: /data
+    #   sizeGB: 1
+
+    # ── Override the Docker CMD to use /tmp while on free plan ─────────────────
+    # /tmp persists for the lifetime of the running instance (not across restarts).
+    # Switch --db-path to /data/schedula-license.db after adding the disk above.
+    startCommand: >-
+      ./schedula-license
+      --port 8080
+      --db-path /tmp/schedula-license.db
+      --private-key /app/keys/private.pem
+      --public-key  /app/keys/public.pem
+
+    envVars:
+      # ── Required ──────────────────────────────────────────────────────────────
+      - key: SCHEDULA_ADMIN_KEY
+        sync: false          # set in Render dashboard → Environment
+
+      # ── Stripe (set when you add billing) ────────────────────────────────────
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_PRO_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_PRO_ANNUAL
+        sync: false
+      - key: STRIPE_PRICE_INST_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_INST_ANNUAL
+        sync: false
+
+      # ── App URL (update when you own schedula.app) ────────────────────────────
+      - key: APP_URL
+        value: https://schedula-license.onrender.com
