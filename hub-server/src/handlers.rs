@@ -266,6 +266,30 @@ pub fn has_users(conn: &Connection) -> Result<bool, String> {
     Ok(count > 0)
 }
 
+/// First-run setup: creates the super-admin account when no users exist yet.
+pub fn setup_account(conn: &Connection, req: &SetupRequest) -> Result<SessionPayload, String> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM users", [], |r| r.get(0)).map_err(db_err)?;
+    if count > 0 {
+        return Err("Setup already completed. Please sign in.".into());
+    }
+    if req.password.len() < 8 {
+        return Err("Password must be at least 8 characters".into());
+    }
+    let hash = bcrypt::hash(&req.password, bcrypt::DEFAULT_COST).map_err(db_err)?;
+    conn.execute(
+        "INSERT INTO users (username, display_name, email, password_hash, role, org_id) VALUES (?1,?2,?3,?4,'super_admin',NULL)",
+        params![req.username.trim(), req.name.trim(), req.email.trim(), hash],
+    ).map_err(db_err)?;
+    let user_id = conn.last_insert_rowid();
+    Ok(SessionPayload {
+        user_id,
+        username: req.username.trim().to_string(),
+        display_name: req.name.trim().to_string(),
+        role: "super_admin".into(),
+        org_id: None,
+    })
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // USERS
 // ══════════════════════════════════════════════════════════════════════════════

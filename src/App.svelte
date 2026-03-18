@@ -7,8 +7,10 @@
   import { session }            from './lib/stores/session.js'
   import { syncMode }           from './lib/stores/syncMode.js'
   import { connectWs, disconnectWs, lastWsEvent, wsConnected } from './lib/stores/ws.js'
+  import { hasUsers }           from './lib/api.js'
 
   import Login        from './views/Login.svelte'
+  import Setup        from './views/Setup.svelte'
   import Sidebar      from './lib/components/Sidebar.svelte'
   import Dashboard    from './views/Dashboard.svelte'
   import Organizations from './views/Organizations.svelte'
@@ -27,6 +29,7 @@
 
   let active = 'dashboard'
   let loading = true
+  let firstRun = false
   let showOnboarding = false
 
   function checkOnboarding(sess) {
@@ -37,6 +40,9 @@
 
   onMount(async () => {
     await session.restore()
+    if (!$session) {
+      try { firstRun = !(await hasUsers()) } catch { firstRun = false }
+    }
     loading = false
     // Connect WebSocket if server mode is configured
     if ($syncMode.mode === 'server' && $syncMode.serverUrl && $syncMode.token) {
@@ -86,6 +92,9 @@
 
 {#if loading}
   <div style="display:flex;align-items:center;justify-content:center;height:100vh;color:var(--text-muted)">Loading…</div>
+
+{:else if !$session && firstRun}
+  <Setup on:complete={() => { firstRun = false }} />
 
 {:else if !$session}
   <Login />

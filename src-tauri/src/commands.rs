@@ -97,6 +97,50 @@ pub fn has_users(db: State<DbState>) -> Result<bool, String> {
     Ok(count > 0)
 }
 
+/// First-run account creation. Only works when no users exist yet.
+/// Creates the super-admin and logs them in automatically.
+#[tauri::command]
+pub fn setup_account(
+    db: State<DbState>,
+    session: State<SessionState>,
+    req: SetupRequest,
+) -> Result<SessionPayload, String> {
+    let conn = db.0.lock().map_err(db_err)?;
+
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM users", [], |r| r.get(0)).map_err(db_err)?;
+    if count > 0 {
+        return Err("Setup already completed. Please sign in.".into());
+    }
+
+    if req.password.len() < 8 {
+        return Err("Password must be at least 8 characters".into());
+    }
+
+    let hash = bcrypt::hash(&req.password, bcrypt::DEFAULT_COST).map_err(db_err)?;
+    conn.execute(
+        "INSERT INTO users (username, display_name, email, password_hash, role, org_id) VALUES (?1,?2,?3,?4,'super_admin',NULL)",
+        params![req.username.trim(), req.name.trim(), req.email.trim(), hash],
+    ).map_err(db_err)?;
+    let user_id = conn.last_insert_rowid();
+
+    let payload = SessionPayload {
+        user_id,
+        username: req.username.trim().to_string(),
+        display_name: req.name.trim().to_string(),
+        role: "super_admin".into(),
+        org_id: None,
+    };
+    *session.0.lock().map_err(db_err)? = Some(payload.clone());
+    Ok(payload)
+}
+
+/// Returns the license server base URL (reads SCHEDULA_LICENSE_URL env var).
+#[tauri::command]
+pub fn get_license_url() -> String {
+    std::env::var("SCHEDULA_LICENSE_URL")
+        .unwrap_or_else(|_| "https://schedula-license.onrender.com".to_string())
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // USERS
 // ══════════════════════════════════════════════════════════════════════════════

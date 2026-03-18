@@ -49,6 +49,14 @@ pub struct LoginRequest {
     pub password: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SetupRequest {
+    pub name: String,
+    pub email: String,
+    pub username: String,
+    pub password: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionPayload {
     pub user_id: i64,

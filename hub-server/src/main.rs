@@ -307,6 +307,20 @@ async fn has_users_handler(State(state): State<AppState>) -> Response {
     to_response(handlers::has_users(&conn))
 }
 
+async fn setup_account_handler(
+    State(state): State<AppState>,
+    Json(body): Json<crate::models::SetupRequest>,
+) -> Response {
+    let conn = state.db.lock().unwrap();
+    match handlers::setup_account(&conn, &body) {
+        Ok(session) => match auth::encode_jwt(&session, &state.jwt_secret) {
+            Ok(token) => Json(json!({"token": token, "session": session})).into_response(),
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e}))).into_response(),
+        },
+        Err(e) => (StatusCode::BAD_REQUEST, Json(json!({"error": e}))).into_response(),
+    }
+}
+
 // ─── User handlers ────────────────────────────────────────────────────────────
 
 async fn get_users_handler(State(state): State<AppState>, Extension(sess): Extension<SessionPayload>) -> Response {
@@ -1123,6 +1137,7 @@ async fn main() {
         .route("/admin",     get(ui_handler))
         .route("/api/server/status", get(server_status_handler))
         .route("/api/auth/login", post(login_handler))
+        .route("/api/auth/setup", post(setup_account_handler))
         .route("/api/auth/logout", post(logout_handler))
         .route("/api/auth/has-users", get(has_users_handler))
         .route("/api/recovery/question", get(get_security_question_handler))

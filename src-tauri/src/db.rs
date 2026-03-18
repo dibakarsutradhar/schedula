@@ -5,7 +5,6 @@ pub fn open(db_path: &Path) -> Result<Connection> {
     let conn = Connection::open(db_path)?;
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
     run_migrations(&conn)?;
-    seed_super_admin(&conn);
     Ok(conn)
 }
 
@@ -22,6 +21,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     migrate_v9(conn)?;
     migrate_v10(conn)?;
     migrate_v11(conn)?;
+    migrate_v12(conn)?;
     Ok(())
 }
 
@@ -304,11 +304,17 @@ fn migrate_v11(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+// ─── V12: email column on users ───────────────────────────────────────────────
+fn migrate_v12(conn: &Connection) -> Result<()> {
+    try_alter(conn, "ALTER TABLE users ADD COLUMN email TEXT");
+    Ok(())
+}
+
 fn try_alter(conn: &Connection, sql: &str) {
     let _ = conn.execute_batch(sql);
 }
 
-// ─── Seed default super-admin on first run ────────────────────────────────────
+// ─── Seed default super-admin on first run (tests only) ───────────────────────
 fn seed_super_admin(conn: &Connection) {
     let count: i64 = conn
         .query_row("SELECT COUNT(*) FROM users", [], |r| r.get(0))

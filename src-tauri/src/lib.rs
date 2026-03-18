@@ -35,6 +35,8 @@ pub fn run() {
             commands::logout,
             commands::get_session,
             commands::has_users,
+            commands::setup_account,
+            commands::get_license_url,
             // Users
             commands::get_users,
             commands::create_user,

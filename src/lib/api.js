@@ -68,6 +68,41 @@ export function logout() {
 export const getSession  = ()  => call('get_session',  {}, 'GET',  '/api/auth/session',    undefined)
 export const hasUsers    = ()  => call('has_users',    {}, 'GET',  '/api/auth/has-users',  undefined)
 
+export async function setupAccount(req) {
+  const { mode, serverUrl } = get(syncMode)
+  if (mode === 'server' && serverUrl) {
+    const base = serverUrl.replace(/\/$/, '')
+    const res = await fetch(`${base}/api/auth/setup`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(req),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Setup failed' }))
+      throw new Error(err.error || 'Setup failed')
+    }
+    const data = await res.json()
+    syncMode.setToken(data.token)
+    return data.session
+  }
+  return invoke('setup_account', { req })
+}
+
+export async function getLicenseUrl() {
+  try { return await invoke('get_license_url') } catch { return 'https://schedula-license.onrender.com' }
+}
+
+export async function registerUser({ name, email }) {
+  try {
+    const licenseUrl = await getLicenseUrl()
+    await fetch(`${licenseUrl}/v1/register`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name, email }),
+    })
+  } catch { /* fire-and-forget */ }
+}
+
 export const changePassword = (oldPassword, newPassword) =>
   call('change_password', { oldPassword, newPassword }, 'POST', '/api/users/change-password',
        { old_password: oldPassword, new_password: newPassword })

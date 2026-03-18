@@ -329,6 +329,15 @@ fn open_db(path: &str) -> Connection {
             expires_at TEXT,
             created_at TEXT    NOT NULL DEFAULT (datetime('now'))
         );
+
+        -- App registrations: captured on first-run setup for CRM purposes.
+        CREATE TABLE IF NOT EXISTS registrations (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT    NOT NULL,
+            email      TEXT    NOT NULL,
+            device_id  TEXT,
+            created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+        );
     ").expect("Failed to create tables");
 
     // Migrate existing customers table (no-op if column already exists)
@@ -573,6 +582,31 @@ async fn device_license_handler(
             })).into_response()
         }
     }
+}
+
+/// POST /v1/register — capture first-run user info for CRM purposes.
+/// Fire-and-forget from the desktop app on initial setup. Always returns 200
+/// so failures don't block the user.
+async fn register_handler(
+    State(state): State<AppState>,
+    Json(body):   Json<serde_json::Value>,
+) -> impl IntoResponse {
+    let name      = body["name"].as_str().unwrap_or("").trim().to_string();
+    let email     = body["email"].as_str().unwrap_or("").trim().to_string();
+    let device_id = body["device_id"].as_str().map(|s| s.to_string());
+
+    if name.is_empty() || email.is_empty() {
+        return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "name and email required"}))).into_response();
+    }
+
+    let conn = state.db.lock().unwrap();
+    let _ = conn.execute(
+        "INSERT INTO registrations (name, email, device_id) VALUES (?1, ?2, ?3)",
+        rusqlite::params![name, email, device_id],
+    );
+
+    tracing::info!("New registration: name={} email={}", name, email);
+    Json(serde_json::json!({"ok": true})).into_response()
 }
 
 /// POST /v1/validate — validate a token (called by hub every 24 h)
@@ -920,6 +954,7 @@ async fn main() {
 
     let app = Router::new()
         // ── License management ──────────────────────────────────────────────
+        .route("/v1/register",                  post(register_handler))
         .route("/v1/issue",                     post(issue_handler))
         .route("/v1/activate",                  post(activate_handler))
         .route("/v1/license/device/:device_id", get(device_license_handler))
