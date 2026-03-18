@@ -11,7 +11,7 @@ on:
 
 env:
   R2_BUCKET: schedula-downloads
-  R2_PUBLIC_URL: https://downloads.schedula.app
+  R2_PUBLIC_URL: https://downloads-schedula.dibakar.me
 
 # ──────────────────────────────────────────────────────────────────────────────
 # macOS — Apple Silicon (aarch64)
