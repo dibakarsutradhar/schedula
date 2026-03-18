@@ -213,6 +213,31 @@ jobs:
           echo "intel_file=${INTEL_DST}" >> $GITHUB_OUTPUT
           echo "win_file=${WIN_DST}"     >> $GITHUB_OUTPUT
 
+      # ── Apply CORS policy on R2 bucket ──────────────────────────────────────
+      - name: Set R2 bucket CORS policy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: |
+          cat > cors.json <<'EOF'
+          {
+            "CORSRules": [
+              {
+                "AllowedOrigins": ["*"],
+                "AllowedMethods": ["GET", "HEAD"],
+                "AllowedHeaders": ["*"],
+                "MaxAgeSeconds": 3600
+              }
+            ]
+          }
+          EOF
+          aws s3api put-bucket-cors \
+            --bucket "${R2_BUCKET}" \
+            --cors-configuration file://cors.json \
+            --endpoint-url "$R2_ENDPOINT"
+
       # ── Upload versioned release to R2 ──────────────────────────────────────
       - name: Upload release files to R2
         env:
