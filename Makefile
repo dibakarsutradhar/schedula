@@ -45,10 +45,11 @@ LANDING_DIR   := landing
 
 # ── Inline commands ───────────────────────────────────────────────────────────
 
-_TAURI_CMD   = npm run tauri dev
+_TAURI_CMD   = SCHEDULA_LICENSE_URL=http://localhost:$(LICENSE_PORT) npm run tauri dev
 _HUB_CMD     = cargo run --manifest-path hub-server/Cargo.toml -- \
                  --port $(HUB_PORT) --db-path $(HUB_DB)
 _LICENSE_CMD = SCHEDULA_ADMIN_KEY=$(ADMIN_KEY) \
+               APP_URL=http://localhost:$(LICENSE_PORT) \
                cargo run --manifest-path $(LICENSE_DIR)/Cargo.toml -- \
                  --port $(LICENSE_PORT) --db-path $(LICENSE_DB) \
                  --private-key  $(LICENSE_DIR)/keys/private.pem \

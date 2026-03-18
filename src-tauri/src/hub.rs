@@ -16,8 +16,12 @@ pub struct HubStatus {
 const HUB_PORT: u16 = 7878;
 
 /// License server URL passed to the hub sidecar at startup.
-/// Update this when moving to a custom domain (e.g. https://license.schedula.app).
-const LICENSE_SERVER_URL: &str = "https://schedula-license.onrender.com";
+/// Reads `SCHEDULA_LICENSE_URL` env var so `make dev` can point to localhost
+/// without rebuilding. Falls back to the production Render URL.
+fn license_server_url() -> String {
+    std::env::var("SCHEDULA_LICENSE_URL")
+        .unwrap_or_else(|_| "https://schedula-license.onrender.com".to_string())
+}
 
 fn hub_db_path(app: &AppHandle) -> String {
     app.path()
@@ -57,7 +61,7 @@ pub fn start_hub_mode(
         .sidecar("schedula-hub")
         .map_err(|e| e.to_string())?
         .args(["--port", &port_str, "--db-path", &db_path,
-               "--license-url", LICENSE_SERVER_URL])
+               "--license-url", &license_server_url()])
         .spawn()
         .map_err(|e| e.to_string())?;
 
