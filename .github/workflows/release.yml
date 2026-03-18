@@ -46,21 +46,7 @@ jobs:
              src-tauri/binaries/schedula-hub-aarch64-apple-darwin
 
       - name: Build Tauri — arm64
-        env:
-          APPLE_CERTIFICATE:          ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY:     ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID:                   ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD:             ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID:              ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          # If no certificate is configured, unset all signing vars so Tauri
-          # builds unsigned (saves the DMG without notarization).
-          if [ -z "$APPLE_CERTIFICATE" ]; then
-            unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD \
-                  APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
-          fi
-          npm run tauri build -- --target aarch64-apple-darwin
+        run: npm run tauri build -- --target aarch64-apple-darwin
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -101,19 +87,7 @@ jobs:
              src-tauri/binaries/schedula-hub-x86_64-apple-darwin
 
       - name: Build Tauri — x86_64
-        env:
-          APPLE_CERTIFICATE:          ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY:     ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID:                   ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD:             ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID:              ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          if [ -z "$APPLE_CERTIFICATE" ]; then
-            unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD \
-                  APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
-          fi
-          npm run tauri build -- --target x86_64-apple-darwin
+        run: npm run tauri build -- --target x86_64-apple-darwin
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
