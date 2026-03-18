@@ -112,6 +112,63 @@ jobs:
           retention-days: 1
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Linux — x86_64 (.deb + .AppImage)
+# ──────────────────────────────────────────────────────────────────────────────
+  build-linux:
+    name: Linux x86_64
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            libssl-dev \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - run: npm ci
+
+      - name: Build hub sidecar — Linux x86_64
+        run: |
+          cargo build --release --manifest-path hub-server/Cargo.toml
+          mkdir -p src-tauri/binaries
+          cp hub-server/target/release/schedula-hub \
+             src-tauri/binaries/schedula-hub-x86_64-unknown-linux-gnu
+
+      - name: Build Tauri — Linux x86_64
+        run: npm run tauri build
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: src-tauri/target/release/bundle/deb/*.deb
+          if-no-files-found: warn
+          retention-days: 1
+
+      - name: Upload .AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: warn
+          retention-days: 1
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Windows — x64
 # ──────────────────────────────────────────────────────────────────────────────
   build-windows:
@@ -163,7 +220,7 @@ jobs:
 # ──────────────────────────────────────────────────────────────────────────────
   publish:
     name: Publish to Cloudflare R2
-    needs: [build-macos-arm, build-macos-intel, build-windows]
+    needs: [build-macos-arm, build-macos-intel, build-windows, build-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -205,27 +262,49 @@ jobs:
           name: windows-msi
           path: dist/windows
 
+      - name: Download Linux .deb
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: linux-deb
+          path: dist/linux
+
+      - name: Download Linux .AppImage
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: linux-appimage
+          path: dist/linux
+
       # ── Rename to canonical filenames ───────────────────────────────────────
       - name: Rename artifacts
         id: art
         run: |
           VERSION="${{ steps.ver.outputs.tag }}"
 
-          ARM_SRC=$(ls   dist/macos-arm64/*.dmg 2>/dev/null | head -1)
-          INTEL_SRC=$(ls dist/macos-intel/*.dmg 2>/dev/null | head -1)
-          WIN_SRC=$(ls   dist/windows/*.exe dist/windows/*.msi 2>/dev/null | head -1)
+          ARM_SRC=$(ls     dist/macos-arm64/*.dmg 2>/dev/null | head -1)
+          INTEL_SRC=$(ls   dist/macos-intel/*.dmg 2>/dev/null | head -1)
+          WIN_SRC=$(ls     dist/windows/*.exe dist/windows/*.msi 2>/dev/null | head -1)
+          DEB_SRC=$(ls     dist/linux/*.deb 2>/dev/null | head -1)
+          APPIMG_SRC=$(ls  dist/linux/*.AppImage 2>/dev/null | head -1)
 
           ARM_DST="Schedula-${VERSION}-macos-arm64.dmg"
           INTEL_DST="Schedula-${VERSION}-macos-x64.dmg"
           WIN_DST="Schedula-${VERSION}-windows-x64-setup.exe"
+          DEB_DST="Schedula-${VERSION}-linux-x64.deb"
+          APPIMG_DST="Schedula-${VERSION}-linux-x64.AppImage"
 
-          [ -n "$ARM_SRC"   ] && cp "$ARM_SRC"   "dist/${ARM_DST}"
-          [ -n "$INTEL_SRC" ] && cp "$INTEL_SRC" "dist/${INTEL_DST}"
-          [ -n "$WIN_SRC"   ] && cp "$WIN_SRC"   "dist/${WIN_DST}"
+          [ -n "$ARM_SRC"    ] && cp "$ARM_SRC"    "dist/${ARM_DST}"
+          [ -n "$INTEL_SRC"  ] && cp "$INTEL_SRC"  "dist/${INTEL_DST}"
+          [ -n "$WIN_SRC"    ] && cp "$WIN_SRC"     "dist/${WIN_DST}"
+          [ -n "$DEB_SRC"    ] && cp "$DEB_SRC"     "dist/${DEB_DST}"
+          [ -n "$APPIMG_SRC" ] && cp "$APPIMG_SRC"  "dist/${APPIMG_DST}"
 
-          echo "arm_file=${ARM_DST}"     >> $GITHUB_OUTPUT
-          echo "intel_file=${INTEL_DST}" >> $GITHUB_OUTPUT
-          echo "win_file=${WIN_DST}"     >> $GITHUB_OUTPUT
+          echo "arm_file=${ARM_DST}"       >> $GITHUB_OUTPUT
+          echo "intel_file=${INTEL_DST}"   >> $GITHUB_OUTPUT
+          echo "win_file=${WIN_DST}"       >> $GITHUB_OUTPUT
+          echo "deb_file=${DEB_DST}"       >> $GITHUB_OUTPUT
+          echo "appimg_file=${APPIMG_DST}" >> $GITHUB_OUTPUT
 
       # ── Apply CORS policy on R2 bucket ──────────────────────────────────────
       - name: Set R2 bucket CORS policy
@@ -279,6 +358,8 @@ jobs:
           upload "${{ steps.art.outputs.arm_file }}"
           upload "${{ steps.art.outputs.intel_file }}"
           upload "${{ steps.art.outputs.win_file }}"
+          upload "${{ steps.art.outputs.deb_file }}"
+          upload "${{ steps.art.outputs.appimg_file }}"
 
       # ── Write latest.json manifest ───────────────────────────────────────────
       - name: Write and upload latest.json
@@ -308,6 +389,14 @@ jobs:
               "windows": {
                 "url": "${BASE}/${{ steps.art.outputs.win_file }}",
                 "filename": "${{ steps.art.outputs.win_file }}"
+              },
+              "linux_deb": {
+                "url": "${BASE}/${{ steps.art.outputs.deb_file }}",
+                "filename": "${{ steps.art.outputs.deb_file }}"
+              },
+              "linux_appimage": {
+                "url": "${BASE}/${{ steps.art.outputs.appimg_file }}",
+                "filename": "${{ steps.art.outputs.appimg_file }}"
               }
             }
           }
