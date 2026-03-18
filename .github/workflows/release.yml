@@ -327,23 +327,32 @@ jobs:
           # Create release (draft=false, prerelease if tag contains -)
           IS_PRE=$([[ "$VERSION" == *"-"* ]] && echo "--prerelease" || echo "")
 
+          ARM="${{ steps.art.outputs.arm_file }}"
+          INTEL="${{ steps.art.outputs.intel_file }}"
+          WIN="${{ steps.art.outputs.win_file }}"
+          DEB="${{ steps.art.outputs.deb_file }}"
+          APPIMG="${{ steps.art.outputs.appimg_file }}"
+
+          {
+            printf '## Downloads\n\n'
+            printf '| Platform | File |\n'
+            printf '|---|---|\n'
+            printf '| macOS — Apple Silicon | `%s` |\n' "${ARM}"
+            printf '| macOS — Intel | `%s` |\n'         "${INTEL}"
+            printf '| Windows x64 | `%s` |\n'           "${WIN}"
+            printf '| Linux x64 (.deb) | `%s` |\n'      "${DEB}"
+            printf '| Linux x64 (.AppImage) | `%s` |\n' "${APPIMG}"
+            printf '\n'
+            printf '**macOS:** Open the .dmg and drag Schedula to Applications.\n'
+            printf '**Windows:** Run the setup .exe (click "More info → Run anyway" if SmartScreen appears).\n'
+            printf '**Linux .deb:** `sudo dpkg -i schedula.deb`\n'
+            printf '**Linux .AppImage:** `chmod +x schedula.AppImage && ./schedula.AppImage`\n'
+          } > release-notes.md
+
           gh release create "$VERSION" \
             --repo "${{ github.repository }}" \
             --title "Schedula $VERSION" \
-            --notes "## Downloads
-
-| Platform | File |
-|----------|------|
-| macOS — Apple Silicon | \`${{ steps.art.outputs.arm_file }}\` |
-| macOS — Intel         | \`${{ steps.art.outputs.intel_file }}\` |
-| Windows x64           | \`${{ steps.art.outputs.win_file }}\` |
-| Linux x64 (.deb)      | \`${{ steps.art.outputs.deb_file }}\` |
-| Linux x64 (.AppImage) | \`${{ steps.art.outputs.appimg_file }}\` |
-
-**macOS:** Open the .dmg and drag Schedula to Applications.
-**Windows:** Run the setup .exe (click "More info → Run anyway" if SmartScreen appears).
-**Linux .deb:** \`sudo dpkg -i schedula.deb\`
-**Linux .AppImage:** \`chmod +x schedula.AppImage && ./schedula.AppImage\`" \
+            --notes-file release-notes.md \
             $IS_PRE \
             "${ASSETS[@]}"
 
