@@ -928,6 +928,132 @@
       .arrow-track   { width: 18px; }
       .machine-row-chips { gap: .35rem; transform: scale(0.85); }
     }
+
+    /* ── SAMPLE DATASETS ──────────────────────────────────────────────────────── */
+    #samples { background: var(--navy); }
+
+    .samples-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 3.5rem;
+    }
+    @media (max-width: 900px) {
+      .samples-grid { grid-template-columns: 1fr; }
+    }
+
+    .sample-card {
+      background: var(--navy-3);
+      border: 1.5px solid var(--edge-dark);
+      border-radius: 16px;
+      padding: 2rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      transition: border-color .25s, box-shadow .25s;
+    }
+    .sample-card:hover {
+      border-color: rgba(59,130,246,.35);
+      box-shadow: 0 8px 40px rgba(0,0,0,.35);
+    }
+    .sample-card--featured {
+      border-color: rgba(59,130,246,.5);
+      box-shadow: 0 0 0 1px rgba(59,130,246,.2);
+      position: relative;
+    }
+    .sample-featured-badge {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--blue); color: var(--white);
+      font-size: .6875rem; font-weight: 600; letter-spacing: .05em;
+      text-transform: uppercase; padding: .25rem .875rem;
+      border-radius: 999px; white-space: nowrap;
+    }
+
+    .sample-kicker {
+      display: flex; align-items: center; gap: .5rem;
+      font-size: .75rem; font-weight: 500; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--blue-lt);
+    }
+    .sample-kicker-icon { font-size: 1rem; }
+
+    .sample-name {
+      font-family: var(--serif);
+      font-size: 1.375rem; font-weight: 400;
+      color: var(--white); margin: 0;
+      letter-spacing: -.015em;
+    }
+
+    .sample-meta-row {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem;
+    }
+    .sample-meta {
+      display: flex; flex-direction: column; align-items: center;
+      background: var(--navy-4);
+      border: 1px solid var(--edge-dark);
+      border-radius: 8px;
+      padding: .625rem .25rem;
+    }
+    .meta-val {
+      font-family: var(--serif); font-size: 1.125rem; font-weight: 600;
+      color: var(--white); line-height: 1;
+    }
+    .meta-lbl {
+      font-size: .625rem; color: rgba(255,255,255,.3);
+      letter-spacing: .07em; text-transform: uppercase; margin-top: .2rem;
+    }
+
+    .sample-body {
+      font-size: .875rem; color: rgba(255,255,255,.42); line-height: 1.67;
+      margin: 0; flex: 1;
+    }
+
+    .sample-files {
+      display: flex; gap: .5rem; flex-wrap: wrap; margin-top: auto;
+    }
+    .sample-file-btn {
+      display: inline-flex; align-items: center; gap: .45rem;
+      padding: .45rem .9rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--edge-dark);
+      border-radius: 6px;
+      color: rgba(255,255,255,.55);
+      font-family: var(--mono); font-size: .75rem; font-weight: 500;
+      cursor: pointer;
+      transition: border-color .2s, color .2s, background .2s;
+    }
+    .sample-file-btn:hover {
+      border-color: var(--blue-lt);
+      color: var(--blue-lt);
+      background: rgba(59,130,246,.07);
+    }
+    .sample-file-btn svg { flex-shrink: 0; opacity: .7; }
+
+    .samples-trail {
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 4rem; flex-wrap: wrap; gap: 0;
+    }
+    .trail-step {
+      display: flex; align-items: center; gap: .75rem;
+      padding: 0 1.25rem;
+      font-size: .875rem; color: rgba(255,255,255,.45);
+      text-align: left;
+    }
+    .trail-num {
+      width: 2.25rem; height: 2.25rem; border-radius: 50%; flex-shrink: 0;
+      background: var(--navy-3); border: 1px solid var(--edge-dark);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--serif); font-size: 1rem; font-weight: 300;
+      color: var(--blue-lt);
+    }
+    .trail-sep {
+      width: 2.5rem; height: 1px; flex-shrink: 0;
+      background: linear-gradient(90deg, var(--edge-dark), rgba(30,48,80,.4));
+    }
+    @media (max-width: 700px) {
+      .trail-sep { display: none; }
+      .samples-trail { flex-direction: column; gap: 1rem; align-items: flex-start; padding: 0 1rem; }
+    }
+
   </style>
 </head>
 <body>
@@ -1745,128 +1871,139 @@
 
 <!-- ─── SAMPLE DATASETS ──────────────────────────────────────────────────────── -->
 <section id="samples" aria-labelledby="samples-heading">
-  <div class="section-header">
-    <h2 id="samples-heading" class="section-title on-dark">Try it with real data</h2>
+  <div class="inner">
+    <p class="eyebrow on-dark">Try before you commit</p>
+    <h2 class="on-dark" id="samples-heading">See Schedula in action</h2>
     <p class="section-sub on-dark">
-      Download a ready-made dataset, import it into Schedula, and generate a full timetable
-      in under two minutes — no manual entry required.
+      Download a ready-made dataset and import it straight into the app.
+      Go from empty database to a generated, conflict-free timetable in under two minutes.
     </p>
-  </div>
 
-  <div class="samples-grid">
+    <div class="samples-grid">
 
-    <!-- ── Small School ──────────────────────────────────────────────────────── -->
-    <div class="sample-card">
-      <div class="sample-card-header">
-        <span class="sample-icon">🏫</span>
-        <div>
-          <h3 class="sample-name">Greenwood Academy</h3>
-          <p class="sample-type">Small School</p>
+      <!-- Small School -->
+      <div class="sample-card fade-up">
+        <div class="sample-kicker">
+          <span class="sample-kicker-icon">🏫</span>
+          <span>Small School</span>
+        </div>
+        <h3 class="sample-name">Greenwood Academy</h3>
+        <div class="sample-meta-row">
+          <div class="sample-meta"><span class="meta-val">500</span><span class="meta-lbl">Students</span></div>
+          <div class="sample-meta"><span class="meta-val">10</span><span class="meta-lbl">Teachers</span></div>
+          <div class="sample-meta"><span class="meta-val">13</span><span class="meta-lbl">Rooms</span></div>
+          <div class="sample-meta"><span class="meta-val">38</span><span class="meta-lbl">Courses</span></div>
+        </div>
+        <p class="sample-body">
+          Classes 1–5 (A &amp; B sections), 50 students per class.
+          7 subjects including science lab and computer studies. 8-hour school day.
+        </p>
+        <div class="sample-files">
+          <button class="sample-file-btn" onclick="downloadSample('small','lecturers','greenwood-lecturers.csv')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+            lecturers.csv
+          </button>
+          <button class="sample-file-btn" onclick="downloadSample('small','rooms','greenwood-rooms.csv')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+            rooms.csv
+          </button>
+          <button class="sample-file-btn" onclick="downloadSample('small','courses','greenwood-courses.csv')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+            courses.csv
+          </button>
         </div>
       </div>
-      <div class="sample-stats">
-        <div class="sample-stat"><span class="stat-val">500</span><span class="stat-lbl">Students</span></div>
-        <div class="sample-stat"><span class="stat-val">10</span><span class="stat-lbl">Teachers</span></div>
-        <div class="sample-stat"><span class="stat-val">13</span><span class="stat-lbl">Rooms</span></div>
-        <div class="sample-stat"><span class="stat-val">38</span><span class="stat-lbl">Courses</span></div>
-      </div>
-      <p class="sample-desc">
-        Classes 1–5 (A &amp; B sections), 7 subjects including science lab and computer studies, 8-hour school day.
-      </p>
-      <div class="sample-downloads">
-        <button class="sample-dl-btn" onclick="downloadSample('small','lecturers','greenwood-lecturers.csv')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
-          Lecturers
-        </button>
-        <button class="sample-dl-btn" onclick="downloadSample('small','rooms','greenwood-rooms.csv')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
-          Rooms
-        </button>
-        <button class="sample-dl-btn" onclick="downloadSample('small','courses','greenwood-courses.csv')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
-          Courses
-        </button>
-      </div>
-    </div>
 
-    <!-- ── Large School ──────────────────────────────────────────────────────── -->
-    <div class="sample-card sample-card--featured">
-      <div class="sample-card-header">
-        <span class="sample-icon">🏛</span>
-        <div>
-          <h3 class="sample-name">Riverside Comprehensive</h3>
-          <p class="sample-type">Large School</p>
+      <!-- Large School -->
+      <div class="sample-card sample-card--featured fade-up">
+        <div class="sample-featured-badge">Most complete</div>
+        <div class="sample-kicker">
+          <span class="sample-kicker-icon">🏛</span>
+          <span>Large School</span>
+        </div>
+        <h3 class="sample-name">Riverside Comprehensive</h3>
+        <div class="sample-meta-row">
+          <div class="sample-meta"><span class="meta-val">5k</span><span class="meta-lbl">Students</span></div>
+          <div class="sample-meta"><span class="meta-val">50</span><span class="meta-lbl">Teachers</span></div>
+          <div class="sample-meta"><span class="meta-val">56</span><span class="meta-lbl">Rooms</span></div>
+          <div class="sample-meta"><span class="meta-val">76</span><span class="meta-lbl">Courses</span></div>
+        </div>
+        <p class="sample-body">
+          100 classes across 5 year groups, split A/B sections per subject.
+          Science &amp; computer labs, assembly halls. Tests the scheduler at scale.
+        </p>
+        <div class="sample-files">
+          <button class="sample-file-btn" onclick="downloadSample('large','lecturers','riverside-lecturers.csv')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+            lecturers.csv
+          </button>
+          <button class="sample-file-btn" onclick="downloadSample('large','rooms','riverside-rooms.csv')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+            rooms.csv
+          </button>
+          <button class="sample-file-btn" onclick="downloadSample('large','courses','riverside-courses.csv')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+            courses.csv
+          </button>
         </div>
       </div>
-      <div class="sample-stats">
-        <div class="sample-stat"><span class="stat-val">5,000</span><span class="stat-lbl">Students</span></div>
-        <div class="sample-stat"><span class="stat-val">50</span><span class="stat-lbl">Teachers</span></div>
-        <div class="sample-stat"><span class="stat-val">56</span><span class="stat-lbl">Rooms</span></div>
-        <div class="sample-stat"><span class="stat-val">76</span><span class="stat-lbl">Courses</span></div>
-      </div>
-      <p class="sample-desc">
-        100 classes across 5 year groups, split A/B sections per subject, science &amp; computer labs, assembly halls.
-      </p>
-      <div class="sample-downloads">
-        <button class="sample-dl-btn" onclick="downloadSample('large','lecturers','riverside-lecturers.csv')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
-          Lecturers
-        </button>
-        <button class="sample-dl-btn" onclick="downloadSample('large','rooms','riverside-rooms.csv')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
-          Rooms
-        </button>
-        <button class="sample-dl-btn" onclick="downloadSample('large','courses','riverside-courses.csv')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
-          Courses
-        </button>
-      </div>
-    </div>
 
-    <!-- ── University ────────────────────────────────────────────────────────── -->
-    <div class="sample-card">
-      <div class="sample-card-header">
-        <span class="sample-icon">🎓</span>
-        <div>
-          <h3 class="sample-name">National Institute of Technology</h3>
-          <p class="sample-type">University</p>
+      <!-- University -->
+      <div class="sample-card fade-up">
+        <div class="sample-kicker">
+          <span class="sample-kicker-icon">🎓</span>
+          <span>University</span>
+        </div>
+        <h3 class="sample-name">National Institute of Technology</h3>
+        <div class="sample-meta-row">
+          <div class="sample-meta"><span class="meta-val">50k</span><span class="meta-lbl">Students</span></div>
+          <div class="sample-meta"><span class="meta-val">100</span><span class="meta-lbl">Lecturers</span></div>
+          <div class="sample-meta"><span class="meta-val">75</span><span class="meta-lbl">Rooms</span></div>
+          <div class="sample-meta"><span class="meta-val">151</span><span class="meta-lbl">Courses</span></div>
+        </div>
+        <p class="sample-body">
+          9 departments · Foundation → PhD · 10-hour dynamic schedule.
+          Lecture halls, seminar rooms, research labs &amp; computer labs.
+        </p>
+        <div class="sample-files">
+          <button class="sample-file-btn" onclick="downloadSample('uni','lecturers','nit-lecturers.csv')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+            lecturers.csv
+          </button>
+          <button class="sample-file-btn" onclick="downloadSample('uni','rooms','nit-rooms.csv')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+            rooms.csv
+          </button>
+          <button class="sample-file-btn" onclick="downloadSample('uni','courses','nit-courses.csv')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+            courses.csv
+          </button>
         </div>
       </div>
-      <div class="sample-stats">
-        <div class="sample-stat"><span class="stat-val">50k</span><span class="stat-lbl">Students</span></div>
-        <div class="sample-stat"><span class="stat-val">100</span><span class="stat-lbl">Lecturers</span></div>
-        <div class="sample-stat"><span class="stat-val">75</span><span class="stat-lbl">Rooms</span></div>
-        <div class="sample-stat"><span class="stat-val">151</span><span class="stat-lbl">Courses</span></div>
+
+    </div><!-- /samples-grid -->
+
+    <div class="samples-trail">
+      <div class="trail-step">
+        <span class="trail-num">1</span>
+        <span>Download the 3 CSV files for your dataset</span>
       </div>
-      <p class="sample-desc">
-        9 departments · Foundation → PhD · 10-hour dynamic schedule · lecture halls, seminar rooms, research labs &amp; computer labs.
-      </p>
-      <div class="sample-downloads">
-        <button class="sample-dl-btn" onclick="downloadSample('uni','lecturers','nit-lecturers.csv')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
-          Lecturers
-        </button>
-        <button class="sample-dl-btn" onclick="downloadSample('uni','rooms','nit-rooms.csv')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
-          Rooms
-        </button>
-        <button class="sample-dl-btn" onclick="downloadSample('uni','courses','nit-courses.csv')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
-          Courses
-        </button>
+      <div class="trail-sep"></div>
+      <div class="trail-step">
+        <span class="trail-num">2</span>
+        <span>Open Schedula → <strong style="color:rgba(255,255,255,.7)">Import</strong> in the sidebar</span>
+      </div>
+      <div class="trail-sep"></div>
+      <div class="trail-step">
+        <span class="trail-num">3</span>
+        <span>Import Lecturers, Rooms, then Courses</span>
+      </div>
+      <div class="trail-sep"></div>
+      <div class="trail-step">
+        <span class="trail-num">4</span>
+        <span>Create batches → hit <strong style="color:rgba(255,255,255,.7)">Generate Schedule</strong></span>
       </div>
     </div>
-
-  </div>
-
-  <div class="samples-howto">
-    <div class="howto-step"><span class="howto-num">1</span><span>Download the 3 CSV files for your chosen dataset</span></div>
-    <div class="howto-arrow">→</div>
-    <div class="howto-step"><span class="howto-num">2</span><span>Open Schedula → go to <strong>Import</strong> in the sidebar</span></div>
-    <div class="howto-arrow">→</div>
-    <div class="howto-step"><span class="howto-num">3</span><span>Import Lecturers, then Rooms, then Courses</span></div>
-    <div class="howto-arrow">→</div>
-    <div class="howto-step"><span class="howto-num">4</span><span>Create student batches, hit <strong>Generate Schedule</strong></span></div>
   </div>
 </section>
 
