@@ -149,7 +149,7 @@
       await createCourse({ code: courseCode.trim(), name: courseName.trim(), hours_per_week: +courseHours, room_type: courseClassType === 'lab' ? 'lab' : 'lecture', class_type: courseClassType, frequency: 'weekly', lecturer_id: null, org_id: $session?.org_id ?? existingOrgId ?? null })
       created.course = true
     }
-    if (s === 6 && isSuperAdmin($session) && securityQuestion.trim() && securityAnswer.trim()) {
+    if (s === 6 && isSuperAdmin($session) && !showRecoveryCode && securityQuestion.trim() && securityAnswer.trim()) {
       const result = await setupRecovery({ security_question: securityQuestion.trim(), security_answer: securityAnswer.trim() })
       recoveryCode = result.recovery_code
       showRecoveryCode = true
@@ -217,45 +217,6 @@
               Already set up? Skip
             </button>
           </div>
-        </div>
-      {/key}
-
-    <!-- Step 6: Recovery Setup ───────────────────────────────────────────────── -->
-    {:else if step === 6 && isSuperAdmin($session)}
-      {#key step}
-        <div class="ob-step-body ob-recovery" in:fly={inFx()} out:fly={outFx()}>
-          <p class="ob-hint">
-            Set up password recovery so you can access your account if you forget your password.
-          </p>
-
-          {#if !showRecoveryCode}
-            <div class="form-group">
-              <label class="form-label">Security Question *</label>
-              <input class="form-input" bind:value={securityQuestion} placeholder="e.g. What city were you born in?" autofocus />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Your Answer *</label>
-              <input class="form-input" bind:value={securityAnswer} placeholder="Answer to your question" />
-            </div>
-          {:else}
-            <div class="recovery-code-box">
-              <div class="recovery-header">
-                <span style="font-size:24px">🔐</span>
-                <div>
-                  <strong>Recovery Code Generated</strong>
-                  <p style="font-size:12px;color:var(--text-muted);margin:0">Write this down and keep it safe</p>
-                </div>
-              </div>
-              <div class="recovery-code-display">{recoveryCode}</div>
-              <p style="font-size:12px;color:var(--danger);margin-top:12px">
-                ⚠️ This code will not be shown again. Write it down now.
-              </p>
-            </div>
-          {/if}
-
-          {#if error}
-            <div class="ob-error" in:fly={{ y: -8, duration: 200 }}>{error}</div>
-          {/if}
         </div>
       {/key}
 
@@ -411,7 +372,7 @@
               </div>
             </div>
 
-          <!-- Step 5: Course ────────────────────────────────────────────────── -->
+          <!-- Step 5: Course ──────────────────────────────────────────────── -->
           {:else if step === 5}
             <p class="ob-hint">Courses are assigned to student batches. Add more later from the Courses tab.</p>
             <div class="row">
@@ -438,6 +399,36 @@
                 </select>
               </div>
             </div>
+          <!-- Step 6: Recovery Setup ──────────────────────────────────────── -->
+          {:else if step === 6 && isSuperAdmin($session)}
+            <p class="ob-hint">
+              Set up password recovery so you can access your account if you forget your password.
+            </p>
+
+            {#if !showRecoveryCode}
+              <div class="form-group">
+                <label class="form-label">Security Question *</label>
+                <input class="form-input" bind:value={securityQuestion} placeholder="e.g. What city were you born in?" autofocus />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Your Answer *</label>
+                <input class="form-input" bind:value={securityAnswer} placeholder="Answer to your question" />
+              </div>
+            {:else}
+              <div class="recovery-code-box">
+                <div class="recovery-header">
+                  <span style="font-size:24px">🔐</span>
+                  <div>
+                    <strong>Recovery Code Generated</strong>
+                    <p style="font-size:12px;color:var(--text-muted);margin:0">Write this down and keep it safe</p>
+                  </div>
+                </div>
+                <div class="recovery-code-display">{recoveryCode}</div>
+                <p style="font-size:12px;color:var(--danger);margin-top:12px">
+                  ⚠️ This code will not be shown again. Write it down now.
+                </p>
+              </div>
+            {/if}
           {/if}
 
           <!-- Error message -->
@@ -456,7 +447,7 @@
             <button
               class="btn btn-primary"
               on:click={goNext}
-              disabled={saving || (step === 1 && !displayName.trim()) || (step === 2 && !orgName.trim()) || (step === 6 && (!showRecoveryCode || !securityQuestion.trim() || !securityAnswer.trim()))}
+              disabled={saving || (step === 1 && !displayName.trim()) || (step === 2 && !orgName.trim()) || (step === 6 && !showRecoveryCode && (!securityQuestion.trim() || !securityAnswer.trim()))}
             >{saving ? 'Saving…' : 'Continue →'}</button>
           {:else if step === TOTAL_FORM_STEPS}
             <button class="btn btn-primary" on:click={finish} disabled={saving}>
