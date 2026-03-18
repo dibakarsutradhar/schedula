@@ -46,6 +46,8 @@ jobs:
              src-tauri/binaries/schedula-hub-aarch64-apple-darwin
 
       - name: Build Tauri — arm64
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
         run: npm run tauri build -- --target aarch64-apple-darwin
 
       - name: Upload artifact
@@ -87,6 +89,8 @@ jobs:
              src-tauri/binaries/schedula-hub-x86_64-apple-darwin
 
       - name: Build Tauri — x86_64
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
         run: npm run tauri build -- --target x86_64-apple-darwin
 
       - name: Upload artifact
