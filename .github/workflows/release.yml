@@ -48,11 +48,7 @@ jobs:
       - name: Build Tauri — arm64
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Tauri v2 ad-hoc signing: '-' means sign without an Apple Developer
-          # certificate. Users will see a Gatekeeper warning but the app runs.
-          # Replace with a real identity + APPLE_CERTIFICATE to notarize.
-          APPLE_SIGNING_IDENTITY: '-'
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         with:
           args: --target aarch64-apple-darwin
 
@@ -97,10 +93,7 @@ jobs:
       - name: Build Tauri — x86_64
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Tauri v2 ad-hoc signing: '-' means sign without an Apple Developer
-          # certificate. Replace with a real identity + APPLE_CERTIFICATE to notarize.
-          APPLE_SIGNING_IDENTITY: '-'
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         with:
           args: --target x86_64-apple-darwin
 
@@ -310,7 +303,7 @@ jobs:
       # ── Create GitHub Release and upload all assets ─────────────────────────
       - name: Create GitHub Release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           VERSION="${{ steps.ver.outputs.tag }}"
 
