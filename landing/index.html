@@ -1467,18 +1467,18 @@
                 <span class="is-tip-icon">🪟</span>
                 <span class="is-tip-text"><strong>Windows:</strong> Run the setup .exe. If SmartScreen appears, click "More info" → "Run anyway".</span>
               </div>
+              <div class="is-tip">
+                <span class="is-tip-icon">🐧</span>
+                <span class="is-tip-text"><strong>Linux (.deb):</strong> <code style="background:rgba(255,255,255,.1);padding:.1em .4em;border-radius:4px;">sudo dpkg -i schedula.deb</code>. <strong>Linux (.AppImage):</strong> <code style="background:rgba(255,255,255,.1);padding:.1em .4em;border-radius:4px;">chmod +x schedula.AppImage &amp;&amp; ./schedula.AppImage</code></span>
+              </div>
             </div>
           </div>
 
           <div class="install-step">
             <div class="is-num">2</div>
             <div class="is-content">
-              <div class="is-title">Log in with the default account</div>
-              <div class="is-body">On first launch, use the default credentials:</div>
-              <span class="is-code">admin / admin123</span>
-              <div class="is-body" style="margin-top:.4rem">
-                <strong style="color:var(--white)">Important:</strong> change the password immediately in <strong>Settings → Security</strong>.
-              </div>
+              <div class="is-title">Create your account</div>
+              <div class="is-body">On first launch, a setup screen walks you through creating your admin account — just enter your name, email, and a password. No default credentials.</div>
             </div>
           </div>
 
@@ -2674,14 +2674,23 @@ PHD-910,Interdisciplinary Research Colloquium,2,lecture,lecture,biweekly,f.owusu
         <span class="pill" role="listitem">Offline-first app</span>
         <span class="pill" role="listitem">Greedy constraint solver</span>
         <span class="pill" role="listitem">10 batches per semester</span>
-        <span class="pill" role="listitem">Windows &amp; macOS</span>
+        <span class="pill" role="listitem">Windows, macOS &amp; Linux</span>
         <span class="pill" role="listitem">No time limits</span>
         <span class="pill" role="listitem">No cloud required</span>
         <span class="pill" role="listitem">Data export</span>
       </div>
       <div id="dl-version-badge" class="oss-version" aria-live="polite"></div>
-      <div class="oss-ctas">
-        <a href="#" id="dl-macos-arm" class="btn btn-gold btn-lg" aria-label="Download Schedula for macOS Apple Silicon">
+      <!-- OS-detected primary download (shown after JS runs) -->
+      <div id="dl-primary-wrap" style="display:none;margin-bottom:1rem;">
+        <a href="#" id="dl-primary-btn" class="btn btn-gold btn-lg" style="font-size:1rem;padding:.9rem 2rem;">
+          <span id="dl-primary-icon"></span>
+          <span id="dl-primary-label">Download</span>
+        </a>
+        <p id="dl-detected-note" class="oss-arch-note" style="margin-top:.6rem;"></p>
+      </div>
+
+      <div class="oss-ctas" id="dl-all-platforms">
+        <a href="#" id="dl-macos-arm" class="btn btn-outline-dark btn-lg" aria-label="Download Schedula for macOS Apple Silicon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97 14.32 22 13.89 21.18 12.37 21.18 10.84 21.18 10.36 21.95 9.1 22 7.78 22.05 6.8 20.68 5.96 19.47 4.25 17 2.94 12.45 4.7 9.39 5.57 7.87 7.13 6.91 8.82 6.88 10.1 6.86 11.32 7.75 12.11 7.75 12.89 7.75 14.37 6.68 15.92 6.84 16.57 6.87 18.39 7.1 19.56 8.82 19.47 8.88 17.39 10.1 17.41 12.63 17.44 15.65 20.06 16.66 20.09 16.67 20.06 16.74 19.67 18.11 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2 16.07 3.17 15.6 4.35 14.9 5.19 14.21 6.04 13.07 6.7 11.95 6.61 11.8 5.46 12.36 4.26 13 3.5Z"/>
           </svg>
@@ -2699,8 +2708,20 @@ PHD-910,Interdisciplinary Research Colloquium,2,lecture,lecture,biweekly,f.owusu
           </svg>
           Windows (.exe)
         </a>
+        <a href="#" id="dl-linux-deb" class="btn btn-outline-dark btn-lg" aria-label="Download Schedula for Linux (.deb)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+          </svg>
+          Linux (.deb)
+        </a>
+        <a href="#" id="dl-linux-appimage" class="btn btn-outline-dark btn-lg" aria-label="Download Schedula for Linux (.AppImage)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+          </svg>
+          Linux (.AppImage)
+        </a>
       </div>
-      <p class="oss-arch-note">Not sure which macOS version? Click  → About This Mac. Look for "Apple M" (Silicon) or "Intel".</p>
+      <p class="oss-arch-note" id="dl-platform-hint">Not sure which macOS version? Click &#x1F34E; → About This Mac. Look for "Apple M" (Silicon) or "Intel".</p>
     </div>
   </div>
 </section>
@@ -2799,11 +2820,74 @@ PHD-910,Interdisciplinary Research Colloquium,2,lecture,lecture,biweekly,f.owusu
   // Leave empty to show placeholder download links with no href.
   const DOWNLOADS_MANIFEST_URL = 'https://downloads-schedula.dibakar.me/latest.json';
 
+  // ── OS detection ────────────────────────────────────────────────────────────
+  function detectOS() {
+    const ua  = navigator.userAgent;
+    const plat = (navigator.userAgentData?.platform || navigator.platform || '').toLowerCase();
+    if (/linux/i.test(plat) || /linux/i.test(ua)) return 'linux';
+    if (/win/i.test(plat)   || /windows/i.test(ua)) return 'windows';
+    if (/mac/i.test(plat)   || /mac/i.test(ua)) {
+      // Detect Apple Silicon via canvas trick or userAgentData
+      try {
+        const gl = document.createElement('canvas').getContext('webgl');
+        const renderer = gl?.getExtension('WEBGL_debug_renderer_info');
+        if (renderer && gl.getParameter(renderer.UNMASKED_RENDERER_WEBGL).includes('Apple M')) return 'mac-arm';
+      } catch {}
+      // Fallback: assume Intel (safer default)
+      return 'mac-x86';
+    }
+    return null;
+  }
+
+  function applyOSRecommendation(platforms) {
+    const os = detectOS();
+    const primaryWrap = document.getElementById('dl-primary-wrap');
+    const primaryBtn  = document.getElementById('dl-primary-btn');
+    const primaryIcon = document.getElementById('dl-primary-icon');
+    const primaryLabel = document.getElementById('dl-primary-label');
+    const detectedNote = document.getElementById('dl-detected-note');
+    const platformHint = document.getElementById('dl-platform-hint');
+
+    const MAP = {
+      'mac-arm':  { id: 'dl-macos-arm',      label: 'Download for macOS (Apple Silicon)', icon: '🍎', note: 'Detected: macOS Apple Silicon', url: platforms.macos_arm?.url,   hint: '' },
+      'mac-x86':  { id: 'dl-macos-intel',    label: 'Download for macOS (Intel)',          icon: '🍎', note: 'Detected: macOS Intel',          url: platforms.macos_intel?.url, hint: '' },
+      'windows':  { id: 'dl-windows',        label: 'Download for Windows (.exe)',         icon: '🪟', note: 'Detected: Windows',              url: platforms.windows?.url,     hint: '' },
+      'linux':    { id: 'dl-linux-deb',      label: 'Download for Linux (.deb)',           icon: '🐧', note: 'Detected: Linux — .deb recommended for Debian/Ubuntu',
+                                                                                                                                                 url: platforms.linux_deb?.url,   hint: 'Prefer a distro-independent build? Use the <a href="#" id="dl-appimage-inline" style="color:inherit;text-decoration:underline">.AppImage</a> instead.' },
+    };
+
+    const match = os ? MAP[os] : null;
+    if (!match || !match.url) return;
+
+    // Wire up primary button
+    primaryBtn.href  = match.url;
+    primaryIcon.textContent = match.icon + ' ';
+    primaryLabel.textContent = match.label;
+    detectedNote.textContent = match.note;
+    if (match.hint) {
+      detectedNote.innerHTML = match.note;
+      if (platformHint) platformHint.innerHTML = match.hint;
+      // Wire AppImage inline link
+      const inlineLink = document.getElementById('dl-appimage-inline');
+      if (inlineLink && platforms.linux_appimage?.url) inlineLink.href = platforms.linux_appimage.url;
+    } else {
+      if (platformHint) platformHint.style.display = 'none';
+    }
+    primaryWrap.style.display = 'block';
+
+    // Dim non-recommended buttons
+    document.querySelectorAll('#dl-all-platforms .btn').forEach(btn => {
+      btn.style.opacity = btn.id === match.id ? '1' : '0.55';
+    });
+  }
+
   async function fetchDownloadManifest() {
-    const badge  = document.getElementById('dl-version-badge');
-    const armBtn = document.getElementById('dl-macos-arm');
-    const intBtn = document.getElementById('dl-macos-intel');
-    const winBtn = document.getElementById('dl-windows');
+    const badge      = document.getElementById('dl-version-badge');
+    const armBtn     = document.getElementById('dl-macos-arm');
+    const intBtn     = document.getElementById('dl-macos-intel');
+    const winBtn     = document.getElementById('dl-windows');
+    const linuxDeb   = document.getElementById('dl-linux-deb');
+    const linuxAppImg = document.getElementById('dl-linux-appimage');
 
     if (!DOWNLOADS_MANIFEST_URL) return; // no manifest configured — buttons stay as #
 
@@ -2819,9 +2903,12 @@ PHD-910,Interdisciplinary Research Colloquium,2,lecture,lecture,biweekly,f.owusu
 
       // Desktop app buttons
       const p = data.platforms || {};
-      if (armBtn && p.macos_arm?.url)   { armBtn.href = p.macos_arm.url;   armBtn.removeAttribute('onclick'); }
-      if (intBtn && p.macos_intel?.url) { intBtn.href = p.macos_intel.url; intBtn.removeAttribute('onclick'); }
-      if (winBtn && p.windows?.url)     { winBtn.href = p.windows.url;     winBtn.removeAttribute('onclick'); }
+      if (armBtn     && p.macos_arm?.url)       { armBtn.href     = p.macos_arm.url;       armBtn.removeAttribute('onclick'); }
+      if (intBtn     && p.macos_intel?.url)     { intBtn.href     = p.macos_intel.url;     intBtn.removeAttribute('onclick'); }
+      if (winBtn     && p.windows?.url)         { winBtn.href     = p.windows.url;         winBtn.removeAttribute('onclick'); }
+      if (linuxDeb   && p.linux_deb?.url)       { linuxDeb.href   = p.linux_deb.url;       linuxDeb.removeAttribute('onclick'); }
+      if (linuxAppImg && p.linux_appimage?.url) { linuxAppImg.href = p.linux_appimage.url; linuxAppImg.removeAttribute('onclick'); }
+      applyOSRecommendation(p);
     } catch (e) {
       console.warn('Could not load download manifest:', e.message);
       if (badge) badge.textContent = 'Download links temporarily unavailable.';
