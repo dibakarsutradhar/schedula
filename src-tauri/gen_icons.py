@@ -102,7 +102,7 @@ def main():
 
     # PNG sizes needed by Tauri (overwrite existing placeholders)
     for sz, name in [(32, "32x32.png"), (128, "128x128.png"), (256, "128x128@2x.png")]:
-        draw_icon(sz).convert("RGB").save(os.path.join(icons, name))
+        draw_icon(sz).save(os.path.join(icons, name))
         print(f"  {name}")
 
     # 1024 source PNG (useful reference)
