@@ -1,0 +1,77 @@
+code,name,hours_per_week,room_type,class_type,frequency,lecturer_email
+MATH-101A,Mathematics - Section A (Y1),4,lecture,lecture,weekly,a.morrison@riverside.edu
+MATH-101B,Mathematics - Section B (Y1),4,lecture,lecture,weekly,c.obi@riverside.edu
+MATH-102A,Mathematics - Section A (Y2),4,lecture,lecture,weekly,a.morrison@riverside.edu
+MATH-102B,Mathematics - Section B (Y2),4,lecture,lecture,weekly,c.obi@riverside.edu
+MATH-103A,Mathematics - Section A (Y3),4,lecture,lecture,weekly,d.fitzpatrick@riverside.edu
+MATH-103B,Mathematics - Section B (Y3),4,lecture,lecture,weekly,e.larsson@riverside.edu
+MATH-104A,Mathematics - Section A (Y4),4,lecture,lecture,weekly,d.fitzpatrick@riverside.edu
+MATH-104B,Mathematics - Section B (Y4),4,lecture,lecture,weekly,e.larsson@riverside.edu
+MATH-105A,Mathematics - Section A (Y5),4,lecture,lecture,weekly,f.yeboah@riverside.edu
+MATH-105B,Mathematics - Section B (Y5),4,lecture,lecture,weekly,g.kowalski@riverside.edu
+ENG-101A,English - Section A (Y1),4,lecture,lecture,weekly,h.nakamura@riverside.edu
+ENG-101B,English - Section B (Y1),4,lecture,lecture,weekly,i.macdonald@riverside.edu
+ENG-102A,English - Section A (Y2),4,lecture,lecture,weekly,h.nakamura@riverside.edu
+ENG-102B,English - Section B (Y2),4,lecture,lecture,weekly,i.macdonald@riverside.edu
+ENG-103A,English - Section A (Y3),4,lecture,lecture,weekly,j.petrov@riverside.edu
+ENG-103B,English - Section B (Y3),4,lecture,lecture,weekly,k.singh@riverside.edu
+ENG-104A,English - Section A (Y4),4,lecture,lecture,weekly,j.petrov@riverside.edu
+ENG-104B,English - Section B (Y4),4,lecture,lecture,weekly,k.singh@riverside.edu
+ENG-105A,English - Section A (Y5),4,lecture,lecture,weekly,l.brennan@riverside.edu
+ENG-105B,English - Section B (Y5),4,lecture,lecture,weekly,m.thompson@riverside.edu
+SCI-101A,Science - Section A (Y1),3,lecture,lecture,weekly,n.owusu@riverside.edu
+SCI-101B,Science - Section B (Y1),3,lecture,lecture,weekly,o.fernandez@riverside.edu
+SCI-102A,Science - Section A (Y2),3,lecture,lecture,weekly,n.owusu@riverside.edu
+SCI-102B,Science - Section B (Y2),3,lecture,lecture,weekly,o.fernandez@riverside.edu
+SCI-103A,Science Lecture - Section A (Y3),2,lecture,lecture,weekly,p.ivanov@riverside.edu
+SCI-103AL,Science Lab - Section A (Y3),1,lab,lab,weekly,p.ivanov@riverside.edu
+SCI-103B,Science Lecture - Section B (Y3),2,lecture,lecture,weekly,q.delacroix@riverside.edu
+SCI-103BL,Science Lab - Section B (Y3),1,lab,lab,weekly,q.delacroix@riverside.edu
+SCI-104A,Science Lecture - Section A (Y4),2,lecture,lecture,weekly,r.kamau@riverside.edu
+SCI-104AL,Science Lab - Section A (Y4),1,lab,lab,weekly,r.kamau@riverside.edu
+SCI-104B,Science Lecture - Section B (Y4),2,lecture,lecture,weekly,s.whitfield@riverside.edu
+SCI-104BL,Science Lab - Section B (Y4),1,lab,lab,weekly,s.whitfield@riverside.edu
+SCI-105A,Science Lecture - Section A (Y5),2,lecture,lecture,weekly,t.andersen@riverside.edu
+SCI-105AL,Science Lab - Section A (Y5),1,lab,lab,weekly,t.andersen@riverside.edu
+SCI-105B,Science Lecture - Section B (Y5),2,lecture,lecture,weekly,u.hassan@riverside.edu
+SCI-105BL,Science Lab - Section B (Y5),1,lab,lab,weekly,u.hassan@riverside.edu
+HIST-101A,History - Section A (Y1),2,lecture,lecture,weekly,v.mensah@riverside.edu
+HIST-101B,History - Section B (Y1),2,lecture,lecture,weekly,w.johansson@riverside.edu
+HIST-102A,History - Section A (Y2),2,lecture,lecture,weekly,v.mensah@riverside.edu
+HIST-102B,History - Section B (Y2),2,lecture,lecture,weekly,w.johansson@riverside.edu
+HIST-103A,History - Section A (Y3),2,lecture,lecture,weekly,x.nkosi@riverside.edu
+HIST-103B,History - Section B (Y3),2,lecture,lecture,weekly,y.chaudhry@riverside.edu
+HIST-104A,History - Section A (Y4),2,lecture,lecture,weekly,x.nkosi@riverside.edu
+HIST-104B,History - Section B (Y4),2,lecture,lecture,weekly,y.chaudhry@riverside.edu
+HIST-105A,History - Section A (Y5),2,lecture,lecture,weekly,z.bergmann@riverside.edu
+HIST-105B,History - Section B (Y5),2,lecture,lecture,weekly,a.osei@riverside.edu
+GEO-101A,Geography - Section A (Y1),2,lecture,lecture,weekly,b.lombardi@riverside.edu
+GEO-101B,Geography - Section B (Y1),2,lecture,lecture,weekly,c.reinholt@riverside.edu
+GEO-102A,Geography - Section A (Y2),2,lecture,lecture,weekly,b.lombardi@riverside.edu
+GEO-102B,Geography - Section B (Y2),2,lecture,lecture,weekly,c.reinholt@riverside.edu
+GEO-103A,Geography - Section A (Y3),2,lecture,lecture,weekly,d.akello@riverside.edu
+GEO-103B,Geography - Section B (Y3),2,lecture,lecture,weekly,e.carlisle@riverside.edu
+GEO-104A,Geography - Section A (Y4),2,lecture,lecture,weekly,d.akello@riverside.edu
+GEO-104B,Geography - Section B (Y4),2,lecture,lecture,weekly,e.carlisle@riverside.edu
+GEO-105A,Geography - Section A (Y5),2,lecture,lecture,weekly,f.obrien@riverside.edu
+GEO-105B,Geography - Section B (Y5),2,lecture,lecture,weekly,g.nwosu@riverside.edu
+PE-101A,Physical Education - Section A (Y1),2,lecture,lecture,weekly,h.svensson@riverside.edu
+PE-101B,Physical Education - Section B (Y1),2,lecture,lecture,weekly,i.kozlov@riverside.edu
+PE-102A,Physical Education - Section A (Y2),2,lecture,lecture,weekly,h.svensson@riverside.edu
+PE-102B,Physical Education - Section B (Y2),2,lecture,lecture,weekly,i.kozlov@riverside.edu
+PE-103A,Physical Education - Section A (Y3),2,lecture,lecture,weekly,j.martins@riverside.edu
+PE-103B,Physical Education - Section B (Y3),2,lecture,lecture,weekly,k.hoffmann@riverside.edu
+PE-104A,Physical Education - Section A (Y4),2,lecture,lecture,weekly,j.martins@riverside.edu
+PE-104B,Physical Education - Section B (Y4),2,lecture,lecture,weekly,k.hoffmann@riverside.edu
+PE-105A,Physical Education - Section A (Y5),2,lecture,lecture,weekly,l.nkemdirim@riverside.edu
+PE-105B,Physical Education - Section B (Y5),2,lecture,lecture,weekly,m.johansson@riverside.edu
+CS-101A,Computer Studies - Section A (Y1),2,lab,lab,weekly,n.papadopoulos@riverside.edu
+CS-101B,Computer Studies - Section B (Y1),2,lab,lab,weekly,o.adeyemi@riverside.edu
+CS-102A,Computer Studies - Section A (Y2),2,lab,lab,weekly,n.papadopoulos@riverside.edu
+CS-102B,Computer Studies - Section B (Y2),2,lab,lab,weekly,o.adeyemi@riverside.edu
+CS-103A,Computer Studies - Section A (Y3),2,lab,lab,weekly,p.ramachandran@riverside.edu
+CS-103B,Computer Studies - Section B (Y3),2,lab,lab,weekly,q.dubois@riverside.edu
+CS-104A,Computer Studies - Section A (Y4),2,lab,lab,weekly,p.ramachandran@riverside.edu
+CS-104B,Computer Studies - Section B (Y4),2,lab,lab,weekly,q.dubois@riverside.edu
+CS-105A,Computer Studies - Section A (Y5),2,lab,lab,weekly,r.okonkwo@riverside.edu
+CS-105B,Computer Studies - Section B (Y5),2,lab,lab,weekly,s.korhonen@riverside.edu

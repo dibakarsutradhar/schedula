@@ -1,0 +1,101 @@
+name,email,available_days,max_hours_per_day,max_hours_per_week
+Prof. Alan Turing,a.turing@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Prof. Barbara Liskov,b.liskov@nit.edu,Mon;Tue;Thu;Fri,5,18
+Assoc. Prof. Carlos Mendez,c.mendez@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Danielle Park,d.park@nit.edu,Mon;Wed;Thu;Fri,4,14
+Prof. Edward Dijkstra,e.dijkstra@nit.edu,Mon;Tue;Wed;Thu,5,18
+Assoc. Prof. Fatima Al-Zahrawi,f.alzahrawi@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Gregory Chen,g.chen@nit.edu,Tue;Wed;Thu;Fri,4,14
+Prof. Helena Petrova,h.petrova@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Ibrahim Diallo,i.diallo@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Jasmine Okafor,j.okafor@nit.edu,Mon;Tue;Wed;Fri,3,12
+Prof. Klaus Hoffmann,k.hoffmann@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Layla Hassan,l.hassan@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Miguel Santos,m.santos@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Nadia Kovacs,n.kovacs@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Oluwaseun Adeyemi,o.adeyemi@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Priya Sharma,p.sharma@nit.edu,Tue;Wed;Thu;Fri,4,14
+Prof. Quentin Rousseau,q.rousseau@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Riya Bose,r.bose@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Samuel Osei,s.osei@nit.edu,Mon;Tue;Wed;Thu,3,12
+Prof. Takeshi Yamamoto,t.yamamoto@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Uma Krishnan,u.krishnan@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Victor Nkemdirim,v.nkemdirim@nit.edu,Mon;Tue;Wed;Fri,4,14
+Prof. Wendy Thornton,w.thornton@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Xiao Liu,x.liu@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Yusuf Abdullahi,y.abdullahi@nit.edu,Wed;Thu;Fri,3,12
+Prof. Zara Nielsen,z.nielsen@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Anton Volkov,a.volkov@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Blessing Eze,b.eze@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Catherine Mwangi,c.mwangi@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. David Johansson,d.johansson@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Elena Marchetti,e.marchetti@nit.edu,Mon;Tue;Wed;Fri,3,12
+Prof. Felix Owusu,f.owusu@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Gabriela Torres,g.torres@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Haruto Sato,h.sato@nit.edu,Tue;Wed;Thu;Fri,4,14
+Prof. Ingrid Larsen,i.larsen@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. James Achebe,j.achebe@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Kavita Reddy,k.reddy@nit.edu,Mon;Wed;Thu;Fri,3,12
+Prof. Laurent Moreau,l.moreau@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Marina Kuznetsova,m.kuznetsova@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Nnamdi Obi,n.obi@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Olga Steinberg,o.steinberg@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Patrick Flanagan,p.flanagan@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Qi Zhang,q.zhang@nit.edu,Tue;Wed;Thu;Fri,3,12
+Prof. Renata Kowalski,r.kowalski@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Siddharth Mehta,s.mehta@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Tunde Afolabi,t.afolabi@nit.edu,Mon;Tue;Wed;Fri,4,14
+Prof. Ursula Braun,u.braun@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Valentin Durand,v.durand@nit.edu,Mon;Tue;Thu;Fri,4,18
+Asst. Prof. Wanjiru Kamau,w.kamau@nit.edu,Mon;Tue;Wed;Thu,3,12
+Prof. Xi Wang,x.wang@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Yolanda Ferreira,y.ferreira@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Zdravko Petrovic,z.petrovic@nit.edu,Wed;Thu;Fri,3,12
+Prof. Amara Diop,a.diop@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Boris Nikolaev,b.nikolaev@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Chioma Okonkwo,c.okonkwo@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Dimitri Papadopoulos,d.papadopoulos@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Esther Nakamura,e.nakamura@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Finn Andersen,f.andersen@nit.edu,Mon;Tue;Wed;Fri,3,12
+Prof. Grace Obi,g.obi@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Hana Novak,h.novak@nit.edu,Mon;Tue;Thu;Fri,4,18
+Asst. Prof. Ignacio Reyes,i.reyes@nit.edu,Tue;Wed;Thu;Fri,4,14
+Prof. Jing Li,j.li@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Kofi Asante,k.asante@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Lena Bergstrom,l.bergstrom@nit.edu,Mon;Wed;Thu;Fri,3,12
+Prof. Marco Esposito,m.esposito@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Nkechi Eze,n.eze@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Omar Khalil,o.khalil@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Petra Hoffmann,p.hoffmann@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Rashid Al-Amin,r.alamin@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Sofia Lombardi,s.lombardi@nit.edu,Mon;Tue;Wed;Fri,3,12
+Prof. Thomas Brennan,t.brennan@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Uche Nwosu,u.nwosu@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Valentina Cruz,v.cruz@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. William Achampong,w.achampong@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Xiumei Chen,x.chen@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Yemi Adebayo,y.adebayo@nit.edu,Tue;Wed;Thu;Fri,3,12
+Prof. Zoltan Fekete,z.fekete@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Alicia Morales,a.morales@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Babatunde Salami,b.salami@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Celine Dubois,c.dubois@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Deepak Nair,d.nair@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Emeka Okafor,e.okafor@nit.edu,Mon;Tue;Wed;Fri,3,12
+Prof. Florence Mensah,f.mensah@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Gunnar Eriksson,g.eriksson@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Hiroshi Tanaka,h.tanaka@nit.edu,Tue;Wed;Thu;Fri,4,14
+Prof. Ifeoma Chukwu,i.chukwu@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Jakub Novotny,j.novotny@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Kiran Patel,k.patel@nit.edu,Mon;Wed;Thu;Fri,3,12
+Prof. Lior Ben-David,l.bendavid@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Malia Fonoti,m.fonoti@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Nikita Sorokin,n.sorokin@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Obiageli Nwofor,o.nwofor@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Pawel Wisnewski,p.wisnewski@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Qiuyue Sun,q.sun@nit.edu,Tue;Wed;Thu;Fri,3,12
+Prof. Ramona Vasquez,r.vasquez@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Sipho Dlamini,s.dlamini@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Tomoko Ishida,t.ishida@nit.edu,Mon;Tue;Wed;Fri,4,14
+Prof. Umar Farouk,u.farouk@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Violeta Ionescu,v.ionescu@nit.edu,Mon;Tue;Thu;Fri,4,18
+Asst. Prof. Winston Darko,w.darko@nit.edu,Mon;Tue;Wed;Thu,3,12

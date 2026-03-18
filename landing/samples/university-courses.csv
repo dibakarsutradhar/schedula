@@ -1,0 +1,152 @@
+code,name,hours_per_week,room_type,class_type,frequency,lecturer_email
+FNDN-101,Foundation Mathematics,4,lecture,lecture,weekly,a.turing@nit.edu
+FNDN-102,Foundation Physics,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+FNDN-102L,Foundation Physics Lab,2,lab,lab,weekly,k.hoffmann@nit.edu
+FNDN-103,Foundation Chemistry,3,lecture,lecture,weekly,n.kovacs@nit.edu
+FNDN-103L,Foundation Chemistry Lab,2,lab,lab,weekly,n.kovacs@nit.edu
+FNDN-104,Foundation Computing,3,lecture,lecture,weekly,b.liskov@nit.edu
+FNDN-104L,Foundation Computing Lab,2,lab,lab,weekly,b.liskov@nit.edu
+FNDN-105,Academic Writing and Communication,2,lecture,lecture,weekly,w.thornton@nit.edu
+FNDN-106,Introduction to Engineering,2,lecture,lecture,weekly,q.rousseau@nit.edu
+CS-101,Introduction to Programming,3,lecture,lecture,weekly,a.turing@nit.edu
+CS-101L,Introduction to Programming Lab,2,lab,lab,weekly,g.chen@nit.edu
+CS-102,Discrete Mathematics for CS,3,lecture,lecture,weekly,b.liskov@nit.edu
+CS-201,Data Structures and Algorithms,3,lecture,lecture,weekly,b.liskov@nit.edu
+CS-201T,Data Structures Tutorial,1,lecture,tutorial,weekly,d.park@nit.edu
+CS-202,Computer Architecture,3,lecture,lecture,weekly,c.mendez@nit.edu
+CS-202L,Computer Architecture Lab,2,lab,lab,weekly,g.chen@nit.edu
+CS-203,Operating Systems,3,lecture,lecture,weekly,e.dijkstra@nit.edu
+CS-203L,Operating Systems Lab,2,lab,lab,weekly,j.okafor@nit.edu
+CS-301,Database Systems,3,lecture,lecture,weekly,c.mendez@nit.edu
+CS-301L,Database Systems Lab,2,lab,lab,weekly,d.park@nit.edu
+CS-302,Computer Networks,3,lecture,lecture,weekly,e.dijkstra@nit.edu
+CS-302L,Computer Networks Lab,2,lab,lab,weekly,j.okafor@nit.edu
+CS-303,Software Engineering,3,lecture,lecture,weekly,f.alzahrawi@nit.edu
+CS-303T,Software Engineering Tutorial,1,lecture,tutorial,weekly,s.osei@nit.edu
+CS-304,Artificial Intelligence,3,lecture,lecture,weekly,a.turing@nit.edu
+CS-304L,Artificial Intelligence Lab,2,lab,lab,weekly,g.chen@nit.edu
+CS-401,Machine Learning,3,lecture,lecture,weekly,b.liskov@nit.edu
+CS-401L,Machine Learning Lab,2,lab,lab,weekly,d.park@nit.edu
+CS-402,Distributed Systems,3,lecture,lecture,weekly,e.dijkstra@nit.edu
+CS-403,Compiler Design,3,lecture,lecture,biweekly,c.mendez@nit.edu
+CS-404,Computer Vision,3,lecture,lecture,biweekly,f.alzahrawi@nit.edu
+CS-404L,Computer Vision Lab,2,lab,lab,biweekly,g.chen@nit.edu
+CS-501,Advanced Algorithms,3,lecture,lecture,weekly,a.turing@nit.edu
+CS-502,Deep Learning,3,lecture,lecture,weekly,b.liskov@nit.edu
+CS-502L,Deep Learning Lab,2,lab,lab,weekly,d.park@nit.edu
+CS-503,Natural Language Processing,3,lecture,lecture,biweekly,f.alzahrawi@nit.edu
+CS-601,Research Methods in CS,2,lecture,lecture,weekly,e.dijkstra@nit.edu
+CS-602,Graduate Seminar in CS,2,lecture,lecture,biweekly,a.turing@nit.edu
+EE-101,Circuit Theory,3,lecture,lecture,weekly,h.petrova@nit.edu
+EE-101L,Circuit Theory Lab,2,lab,lab,weekly,v.nkemdirim@nit.edu
+EE-102,Engineering Mathematics,4,lecture,lecture,weekly,i.diallo@nit.edu
+EE-201,Electronics I,3,lecture,lecture,weekly,h.petrova@nit.edu
+EE-201L,Electronics I Lab,2,lab,lab,weekly,v.nkemdirim@nit.edu
+EE-202,Signals and Systems,3,lecture,lecture,weekly,i.diallo@nit.edu
+EE-202T,Signals and Systems Tutorial,1,lecture,tutorial,weekly,j.okafor@nit.edu
+EE-301,Digital Electronics,3,lecture,lecture,weekly,h.petrova@nit.edu
+EE-301L,Digital Electronics Lab,2,lab,lab,weekly,v.nkemdirim@nit.edu
+EE-302,Control Systems,3,lecture,lecture,weekly,i.diallo@nit.edu
+EE-303,Electromagnetics,3,lecture,lecture,weekly,t.yamamoto@nit.edu
+EE-401,Power Systems,3,lecture,lecture,weekly,h.petrova@nit.edu
+EE-402,Communication Systems,3,lecture,lecture,weekly,i.diallo@nit.edu
+EE-402L,Communication Systems Lab,2,lab,lab,weekly,v.nkemdirim@nit.edu
+EE-403,VLSI Design,3,lecture,lecture,biweekly,t.yamamoto@nit.edu
+EE-403L,VLSI Design Lab,2,lab,lab,biweekly,v.nkemdirim@nit.edu
+EE-501,Advanced Power Electronics,3,lecture,lecture,weekly,h.petrova@nit.edu
+EE-601,Graduate Seminar in EE,2,lecture,lecture,biweekly,t.yamamoto@nit.edu
+ME-101,Engineering Mechanics,3,lecture,lecture,weekly,q.rousseau@nit.edu
+ME-101T,Engineering Mechanics Tutorial,1,lecture,tutorial,weekly,r.bose@nit.edu
+ME-102,Thermodynamics I,3,lecture,lecture,weekly,z.nielsen@nit.edu
+ME-201,Thermodynamics II,3,lecture,lecture,weekly,z.nielsen@nit.edu
+ME-202,Fluid Mechanics,3,lecture,lecture,weekly,q.rousseau@nit.edu
+ME-202L,Fluid Mechanics Lab,2,lab,lab,weekly,r.bose@nit.edu
+ME-301,Machine Design,3,lecture,lecture,weekly,q.rousseau@nit.edu
+ME-302,Heat Transfer,3,lecture,lecture,weekly,z.nielsen@nit.edu
+ME-302L,Heat Transfer Lab,2,lab,lab,weekly,r.bose@nit.edu
+ME-401,Manufacturing Processes,3,lecture,lecture,weekly,q.rousseau@nit.edu
+ME-401L,Manufacturing Processes Lab,2,lab,lab,weekly,r.bose@nit.edu
+ME-402,Robotics and Automation,3,lecture,lecture,biweekly,z.nielsen@nit.edu
+ME-501,Advanced Thermodynamics,3,lecture,lecture,weekly,z.nielsen@nit.edu
+ME-601,Graduate Seminar in ME,2,lecture,lecture,biweekly,q.rousseau@nit.edu
+PHYS-101,Classical Mechanics,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+PHYS-101T,Classical Mechanics Tutorial,1,lecture,tutorial,weekly,u.krishnan@nit.edu
+PHYS-102,Waves and Optics,3,lecture,lecture,weekly,l.hassan@nit.edu
+PHYS-201,Electromagnetism,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+PHYS-202,Quantum Mechanics I,3,lecture,lecture,weekly,l.hassan@nit.edu
+PHYS-202T,Quantum Mechanics Tutorial,1,lecture,tutorial,weekly,u.krishnan@nit.edu
+PHYS-301,Quantum Mechanics II,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+PHYS-302,Statistical Mechanics,3,lecture,lecture,weekly,l.hassan@nit.edu
+PHYS-401,Solid State Physics,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+PHYS-402,Nuclear Physics,3,lecture,lecture,biweekly,l.hassan@nit.edu
+PHYS-501,Advanced Quantum Field Theory,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+PHYS-601,Research Seminar in Physics,2,lecture,lecture,biweekly,l.hassan@nit.edu
+MATH-101,Calculus I,4,lecture,lecture,weekly,t.yamamoto@nit.edu
+MATH-101T,Calculus I Tutorial,1,lecture,tutorial,weekly,w.kamau@nit.edu
+MATH-102,Calculus II,4,lecture,lecture,weekly,u.krishnan@nit.edu
+MATH-201,Linear Algebra,3,lecture,lecture,weekly,t.yamamoto@nit.edu
+MATH-201T,Linear Algebra Tutorial,1,lecture,tutorial,weekly,w.kamau@nit.edu
+MATH-202,Probability and Statistics,3,lecture,lecture,weekly,u.krishnan@nit.edu
+MATH-301,Real Analysis,3,lecture,lecture,weekly,t.yamamoto@nit.edu
+MATH-302,Differential Equations,3,lecture,lecture,weekly,u.krishnan@nit.edu
+MATH-401,Abstract Algebra,3,lecture,lecture,weekly,t.yamamoto@nit.edu
+MATH-402,Numerical Methods,3,lecture,lecture,weekly,u.krishnan@nit.edu
+MATH-402L,Numerical Methods Lab,2,lab,lab,weekly,w.kamau@nit.edu
+MATH-501,Advanced Analysis,3,lecture,lecture,weekly,t.yamamoto@nit.edu
+MATH-601,Research Seminar in Mathematics,2,lecture,lecture,biweekly,u.krishnan@nit.edu
+CHEM-101,General Chemistry I,3,lecture,lecture,weekly,n.kovacs@nit.edu
+CHEM-101L,General Chemistry I Lab,2,lab,lab,weekly,p.sharma@nit.edu
+CHEM-102,General Chemistry II,3,lecture,lecture,weekly,o.adeyemi@nit.edu
+CHEM-102L,General Chemistry II Lab,2,lab,lab,weekly,p.sharma@nit.edu
+CHEM-201,Organic Chemistry I,3,lecture,lecture,weekly,n.kovacs@nit.edu
+CHEM-201L,Organic Chemistry I Lab,3,lab,lab,weekly,p.sharma@nit.edu
+CHEM-202,Inorganic Chemistry,3,lecture,lecture,weekly,o.adeyemi@nit.edu
+CHEM-301,Organic Chemistry II,3,lecture,lecture,weekly,n.kovacs@nit.edu
+CHEM-301L,Organic Chemistry II Lab,3,lab,lab,weekly,p.sharma@nit.edu
+CHEM-302,Physical Chemistry,3,lecture,lecture,weekly,o.adeyemi@nit.edu
+CHEM-401,Biochemistry,3,lecture,lecture,weekly,n.kovacs@nit.edu
+CHEM-401L,Biochemistry Lab,2,lab,lab,weekly,p.sharma@nit.edu
+CHEM-501,Advanced Organic Synthesis,3,lecture,lecture,weekly,n.kovacs@nit.edu
+CHEM-601,Research Seminar in Chemistry,2,lecture,lecture,biweekly,o.adeyemi@nit.edu
+BIO-101,Cell Biology,3,lecture,lecture,weekly,w.thornton@nit.edu
+BIO-101L,Cell Biology Lab,2,lab,lab,weekly,x.liu@nit.edu
+BIO-102,Genetics,3,lecture,lecture,weekly,z.nielsen@nit.edu
+BIO-201,Molecular Biology,3,lecture,lecture,weekly,w.thornton@nit.edu
+BIO-201L,Molecular Biology Lab,2,lab,lab,weekly,x.liu@nit.edu
+BIO-202,Ecology and Evolution,3,lecture,lecture,weekly,z.nielsen@nit.edu
+BIO-301,Biochemistry for Biologists,3,lecture,lecture,weekly,w.thornton@nit.edu
+BIO-302,Physiology,3,lecture,lecture,weekly,z.nielsen@nit.edu
+BIO-302L,Physiology Lab,2,lab,lab,weekly,x.liu@nit.edu
+BIO-401,Neuroscience,3,lecture,lecture,biweekly,w.thornton@nit.edu
+BIO-501,Advanced Molecular Biology,3,lecture,lecture,weekly,w.thornton@nit.edu
+BIO-601,Research Seminar in Biology,2,lecture,lecture,biweekly,z.nielsen@nit.edu
+MGT-101,Principles of Management,3,lecture,lecture,weekly,c.mwangi@nit.edu
+MGT-102,Microeconomics,3,lecture,lecture,weekly,d.johansson@nit.edu
+MGT-201,Marketing Management,3,lecture,lecture,weekly,c.mwangi@nit.edu
+MGT-202,Financial Accounting,3,lecture,lecture,weekly,d.johansson@nit.edu
+MGT-202T,Financial Accounting Tutorial,1,lecture,tutorial,weekly,e.marchetti@nit.edu
+MGT-301,Corporate Finance,3,lecture,lecture,weekly,c.mwangi@nit.edu
+MGT-302,Operations Management,3,lecture,lecture,weekly,d.johansson@nit.edu
+MGT-401,Strategic Management,3,lecture,lecture,weekly,c.mwangi@nit.edu
+MGT-402,Entrepreneurship,2,lecture,lecture,biweekly,d.johansson@nit.edu
+MGT-501,Advanced Corporate Strategy,3,lecture,lecture,weekly,c.mwangi@nit.edu
+MGT-601,Research Seminar in Management,2,lecture,lecture,biweekly,d.johansson@nit.edu
+HUM-101,Introduction to Philosophy,2,lecture,lecture,weekly,f.owusu@nit.edu
+HUM-102,World History,2,lecture,lecture,weekly,g.torres@nit.edu
+HUM-201,Ethics in Technology,2,lecture,lecture,weekly,f.owusu@nit.edu
+HUM-202,Comparative Literature,2,lecture,lecture,weekly,g.torres@nit.edu
+HUM-301,Political Science,2,lecture,lecture,weekly,f.owusu@nit.edu
+HUM-302,Sociology,2,lecture,lecture,weekly,g.torres@nit.edu
+HUM-401,Philosophy of Science,2,lecture,lecture,biweekly,f.owusu@nit.edu
+HUM-501,Advanced Research in Humanities,3,lecture,lecture,weekly,f.owusu@nit.edu
+HUM-601,Doctoral Seminar in Humanities,2,lecture,lecture,biweekly,g.torres@nit.edu
+PHD-901,Doctoral Research Methods,2,lecture,lecture,weekly,a.turing@nit.edu
+PHD-902,Advanced Topics in CS,2,lecture,lecture,biweekly,b.liskov@nit.edu
+PHD-903,Advanced Topics in EE,2,lecture,lecture,biweekly,h.petrova@nit.edu
+PHD-904,Advanced Topics in Mechanical Eng,2,lecture,lecture,biweekly,q.rousseau@nit.edu
+PHD-905,Advanced Topics in Physics,2,lecture,lecture,biweekly,k.hoffmann@nit.edu
+PHD-906,Advanced Topics in Mathematics,2,lecture,lecture,biweekly,t.yamamoto@nit.edu
+PHD-907,Advanced Topics in Chemistry,2,lecture,lecture,biweekly,n.kovacs@nit.edu
+PHD-908,Advanced Topics in Biology,2,lecture,lecture,biweekly,w.thornton@nit.edu
+PHD-909,Academic Publishing and Grant Writing,2,lecture,lecture,biweekly,c.mwangi@nit.edu
+PHD-910,Interdisciplinary Research Colloquium,2,lecture,lecture,biweekly,f.owusu@nit.edu

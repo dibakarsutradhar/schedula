@@ -1,0 +1,11 @@
+name,email,available_days,max_hours_per_day,max_hours_per_week
+Margaret Collins,m.collins@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16
+James Okafor,j.okafor@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Susan Hartley,s.hartley@greenwood.edu,Mon;Tue;Wed;Thu;Fri,3,14
+David Patel,d.patel@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Rachel Nguyen,r.nguyen@greenwood.edu,Mon;Tue;Wed;Thu;Fri,3,12
+Thomas Brennan,t.brennan@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Linda Schreiber,l.schreiber@greenwood.edu,Mon;Tue;Wed;Thu;Fri,3,14
+Kevin Adeyemi,k.adeyemi@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Patricia Walsh,p.walsh@greenwood.edu,Mon;Tue;Wed;Thu;Fri,3,12
+George Thornton,g.thornton@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16

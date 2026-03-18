@@ -1,0 +1,57 @@
+name,capacity,room_type,available_days
+Classroom A01,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A02,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A03,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A04,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A05,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A06,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A07,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A08,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A09,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A10,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B01,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B02,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B03,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B04,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B05,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B06,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B07,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B08,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B09,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B10,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C01,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C02,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C03,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C04,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C05,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C06,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C07,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C08,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C09,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C10,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D01,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D02,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D03,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D04,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D05,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D06,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D07,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D08,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D09,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D10,50,lecture,Mon;Tue;Wed;Thu;Fri
+Science Lab 1,30,lab,Mon;Tue;Wed;Thu;Fri
+Science Lab 2,30,lab,Mon;Tue;Wed;Thu;Fri
+Science Lab 3,30,lab,Mon;Tue;Wed;Thu;Fri
+Science Lab 4,30,lab,Mon;Tue;Wed;Thu;Fri
+Science Lab 5,30,lab,Mon;Tue;Wed;Thu;Fri
+Science Lab 6,30,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab 1,35,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab 2,35,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab 3,35,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab 4,35,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab 5,35,lab,Mon;Tue;Wed;Thu;Fri
+Gymnasium North,100,lecture,Mon;Tue;Wed;Thu;Fri
+Gymnasium South,100,lecture,Mon;Tue;Wed;Thu;Fri
+Gymnasium East,100,lecture,Mon;Tue;Wed;Thu;Fri
+Assembly Hall North,150,lecture,Mon;Tue;Wed;Thu;Fri
+Assembly Hall South,150,lecture,Mon;Tue;Wed;Thu;Fri

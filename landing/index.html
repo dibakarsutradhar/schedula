@@ -946,6 +946,7 @@
     <li><a href="#how">How it works</a></li>
     <li><a href="#sync">Sync</a></li>
     <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#samples">Samples</a></li>
     <li><a href="#install">Install</a></li>
     <li><a href="#oss">Download</a></li>
   </ul>
@@ -1739,6 +1740,738 @@
     </div><!-- /pricing-cards -->
   </div>
 </section>
+
+
+
+<!-- ─── SAMPLE DATASETS ──────────────────────────────────────────────────────── -->
+<section id="samples" aria-labelledby="samples-heading">
+  <div class="section-header">
+    <h2 id="samples-heading" class="section-title on-dark">Try it with real data</h2>
+    <p class="section-sub on-dark">
+      Download a ready-made dataset, import it into Schedula, and generate a full timetable
+      in under two minutes — no manual entry required.
+    </p>
+  </div>
+
+  <div class="samples-grid">
+
+    <!-- ── Small School ──────────────────────────────────────────────────────── -->
+    <div class="sample-card">
+      <div class="sample-card-header">
+        <span class="sample-icon">🏫</span>
+        <div>
+          <h3 class="sample-name">Greenwood Academy</h3>
+          <p class="sample-type">Small School</p>
+        </div>
+      </div>
+      <div class="sample-stats">
+        <div class="sample-stat"><span class="stat-val">500</span><span class="stat-lbl">Students</span></div>
+        <div class="sample-stat"><span class="stat-val">10</span><span class="stat-lbl">Teachers</span></div>
+        <div class="sample-stat"><span class="stat-val">13</span><span class="stat-lbl">Rooms</span></div>
+        <div class="sample-stat"><span class="stat-val">38</span><span class="stat-lbl">Courses</span></div>
+      </div>
+      <p class="sample-desc">
+        Classes 1–5 (A &amp; B sections), 7 subjects including science lab and computer studies, 8-hour school day.
+      </p>
+      <div class="sample-downloads">
+        <button class="sample-dl-btn" onclick="downloadSample('small','lecturers','greenwood-lecturers.csv')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          Lecturers
+        </button>
+        <button class="sample-dl-btn" onclick="downloadSample('small','rooms','greenwood-rooms.csv')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          Rooms
+        </button>
+        <button class="sample-dl-btn" onclick="downloadSample('small','courses','greenwood-courses.csv')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          Courses
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Large School ──────────────────────────────────────────────────────── -->
+    <div class="sample-card sample-card--featured">
+      <div class="sample-card-header">
+        <span class="sample-icon">🏛</span>
+        <div>
+          <h3 class="sample-name">Riverside Comprehensive</h3>
+          <p class="sample-type">Large School</p>
+        </div>
+      </div>
+      <div class="sample-stats">
+        <div class="sample-stat"><span class="stat-val">5,000</span><span class="stat-lbl">Students</span></div>
+        <div class="sample-stat"><span class="stat-val">50</span><span class="stat-lbl">Teachers</span></div>
+        <div class="sample-stat"><span class="stat-val">56</span><span class="stat-lbl">Rooms</span></div>
+        <div class="sample-stat"><span class="stat-val">76</span><span class="stat-lbl">Courses</span></div>
+      </div>
+      <p class="sample-desc">
+        100 classes across 5 year groups, split A/B sections per subject, science &amp; computer labs, assembly halls.
+      </p>
+      <div class="sample-downloads">
+        <button class="sample-dl-btn" onclick="downloadSample('large','lecturers','riverside-lecturers.csv')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          Lecturers
+        </button>
+        <button class="sample-dl-btn" onclick="downloadSample('large','rooms','riverside-rooms.csv')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          Rooms
+        </button>
+        <button class="sample-dl-btn" onclick="downloadSample('large','courses','riverside-courses.csv')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          Courses
+        </button>
+      </div>
+    </div>
+
+    <!-- ── University ────────────────────────────────────────────────────────── -->
+    <div class="sample-card">
+      <div class="sample-card-header">
+        <span class="sample-icon">🎓</span>
+        <div>
+          <h3 class="sample-name">National Institute of Technology</h3>
+          <p class="sample-type">University</p>
+        </div>
+      </div>
+      <div class="sample-stats">
+        <div class="sample-stat"><span class="stat-val">50k</span><span class="stat-lbl">Students</span></div>
+        <div class="sample-stat"><span class="stat-val">100</span><span class="stat-lbl">Lecturers</span></div>
+        <div class="sample-stat"><span class="stat-val">75</span><span class="stat-lbl">Rooms</span></div>
+        <div class="sample-stat"><span class="stat-val">151</span><span class="stat-lbl">Courses</span></div>
+      </div>
+      <p class="sample-desc">
+        9 departments · Foundation → PhD · 10-hour dynamic schedule · lecture halls, seminar rooms, research labs &amp; computer labs.
+      </p>
+      <div class="sample-downloads">
+        <button class="sample-dl-btn" onclick="downloadSample('uni','lecturers','nit-lecturers.csv')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          Lecturers
+        </button>
+        <button class="sample-dl-btn" onclick="downloadSample('uni','rooms','nit-rooms.csv')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          Rooms
+        </button>
+        <button class="sample-dl-btn" onclick="downloadSample('uni','courses','nit-courses.csv')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zm-7 2h14v2H5v-2z"/></svg>
+          Courses
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="samples-howto">
+    <div class="howto-step"><span class="howto-num">1</span><span>Download the 3 CSV files for your chosen dataset</span></div>
+    <div class="howto-arrow">→</div>
+    <div class="howto-step"><span class="howto-num">2</span><span>Open Schedula → go to <strong>Import</strong> in the sidebar</span></div>
+    <div class="howto-arrow">→</div>
+    <div class="howto-step"><span class="howto-num">3</span><span>Import Lecturers, then Rooms, then Courses</span></div>
+    <div class="howto-arrow">→</div>
+    <div class="howto-step"><span class="howto-num">4</span><span>Create student batches, hit <strong>Generate Schedule</strong></span></div>
+  </div>
+</section>
+
+<script>
+  // ── Sample dataset downloads ──────────────────────────────────────────────────
+  const SAMPLE_DATASETS = {
+    small: {
+      lecturers: `name,email,available_days,max_hours_per_day,max_hours_per_week
+Margaret Collins,m.collins@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16
+James Okafor,j.okafor@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Susan Hartley,s.hartley@greenwood.edu,Mon;Tue;Wed;Thu;Fri,3,14
+David Patel,d.patel@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Rachel Nguyen,r.nguyen@greenwood.edu,Mon;Tue;Wed;Thu;Fri,3,12
+Thomas Brennan,t.brennan@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Linda Schreiber,l.schreiber@greenwood.edu,Mon;Tue;Wed;Thu;Fri,3,14
+Kevin Adeyemi,k.adeyemi@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Patricia Walsh,p.walsh@greenwood.edu,Mon;Tue;Wed;Thu;Fri,3,12
+George Thornton,g.thornton@greenwood.edu,Mon;Tue;Wed;Thu;Fri,4,16`,
+      rooms:     `name,capacity,room_type,available_days
+Classroom 101,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 102,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 103,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 104,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 105,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 106,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 107,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 108,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 109,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 110,50,lecture,Mon;Tue;Wed;Thu;Fri
+Science Lab,30,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab,35,lab,Mon;Tue;Wed;Thu;Fri
+Gymnasium,100,lecture,Mon;Tue;Wed;Thu;Fri`,
+      courses:   `code,name,hours_per_week,room_type,class_type,frequency,lecturer_email
+MATH-101,Mathematics Year 1,4,lecture,lecture,weekly,m.collins@greenwood.edu
+MATH-102,Mathematics Year 2,4,lecture,lecture,weekly,m.collins@greenwood.edu
+MATH-103,Mathematics Year 3,4,lecture,lecture,weekly,j.okafor@greenwood.edu
+MATH-104,Mathematics Year 4,4,lecture,lecture,weekly,j.okafor@greenwood.edu
+MATH-105,Mathematics Year 5,4,lecture,lecture,weekly,j.okafor@greenwood.edu
+ENG-101,English Year 1,4,lecture,lecture,weekly,s.hartley@greenwood.edu
+ENG-102,English Year 2,4,lecture,lecture,weekly,s.hartley@greenwood.edu
+ENG-103,English Year 3,4,lecture,lecture,weekly,d.patel@greenwood.edu
+ENG-104,English Year 4,4,lecture,lecture,weekly,d.patel@greenwood.edu
+ENG-105,English Year 5,4,lecture,lecture,weekly,d.patel@greenwood.edu
+SCI-101,Science Year 1,3,lecture,lecture,weekly,r.nguyen@greenwood.edu
+SCI-102,Science Year 2,3,lecture,lecture,weekly,r.nguyen@greenwood.edu
+SCI-103,Science Year 3,2,lecture,lecture,weekly,t.brennan@greenwood.edu
+SCI-103L,Science Lab Year 3,1,lab,lab,weekly,t.brennan@greenwood.edu
+SCI-104,Science Year 4,2,lecture,lecture,weekly,t.brennan@greenwood.edu
+SCI-104L,Science Lab Year 4,1,lab,lab,weekly,t.brennan@greenwood.edu
+SCI-105,Science Year 5,2,lecture,lecture,weekly,t.brennan@greenwood.edu
+SCI-105L,Science Lab Year 5,1,lab,lab,weekly,t.brennan@greenwood.edu
+HIST-101,History Year 1,2,lecture,lecture,weekly,l.schreiber@greenwood.edu
+HIST-102,History Year 2,2,lecture,lecture,weekly,l.schreiber@greenwood.edu
+HIST-103,History Year 3,2,lecture,lecture,weekly,l.schreiber@greenwood.edu
+HIST-104,History Year 4,2,lecture,lecture,weekly,l.schreiber@greenwood.edu
+HIST-105,History Year 5,2,lecture,lecture,weekly,l.schreiber@greenwood.edu
+GEO-101,Geography Year 1,2,lecture,lecture,weekly,k.adeyemi@greenwood.edu
+GEO-102,Geography Year 2,2,lecture,lecture,weekly,k.adeyemi@greenwood.edu
+GEO-103,Geography Year 3,2,lecture,lecture,weekly,k.adeyemi@greenwood.edu
+GEO-104,Geography Year 4,2,lecture,lecture,weekly,k.adeyemi@greenwood.edu
+GEO-105,Geography Year 5,2,lecture,lecture,weekly,k.adeyemi@greenwood.edu
+PE-101,Physical Education Year 1,2,lecture,lecture,weekly,p.walsh@greenwood.edu
+PE-102,Physical Education Year 2,2,lecture,lecture,weekly,p.walsh@greenwood.edu
+PE-103,Physical Education Year 3,2,lecture,lecture,weekly,p.walsh@greenwood.edu
+PE-104,Physical Education Year 4,2,lecture,lecture,weekly,p.walsh@greenwood.edu
+PE-105,Physical Education Year 5,2,lecture,lecture,weekly,p.walsh@greenwood.edu
+CS-101,Computer Studies Year 1,2,lab,lab,weekly,g.thornton@greenwood.edu
+CS-102,Computer Studies Year 2,2,lab,lab,weekly,g.thornton@greenwood.edu
+CS-103,Computer Studies Year 3,2,lab,lab,weekly,g.thornton@greenwood.edu
+CS-104,Computer Studies Year 4,2,lab,lab,weekly,g.thornton@greenwood.edu
+CS-105,Computer Studies Year 5,2,lab,lab,weekly,g.thornton@greenwood.edu`,
+    },
+    large: {
+      lecturers: `name,email,available_days,max_hours_per_day,max_hours_per_week
+Andrew Morrison,a.morrison@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Claire Obi,c.obi@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Daniel Fitzpatrick,d.fitzpatrick@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Emma Larsson,e.larsson@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Frank Yeboah,f.yeboah@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Grace Kowalski,g.kowalski@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Henry Nakamura,h.nakamura@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Isla MacDonald,i.macdonald@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Jack Petrov,j.petrov@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Karen Singh,k.singh@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Liam Brennan,l.brennan@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Maya Thompson,m.thompson@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Nathan Owusu,n.owusu@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Olivia Fernandez,o.fernandez@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Paul Ivanov,p.ivanov@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Quinn Delacroix,q.delacroix@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Rose Kamau,r.kamau@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Samuel Whitfield,s.whitfield@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Tara Andersen,t.andersen@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Umar Hassan,u.hassan@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Victor Mensah,v.mensah@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Wendy Johansson,w.johansson@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Xavier Nkosi,x.nkosi@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Yasmin Chaudhry,y.chaudhry@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Zoe Bergmann,z.bergmann@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Aaron Osei,a.osei@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Beatrice Lombardi,b.lombardi@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Chris Reinholt,c.reinholt@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Diana Akello,d.akello@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Edward Carlisle,e.carlisle@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Fiona O'Brien,f.obrien@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Gerald Nwosu,g.nwosu@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Hannah Svensson,h.svensson@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Ivan Kozlov,i.kozlov@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Julia Martins,j.martins@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Karl Hoffmann,k.hoffmann@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Laura Nkemdirim,l.nkemdirim@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Marcus Johansson,m.johansson@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Nina Papadopoulos,n.papadopoulos@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Oscar Adeyemi,o.adeyemi@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Priya Ramachandran,p.ramachandran@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Quentin Dubois,q.dubois@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Rita Okonkwo,r.okonkwo@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Stefan Korhonen,s.korhonen@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Theresa Goldberg,t.goldberg@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Ulrich Bauer,u.bauer@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Valeria Cruz,v.cruz@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+William Acheampong,w.acheampong@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Xenia Volkov,x.volkov@riverside.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Yusuf Al-Rashid,y.alrashid@riverside.edu,Mon;Tue;Wed;Thu;Fri,4,16`,
+      rooms:     `name,capacity,room_type,available_days
+Classroom A01,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A02,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A03,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A04,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A05,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A06,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A07,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A08,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A09,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom A10,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B01,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B02,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B03,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B04,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B05,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B06,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B07,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B08,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B09,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom B10,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C01,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C02,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C03,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C04,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C05,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C06,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C07,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C08,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C09,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom C10,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D01,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D02,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D03,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D04,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D05,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D06,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D07,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D08,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D09,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom D10,50,lecture,Mon;Tue;Wed;Thu;Fri
+Science Lab 1,30,lab,Mon;Tue;Wed;Thu;Fri
+Science Lab 2,30,lab,Mon;Tue;Wed;Thu;Fri
+Science Lab 3,30,lab,Mon;Tue;Wed;Thu;Fri
+Science Lab 4,30,lab,Mon;Tue;Wed;Thu;Fri
+Science Lab 5,30,lab,Mon;Tue;Wed;Thu;Fri
+Science Lab 6,30,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab 1,35,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab 2,35,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab 3,35,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab 4,35,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab 5,35,lab,Mon;Tue;Wed;Thu;Fri
+Gymnasium North,100,lecture,Mon;Tue;Wed;Thu;Fri
+Gymnasium South,100,lecture,Mon;Tue;Wed;Thu;Fri
+Gymnasium East,100,lecture,Mon;Tue;Wed;Thu;Fri
+Assembly Hall North,150,lecture,Mon;Tue;Wed;Thu;Fri
+Assembly Hall South,150,lecture,Mon;Tue;Wed;Thu;Fri`,
+      courses:   `code,name,hours_per_week,room_type,class_type,frequency,lecturer_email
+MATH-101A,Mathematics - Section A (Y1),4,lecture,lecture,weekly,a.morrison@riverside.edu
+MATH-101B,Mathematics - Section B (Y1),4,lecture,lecture,weekly,c.obi@riverside.edu
+MATH-102A,Mathematics - Section A (Y2),4,lecture,lecture,weekly,a.morrison@riverside.edu
+MATH-102B,Mathematics - Section B (Y2),4,lecture,lecture,weekly,c.obi@riverside.edu
+MATH-103A,Mathematics - Section A (Y3),4,lecture,lecture,weekly,d.fitzpatrick@riverside.edu
+MATH-103B,Mathematics - Section B (Y3),4,lecture,lecture,weekly,e.larsson@riverside.edu
+MATH-104A,Mathematics - Section A (Y4),4,lecture,lecture,weekly,d.fitzpatrick@riverside.edu
+MATH-104B,Mathematics - Section B (Y4),4,lecture,lecture,weekly,e.larsson@riverside.edu
+MATH-105A,Mathematics - Section A (Y5),4,lecture,lecture,weekly,f.yeboah@riverside.edu
+MATH-105B,Mathematics - Section B (Y5),4,lecture,lecture,weekly,g.kowalski@riverside.edu
+ENG-101A,English - Section A (Y1),4,lecture,lecture,weekly,h.nakamura@riverside.edu
+ENG-101B,English - Section B (Y1),4,lecture,lecture,weekly,i.macdonald@riverside.edu
+ENG-102A,English - Section A (Y2),4,lecture,lecture,weekly,h.nakamura@riverside.edu
+ENG-102B,English - Section B (Y2),4,lecture,lecture,weekly,i.macdonald@riverside.edu
+ENG-103A,English - Section A (Y3),4,lecture,lecture,weekly,j.petrov@riverside.edu
+ENG-103B,English - Section B (Y3),4,lecture,lecture,weekly,k.singh@riverside.edu
+ENG-104A,English - Section A (Y4),4,lecture,lecture,weekly,j.petrov@riverside.edu
+ENG-104B,English - Section B (Y4),4,lecture,lecture,weekly,k.singh@riverside.edu
+ENG-105A,English - Section A (Y5),4,lecture,lecture,weekly,l.brennan@riverside.edu
+ENG-105B,English - Section B (Y5),4,lecture,lecture,weekly,m.thompson@riverside.edu
+SCI-101A,Science - Section A (Y1),3,lecture,lecture,weekly,n.owusu@riverside.edu
+SCI-101B,Science - Section B (Y1),3,lecture,lecture,weekly,o.fernandez@riverside.edu
+SCI-102A,Science - Section A (Y2),3,lecture,lecture,weekly,n.owusu@riverside.edu
+SCI-102B,Science - Section B (Y2),3,lecture,lecture,weekly,o.fernandez@riverside.edu
+SCI-103A,Science Lecture - Section A (Y3),2,lecture,lecture,weekly,p.ivanov@riverside.edu
+SCI-103AL,Science Lab - Section A (Y3),1,lab,lab,weekly,p.ivanov@riverside.edu
+SCI-103B,Science Lecture - Section B (Y3),2,lecture,lecture,weekly,q.delacroix@riverside.edu
+SCI-103BL,Science Lab - Section B (Y3),1,lab,lab,weekly,q.delacroix@riverside.edu
+SCI-104A,Science Lecture - Section A (Y4),2,lecture,lecture,weekly,r.kamau@riverside.edu
+SCI-104AL,Science Lab - Section A (Y4),1,lab,lab,weekly,r.kamau@riverside.edu
+SCI-104B,Science Lecture - Section B (Y4),2,lecture,lecture,weekly,s.whitfield@riverside.edu
+SCI-104BL,Science Lab - Section B (Y4),1,lab,lab,weekly,s.whitfield@riverside.edu
+SCI-105A,Science Lecture - Section A (Y5),2,lecture,lecture,weekly,t.andersen@riverside.edu
+SCI-105AL,Science Lab - Section A (Y5),1,lab,lab,weekly,t.andersen@riverside.edu
+SCI-105B,Science Lecture - Section B (Y5),2,lecture,lecture,weekly,u.hassan@riverside.edu
+SCI-105BL,Science Lab - Section B (Y5),1,lab,lab,weekly,u.hassan@riverside.edu
+HIST-101A,History - Section A (Y1),2,lecture,lecture,weekly,v.mensah@riverside.edu
+HIST-101B,History - Section B (Y1),2,lecture,lecture,weekly,w.johansson@riverside.edu
+HIST-102A,History - Section A (Y2),2,lecture,lecture,weekly,v.mensah@riverside.edu
+HIST-102B,History - Section B (Y2),2,lecture,lecture,weekly,w.johansson@riverside.edu
+HIST-103A,History - Section A (Y3),2,lecture,lecture,weekly,x.nkosi@riverside.edu
+HIST-103B,History - Section B (Y3),2,lecture,lecture,weekly,y.chaudhry@riverside.edu
+HIST-104A,History - Section A (Y4),2,lecture,lecture,weekly,x.nkosi@riverside.edu
+HIST-104B,History - Section B (Y4),2,lecture,lecture,weekly,y.chaudhry@riverside.edu
+HIST-105A,History - Section A (Y5),2,lecture,lecture,weekly,z.bergmann@riverside.edu
+HIST-105B,History - Section B (Y5),2,lecture,lecture,weekly,a.osei@riverside.edu
+GEO-101A,Geography - Section A (Y1),2,lecture,lecture,weekly,b.lombardi@riverside.edu
+GEO-101B,Geography - Section B (Y1),2,lecture,lecture,weekly,c.reinholt@riverside.edu
+GEO-102A,Geography - Section A (Y2),2,lecture,lecture,weekly,b.lombardi@riverside.edu
+GEO-102B,Geography - Section B (Y2),2,lecture,lecture,weekly,c.reinholt@riverside.edu
+GEO-103A,Geography - Section A (Y3),2,lecture,lecture,weekly,d.akello@riverside.edu
+GEO-103B,Geography - Section B (Y3),2,lecture,lecture,weekly,e.carlisle@riverside.edu
+GEO-104A,Geography - Section A (Y4),2,lecture,lecture,weekly,d.akello@riverside.edu
+GEO-104B,Geography - Section B (Y4),2,lecture,lecture,weekly,e.carlisle@riverside.edu
+GEO-105A,Geography - Section A (Y5),2,lecture,lecture,weekly,f.obrien@riverside.edu
+GEO-105B,Geography - Section B (Y5),2,lecture,lecture,weekly,g.nwosu@riverside.edu
+PE-101A,Physical Education - Section A (Y1),2,lecture,lecture,weekly,h.svensson@riverside.edu
+PE-101B,Physical Education - Section B (Y1),2,lecture,lecture,weekly,i.kozlov@riverside.edu
+PE-102A,Physical Education - Section A (Y2),2,lecture,lecture,weekly,h.svensson@riverside.edu
+PE-102B,Physical Education - Section B (Y2),2,lecture,lecture,weekly,i.kozlov@riverside.edu
+PE-103A,Physical Education - Section A (Y3),2,lecture,lecture,weekly,j.martins@riverside.edu
+PE-103B,Physical Education - Section B (Y3),2,lecture,lecture,weekly,k.hoffmann@riverside.edu
+PE-104A,Physical Education - Section A (Y4),2,lecture,lecture,weekly,j.martins@riverside.edu
+PE-104B,Physical Education - Section B (Y4),2,lecture,lecture,weekly,k.hoffmann@riverside.edu
+PE-105A,Physical Education - Section A (Y5),2,lecture,lecture,weekly,l.nkemdirim@riverside.edu
+PE-105B,Physical Education - Section B (Y5),2,lecture,lecture,weekly,m.johansson@riverside.edu
+CS-101A,Computer Studies - Section A (Y1),2,lab,lab,weekly,n.papadopoulos@riverside.edu
+CS-101B,Computer Studies - Section B (Y1),2,lab,lab,weekly,o.adeyemi@riverside.edu
+CS-102A,Computer Studies - Section A (Y2),2,lab,lab,weekly,n.papadopoulos@riverside.edu
+CS-102B,Computer Studies - Section B (Y2),2,lab,lab,weekly,o.adeyemi@riverside.edu
+CS-103A,Computer Studies - Section A (Y3),2,lab,lab,weekly,p.ramachandran@riverside.edu
+CS-103B,Computer Studies - Section B (Y3),2,lab,lab,weekly,q.dubois@riverside.edu
+CS-104A,Computer Studies - Section A (Y4),2,lab,lab,weekly,p.ramachandran@riverside.edu
+CS-104B,Computer Studies - Section B (Y4),2,lab,lab,weekly,q.dubois@riverside.edu
+CS-105A,Computer Studies - Section A (Y5),2,lab,lab,weekly,r.okonkwo@riverside.edu
+CS-105B,Computer Studies - Section B (Y5),2,lab,lab,weekly,s.korhonen@riverside.edu`,
+    },
+    uni: {
+      lecturers: `name,email,available_days,max_hours_per_day,max_hours_per_week
+Prof. Alan Turing,a.turing@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Prof. Barbara Liskov,b.liskov@nit.edu,Mon;Tue;Thu;Fri,5,18
+Assoc. Prof. Carlos Mendez,c.mendez@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Danielle Park,d.park@nit.edu,Mon;Wed;Thu;Fri,4,14
+Prof. Edward Dijkstra,e.dijkstra@nit.edu,Mon;Tue;Wed;Thu,5,18
+Assoc. Prof. Fatima Al-Zahrawi,f.alzahrawi@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Gregory Chen,g.chen@nit.edu,Tue;Wed;Thu;Fri,4,14
+Prof. Helena Petrova,h.petrova@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Ibrahim Diallo,i.diallo@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Jasmine Okafor,j.okafor@nit.edu,Mon;Tue;Wed;Fri,3,12
+Prof. Klaus Hoffmann,k.hoffmann@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Layla Hassan,l.hassan@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Miguel Santos,m.santos@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Nadia Kovacs,n.kovacs@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Oluwaseun Adeyemi,o.adeyemi@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Priya Sharma,p.sharma@nit.edu,Tue;Wed;Thu;Fri,4,14
+Prof. Quentin Rousseau,q.rousseau@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Riya Bose,r.bose@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Samuel Osei,s.osei@nit.edu,Mon;Tue;Wed;Thu,3,12
+Prof. Takeshi Yamamoto,t.yamamoto@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Uma Krishnan,u.krishnan@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Victor Nkemdirim,v.nkemdirim@nit.edu,Mon;Tue;Wed;Fri,4,14
+Prof. Wendy Thornton,w.thornton@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Xiao Liu,x.liu@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Yusuf Abdullahi,y.abdullahi@nit.edu,Wed;Thu;Fri,3,12
+Prof. Zara Nielsen,z.nielsen@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Anton Volkov,a.volkov@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Blessing Eze,b.eze@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Catherine Mwangi,c.mwangi@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. David Johansson,d.johansson@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Elena Marchetti,e.marchetti@nit.edu,Mon;Tue;Wed;Fri,3,12
+Prof. Felix Owusu,f.owusu@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Gabriela Torres,g.torres@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Haruto Sato,h.sato@nit.edu,Tue;Wed;Thu;Fri,4,14
+Prof. Ingrid Larsen,i.larsen@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. James Achebe,j.achebe@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Kavita Reddy,k.reddy@nit.edu,Mon;Wed;Thu;Fri,3,12
+Prof. Laurent Moreau,l.moreau@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Marina Kuznetsova,m.kuznetsova@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Nnamdi Obi,n.obi@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Olga Steinberg,o.steinberg@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Patrick Flanagan,p.flanagan@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Qi Zhang,q.zhang@nit.edu,Tue;Wed;Thu;Fri,3,12
+Prof. Renata Kowalski,r.kowalski@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Siddharth Mehta,s.mehta@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Tunde Afolabi,t.afolabi@nit.edu,Mon;Tue;Wed;Fri,4,14
+Prof. Ursula Braun,u.braun@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Valentin Durand,v.durand@nit.edu,Mon;Tue;Thu;Fri,4,18
+Asst. Prof. Wanjiru Kamau,w.kamau@nit.edu,Mon;Tue;Wed;Thu,3,12
+Prof. Xi Wang,x.wang@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Yolanda Ferreira,y.ferreira@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Zdravko Petrovic,z.petrovic@nit.edu,Wed;Thu;Fri,3,12
+Prof. Amara Diop,a.diop@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Boris Nikolaev,b.nikolaev@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Chioma Okonkwo,c.okonkwo@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Dimitri Papadopoulos,d.papadopoulos@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Esther Nakamura,e.nakamura@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Finn Andersen,f.andersen@nit.edu,Mon;Tue;Wed;Fri,3,12
+Prof. Grace Obi,g.obi@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Hana Novak,h.novak@nit.edu,Mon;Tue;Thu;Fri,4,18
+Asst. Prof. Ignacio Reyes,i.reyes@nit.edu,Tue;Wed;Thu;Fri,4,14
+Prof. Jing Li,j.li@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Kofi Asante,k.asante@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Lena Bergstrom,l.bergstrom@nit.edu,Mon;Wed;Thu;Fri,3,12
+Prof. Marco Esposito,m.esposito@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Nkechi Eze,n.eze@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Omar Khalil,o.khalil@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Petra Hoffmann,p.hoffmann@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Rashid Al-Amin,r.alamin@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Sofia Lombardi,s.lombardi@nit.edu,Mon;Tue;Wed;Fri,3,12
+Prof. Thomas Brennan,t.brennan@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Uche Nwosu,u.nwosu@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Valentina Cruz,v.cruz@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. William Achampong,w.achampong@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Xiumei Chen,x.chen@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Yemi Adebayo,y.adebayo@nit.edu,Tue;Wed;Thu;Fri,3,12
+Prof. Zoltan Fekete,z.fekete@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Alicia Morales,a.morales@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Babatunde Salami,b.salami@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Celine Dubois,c.dubois@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Deepak Nair,d.nair@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Emeka Okafor,e.okafor@nit.edu,Mon;Tue;Wed;Fri,3,12
+Prof. Florence Mensah,f.mensah@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Gunnar Eriksson,g.eriksson@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Hiroshi Tanaka,h.tanaka@nit.edu,Tue;Wed;Thu;Fri,4,14
+Prof. Ifeoma Chukwu,i.chukwu@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Jakub Novotny,j.novotny@nit.edu,Mon;Tue;Wed;Thu;Fri,4,18
+Asst. Prof. Kiran Patel,k.patel@nit.edu,Mon;Wed;Thu;Fri,3,12
+Prof. Lior Ben-David,l.bendavid@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Malia Fonoti,m.fonoti@nit.edu,Mon;Tue;Thu;Fri,4,16
+Asst. Prof. Nikita Sorokin,n.sorokin@nit.edu,Mon;Tue;Wed;Thu,4,14
+Prof. Obiageli Nwofor,o.nwofor@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Pawel Wisnewski,p.wisnewski@nit.edu,Mon;Tue;Wed;Thu;Fri,4,16
+Asst. Prof. Qiuyue Sun,q.sun@nit.edu,Tue;Wed;Thu;Fri,3,12
+Prof. Ramona Vasquez,r.vasquez@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Sipho Dlamini,s.dlamini@nit.edu,Mon;Wed;Thu;Fri,4,16
+Asst. Prof. Tomoko Ishida,t.ishida@nit.edu,Mon;Tue;Wed;Fri,4,14
+Prof. Umar Farouk,u.farouk@nit.edu,Mon;Tue;Wed;Thu;Fri,5,20
+Assoc. Prof. Violeta Ionescu,v.ionescu@nit.edu,Mon;Tue;Thu;Fri,4,18
+Asst. Prof. Winston Darko,w.darko@nit.edu,Mon;Tue;Wed;Thu,3,12`,
+      rooms:     `name,capacity,room_type,available_days
+Lecture Hall LH-01,400,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-02,400,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-03,350,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-04,350,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-05,300,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-06,300,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-07,300,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-08,250,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-09,250,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-10,250,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-11,250,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-12,200,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-13,200,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-14,200,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-15,200,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-16,200,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-17,200,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-18,200,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-19,200,lecture,Mon;Tue;Wed;Thu;Fri
+Lecture Hall LH-20,200,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-01,100,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-02,100,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-03,100,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-04,100,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-05,100,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-06,90,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-07,90,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-08,90,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-09,80,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-10,80,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-11,80,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-12,80,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-13,80,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-14,80,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-15,80,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-16,90,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-17,90,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-18,100,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-19,100,lecture,Mon;Tue;Wed;Thu;Fri
+Medium Hall MH-20,100,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-01,40,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-02,40,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-03,40,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-04,35,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-05,35,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-06,35,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-07,35,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-08,30,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-09,30,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-10,30,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-11,30,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-12,30,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-13,30,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-14,30,lecture,Mon;Tue;Wed;Thu;Fri
+Seminar Room SR-15,30,lecture,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-01,30,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-02,30,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-03,28,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-04,28,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-05,25,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-06,25,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-07,25,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-08,25,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-09,28,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-10,28,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-11,30,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-12,25,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-13,25,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-14,25,lab,Mon;Tue;Wed;Thu;Fri
+Research Lab RL-15,30,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab CL-01,40,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab CL-02,40,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab CL-03,40,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab CL-04,40,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab CL-05,40,lab,Mon;Tue;Wed;Thu;Fri`,
+      courses:   `code,name,hours_per_week,room_type,class_type,frequency,lecturer_email
+FNDN-101,Foundation Mathematics,4,lecture,lecture,weekly,a.turing@nit.edu
+FNDN-102,Foundation Physics,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+FNDN-102L,Foundation Physics Lab,2,lab,lab,weekly,k.hoffmann@nit.edu
+FNDN-103,Foundation Chemistry,3,lecture,lecture,weekly,n.kovacs@nit.edu
+FNDN-103L,Foundation Chemistry Lab,2,lab,lab,weekly,n.kovacs@nit.edu
+FNDN-104,Foundation Computing,3,lecture,lecture,weekly,b.liskov@nit.edu
+FNDN-104L,Foundation Computing Lab,2,lab,lab,weekly,b.liskov@nit.edu
+FNDN-105,Academic Writing and Communication,2,lecture,lecture,weekly,w.thornton@nit.edu
+FNDN-106,Introduction to Engineering,2,lecture,lecture,weekly,q.rousseau@nit.edu
+CS-101,Introduction to Programming,3,lecture,lecture,weekly,a.turing@nit.edu
+CS-101L,Introduction to Programming Lab,2,lab,lab,weekly,g.chen@nit.edu
+CS-102,Discrete Mathematics for CS,3,lecture,lecture,weekly,b.liskov@nit.edu
+CS-201,Data Structures and Algorithms,3,lecture,lecture,weekly,b.liskov@nit.edu
+CS-201T,Data Structures Tutorial,1,lecture,tutorial,weekly,d.park@nit.edu
+CS-202,Computer Architecture,3,lecture,lecture,weekly,c.mendez@nit.edu
+CS-202L,Computer Architecture Lab,2,lab,lab,weekly,g.chen@nit.edu
+CS-203,Operating Systems,3,lecture,lecture,weekly,e.dijkstra@nit.edu
+CS-203L,Operating Systems Lab,2,lab,lab,weekly,j.okafor@nit.edu
+CS-301,Database Systems,3,lecture,lecture,weekly,c.mendez@nit.edu
+CS-301L,Database Systems Lab,2,lab,lab,weekly,d.park@nit.edu
+CS-302,Computer Networks,3,lecture,lecture,weekly,e.dijkstra@nit.edu
+CS-302L,Computer Networks Lab,2,lab,lab,weekly,j.okafor@nit.edu
+CS-303,Software Engineering,3,lecture,lecture,weekly,f.alzahrawi@nit.edu
+CS-303T,Software Engineering Tutorial,1,lecture,tutorial,weekly,s.osei@nit.edu
+CS-304,Artificial Intelligence,3,lecture,lecture,weekly,a.turing@nit.edu
+CS-304L,Artificial Intelligence Lab,2,lab,lab,weekly,g.chen@nit.edu
+CS-401,Machine Learning,3,lecture,lecture,weekly,b.liskov@nit.edu
+CS-401L,Machine Learning Lab,2,lab,lab,weekly,d.park@nit.edu
+CS-402,Distributed Systems,3,lecture,lecture,weekly,e.dijkstra@nit.edu
+CS-403,Compiler Design,3,lecture,lecture,biweekly,c.mendez@nit.edu
+CS-404,Computer Vision,3,lecture,lecture,biweekly,f.alzahrawi@nit.edu
+CS-404L,Computer Vision Lab,2,lab,lab,biweekly,g.chen@nit.edu
+CS-501,Advanced Algorithms,3,lecture,lecture,weekly,a.turing@nit.edu
+CS-502,Deep Learning,3,lecture,lecture,weekly,b.liskov@nit.edu
+CS-502L,Deep Learning Lab,2,lab,lab,weekly,d.park@nit.edu
+CS-503,Natural Language Processing,3,lecture,lecture,biweekly,f.alzahrawi@nit.edu
+CS-601,Research Methods in CS,2,lecture,lecture,weekly,e.dijkstra@nit.edu
+CS-602,Graduate Seminar in CS,2,lecture,lecture,biweekly,a.turing@nit.edu
+EE-101,Circuit Theory,3,lecture,lecture,weekly,h.petrova@nit.edu
+EE-101L,Circuit Theory Lab,2,lab,lab,weekly,v.nkemdirim@nit.edu
+EE-102,Engineering Mathematics,4,lecture,lecture,weekly,i.diallo@nit.edu
+EE-201,Electronics I,3,lecture,lecture,weekly,h.petrova@nit.edu
+EE-201L,Electronics I Lab,2,lab,lab,weekly,v.nkemdirim@nit.edu
+EE-202,Signals and Systems,3,lecture,lecture,weekly,i.diallo@nit.edu
+EE-202T,Signals and Systems Tutorial,1,lecture,tutorial,weekly,j.okafor@nit.edu
+EE-301,Digital Electronics,3,lecture,lecture,weekly,h.petrova@nit.edu
+EE-301L,Digital Electronics Lab,2,lab,lab,weekly,v.nkemdirim@nit.edu
+EE-302,Control Systems,3,lecture,lecture,weekly,i.diallo@nit.edu
+EE-303,Electromagnetics,3,lecture,lecture,weekly,t.yamamoto@nit.edu
+EE-401,Power Systems,3,lecture,lecture,weekly,h.petrova@nit.edu
+EE-402,Communication Systems,3,lecture,lecture,weekly,i.diallo@nit.edu
+EE-402L,Communication Systems Lab,2,lab,lab,weekly,v.nkemdirim@nit.edu
+EE-403,VLSI Design,3,lecture,lecture,biweekly,t.yamamoto@nit.edu
+EE-403L,VLSI Design Lab,2,lab,lab,biweekly,v.nkemdirim@nit.edu
+EE-501,Advanced Power Electronics,3,lecture,lecture,weekly,h.petrova@nit.edu
+EE-601,Graduate Seminar in EE,2,lecture,lecture,biweekly,t.yamamoto@nit.edu
+ME-101,Engineering Mechanics,3,lecture,lecture,weekly,q.rousseau@nit.edu
+ME-101T,Engineering Mechanics Tutorial,1,lecture,tutorial,weekly,r.bose@nit.edu
+ME-102,Thermodynamics I,3,lecture,lecture,weekly,z.nielsen@nit.edu
+ME-201,Thermodynamics II,3,lecture,lecture,weekly,z.nielsen@nit.edu
+ME-202,Fluid Mechanics,3,lecture,lecture,weekly,q.rousseau@nit.edu
+ME-202L,Fluid Mechanics Lab,2,lab,lab,weekly,r.bose@nit.edu
+ME-301,Machine Design,3,lecture,lecture,weekly,q.rousseau@nit.edu
+ME-302,Heat Transfer,3,lecture,lecture,weekly,z.nielsen@nit.edu
+ME-302L,Heat Transfer Lab,2,lab,lab,weekly,r.bose@nit.edu
+ME-401,Manufacturing Processes,3,lecture,lecture,weekly,q.rousseau@nit.edu
+ME-401L,Manufacturing Processes Lab,2,lab,lab,weekly,r.bose@nit.edu
+ME-402,Robotics and Automation,3,lecture,lecture,biweekly,z.nielsen@nit.edu
+ME-501,Advanced Thermodynamics,3,lecture,lecture,weekly,z.nielsen@nit.edu
+ME-601,Graduate Seminar in ME,2,lecture,lecture,biweekly,q.rousseau@nit.edu
+PHYS-101,Classical Mechanics,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+PHYS-101T,Classical Mechanics Tutorial,1,lecture,tutorial,weekly,u.krishnan@nit.edu
+PHYS-102,Waves and Optics,3,lecture,lecture,weekly,l.hassan@nit.edu
+PHYS-201,Electromagnetism,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+PHYS-202,Quantum Mechanics I,3,lecture,lecture,weekly,l.hassan@nit.edu
+PHYS-202T,Quantum Mechanics Tutorial,1,lecture,tutorial,weekly,u.krishnan@nit.edu
+PHYS-301,Quantum Mechanics II,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+PHYS-302,Statistical Mechanics,3,lecture,lecture,weekly,l.hassan@nit.edu
+PHYS-401,Solid State Physics,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+PHYS-402,Nuclear Physics,3,lecture,lecture,biweekly,l.hassan@nit.edu
+PHYS-501,Advanced Quantum Field Theory,3,lecture,lecture,weekly,k.hoffmann@nit.edu
+PHYS-601,Research Seminar in Physics,2,lecture,lecture,biweekly,l.hassan@nit.edu
+MATH-101,Calculus I,4,lecture,lecture,weekly,t.yamamoto@nit.edu
+MATH-101T,Calculus I Tutorial,1,lecture,tutorial,weekly,w.kamau@nit.edu
+MATH-102,Calculus II,4,lecture,lecture,weekly,u.krishnan@nit.edu
+MATH-201,Linear Algebra,3,lecture,lecture,weekly,t.yamamoto@nit.edu
+MATH-201T,Linear Algebra Tutorial,1,lecture,tutorial,weekly,w.kamau@nit.edu
+MATH-202,Probability and Statistics,3,lecture,lecture,weekly,u.krishnan@nit.edu
+MATH-301,Real Analysis,3,lecture,lecture,weekly,t.yamamoto@nit.edu
+MATH-302,Differential Equations,3,lecture,lecture,weekly,u.krishnan@nit.edu
+MATH-401,Abstract Algebra,3,lecture,lecture,weekly,t.yamamoto@nit.edu
+MATH-402,Numerical Methods,3,lecture,lecture,weekly,u.krishnan@nit.edu
+MATH-402L,Numerical Methods Lab,2,lab,lab,weekly,w.kamau@nit.edu
+MATH-501,Advanced Analysis,3,lecture,lecture,weekly,t.yamamoto@nit.edu
+MATH-601,Research Seminar in Mathematics,2,lecture,lecture,biweekly,u.krishnan@nit.edu
+CHEM-101,General Chemistry I,3,lecture,lecture,weekly,n.kovacs@nit.edu
+CHEM-101L,General Chemistry I Lab,2,lab,lab,weekly,p.sharma@nit.edu
+CHEM-102,General Chemistry II,3,lecture,lecture,weekly,o.adeyemi@nit.edu
+CHEM-102L,General Chemistry II Lab,2,lab,lab,weekly,p.sharma@nit.edu
+CHEM-201,Organic Chemistry I,3,lecture,lecture,weekly,n.kovacs@nit.edu
+CHEM-201L,Organic Chemistry I Lab,3,lab,lab,weekly,p.sharma@nit.edu
+CHEM-202,Inorganic Chemistry,3,lecture,lecture,weekly,o.adeyemi@nit.edu
+CHEM-301,Organic Chemistry II,3,lecture,lecture,weekly,n.kovacs@nit.edu
+CHEM-301L,Organic Chemistry II Lab,3,lab,lab,weekly,p.sharma@nit.edu
+CHEM-302,Physical Chemistry,3,lecture,lecture,weekly,o.adeyemi@nit.edu
+CHEM-401,Biochemistry,3,lecture,lecture,weekly,n.kovacs@nit.edu
+CHEM-401L,Biochemistry Lab,2,lab,lab,weekly,p.sharma@nit.edu
+CHEM-501,Advanced Organic Synthesis,3,lecture,lecture,weekly,n.kovacs@nit.edu
+CHEM-601,Research Seminar in Chemistry,2,lecture,lecture,biweekly,o.adeyemi@nit.edu
+BIO-101,Cell Biology,3,lecture,lecture,weekly,w.thornton@nit.edu
+BIO-101L,Cell Biology Lab,2,lab,lab,weekly,x.liu@nit.edu
+BIO-102,Genetics,3,lecture,lecture,weekly,z.nielsen@nit.edu
+BIO-201,Molecular Biology,3,lecture,lecture,weekly,w.thornton@nit.edu
+BIO-201L,Molecular Biology Lab,2,lab,lab,weekly,x.liu@nit.edu
+BIO-202,Ecology and Evolution,3,lecture,lecture,weekly,z.nielsen@nit.edu
+BIO-301,Biochemistry for Biologists,3,lecture,lecture,weekly,w.thornton@nit.edu
+BIO-302,Physiology,3,lecture,lecture,weekly,z.nielsen@nit.edu
+BIO-302L,Physiology Lab,2,lab,lab,weekly,x.liu@nit.edu
+BIO-401,Neuroscience,3,lecture,lecture,biweekly,w.thornton@nit.edu
+BIO-501,Advanced Molecular Biology,3,lecture,lecture,weekly,w.thornton@nit.edu
+BIO-601,Research Seminar in Biology,2,lecture,lecture,biweekly,z.nielsen@nit.edu
+MGT-101,Principles of Management,3,lecture,lecture,weekly,c.mwangi@nit.edu
+MGT-102,Microeconomics,3,lecture,lecture,weekly,d.johansson@nit.edu
+MGT-201,Marketing Management,3,lecture,lecture,weekly,c.mwangi@nit.edu
+MGT-202,Financial Accounting,3,lecture,lecture,weekly,d.johansson@nit.edu
+MGT-202T,Financial Accounting Tutorial,1,lecture,tutorial,weekly,e.marchetti@nit.edu
+MGT-301,Corporate Finance,3,lecture,lecture,weekly,c.mwangi@nit.edu
+MGT-302,Operations Management,3,lecture,lecture,weekly,d.johansson@nit.edu
+MGT-401,Strategic Management,3,lecture,lecture,weekly,c.mwangi@nit.edu
+MGT-402,Entrepreneurship,2,lecture,lecture,biweekly,d.johansson@nit.edu
+MGT-501,Advanced Corporate Strategy,3,lecture,lecture,weekly,c.mwangi@nit.edu
+MGT-601,Research Seminar in Management,2,lecture,lecture,biweekly,d.johansson@nit.edu
+HUM-101,Introduction to Philosophy,2,lecture,lecture,weekly,f.owusu@nit.edu
+HUM-102,World History,2,lecture,lecture,weekly,g.torres@nit.edu
+HUM-201,Ethics in Technology,2,lecture,lecture,weekly,f.owusu@nit.edu
+HUM-202,Comparative Literature,2,lecture,lecture,weekly,g.torres@nit.edu
+HUM-301,Political Science,2,lecture,lecture,weekly,f.owusu@nit.edu
+HUM-302,Sociology,2,lecture,lecture,weekly,g.torres@nit.edu
+HUM-401,Philosophy of Science,2,lecture,lecture,biweekly,f.owusu@nit.edu
+HUM-501,Advanced Research in Humanities,3,lecture,lecture,weekly,f.owusu@nit.edu
+HUM-601,Doctoral Seminar in Humanities,2,lecture,lecture,biweekly,g.torres@nit.edu
+PHD-901,Doctoral Research Methods,2,lecture,lecture,weekly,a.turing@nit.edu
+PHD-902,Advanced Topics in CS,2,lecture,lecture,biweekly,b.liskov@nit.edu
+PHD-903,Advanced Topics in EE,2,lecture,lecture,biweekly,h.petrova@nit.edu
+PHD-904,Advanced Topics in Mechanical Eng,2,lecture,lecture,biweekly,q.rousseau@nit.edu
+PHD-905,Advanced Topics in Physics,2,lecture,lecture,biweekly,k.hoffmann@nit.edu
+PHD-906,Advanced Topics in Mathematics,2,lecture,lecture,biweekly,t.yamamoto@nit.edu
+PHD-907,Advanced Topics in Chemistry,2,lecture,lecture,biweekly,n.kovacs@nit.edu
+PHD-908,Advanced Topics in Biology,2,lecture,lecture,biweekly,w.thornton@nit.edu
+PHD-909,Academic Publishing and Grant Writing,2,lecture,lecture,biweekly,c.mwangi@nit.edu
+PHD-910,Interdisciplinary Research Colloquium,2,lecture,lecture,biweekly,f.owusu@nit.edu`,
+    },
+  };
+
+  function downloadSample(dataset, kind, filename) {
+    const csv = SAMPLE_DATASETS[dataset][kind];
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+</script>
 
 
 <!-- ─── CHECKOUT MODAL ────────────────────────────────────────────────────── -->

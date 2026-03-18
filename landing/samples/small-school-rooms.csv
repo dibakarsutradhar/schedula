@@ -1,0 +1,14 @@
+name,capacity,room_type,available_days
+Classroom 101,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 102,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 103,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 104,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 105,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 106,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 107,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 108,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 109,50,lecture,Mon;Tue;Wed;Thu;Fri
+Classroom 110,50,lecture,Mon;Tue;Wed;Thu;Fri
+Science Lab,30,lab,Mon;Tue;Wed;Thu;Fri
+Computer Lab,35,lab,Mon;Tue;Wed;Thu;Fri
+Gymnasium,100,lecture,Mon;Tue;Wed;Thu;Fri
