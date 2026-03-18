@@ -49,6 +49,10 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Tauri v2 ad-hoc signing: '-' means sign without an Apple Developer
+          # certificate. Users will see a Gatekeeper warning but the app runs.
+          # Replace with a real identity + APPLE_CERTIFICATE to notarize.
+          APPLE_SIGNING_IDENTITY: '-'
         with:
           args: --target aarch64-apple-darwin
 
@@ -94,6 +98,9 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Tauri v2 ad-hoc signing: '-' means sign without an Apple Developer
+          # certificate. Replace with a real identity + APPLE_CERTIFICATE to notarize.
+          APPLE_SIGNING_IDENTITY: '-'
         with:
           args: --target x86_64-apple-darwin
 
