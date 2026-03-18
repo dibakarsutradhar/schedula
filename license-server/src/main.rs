@@ -161,6 +161,9 @@ pub struct AppState {
     decoding_key:     Arc<DecodingKey>,
     pub admin_key:    String,
     pub billing:      Arc<billing::BillingConfig>,
+    /// True when STRIPE_SECRET_KEY starts with "sk_test_".
+    /// Passed to the success page so users see a test-mode banner.
+    pub stripe_test_mode: bool,
 }
 
 impl AppState {
@@ -902,12 +905,14 @@ async fn main() {
         },
     });
 
+    let stripe_test_mode = billing.stripe_secret.starts_with("sk_test_");
     let state = AppState {
-        db:           Arc::new(Mutex::new(conn)),
-        encoding_key: Arc::new(encoding_key),
-        decoding_key: Arc::new(decoding_key),
-        admin_key:    args.admin_key,
+        db:               Arc::new(Mutex::new(conn)),
+        encoding_key:     Arc::new(encoding_key),
+        decoding_key:     Arc::new(decoding_key),
+        admin_key:        args.admin_key,
         billing,
+        stripe_test_mode,
     };
 
     // Spawn daily key rotation: wakes at UTC midnight to generate the next day's key

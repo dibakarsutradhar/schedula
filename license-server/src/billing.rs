@@ -165,7 +165,10 @@ pub async fn checkout_handler(
     // device_id from the hub sidecar — embedded in subscription metadata for automated activation
     let device_id = body.device_id.as_deref().unwrap_or("");
 
-    // Build form; trial params added only for first-time subscribers
+    // Test mode: sk_test_... keys → skip trial so the full card → webhook → activation
+    // flow can be exercised immediately with Stripe test cards (e.g. 4242 4242 4242 4242).
+    let is_test_mode = state.billing.stripe_secret.starts_with("sk_test_");
+
     let mut form: Vec<(&str, &str)> = vec![
         ("mode",                        "subscription"),
         ("line_items[0][price]",        price_id),
@@ -184,9 +187,10 @@ pub async fn checkout_handler(
         form.push(("subscription_data[metadata][device_id]", device_id));
     }
 
-    if !already_subscribed {
-        // 14-day free trial; card is collected but not charged until trial ends.
-        // If the user doesn't add a card, the subscription is canceled at trial end.
+    if !already_subscribed && !is_test_mode {
+        // 14-day free trial (live mode only).
+        // In test mode the trial is skipped so the full payment flow can be
+        // verified immediately using Stripe test cards.
         form.push(("subscription_data[trial_period_days]", "14"));
         form.push((
             "subscription_data[trial_settings][end_behavior][missing_payment_method]",
@@ -301,35 +305,46 @@ pub async fn webhook_handler(
 
 // ─── GET /billing/success ─────────────────────────────────────────────────────
 
-pub async fn success_handler() -> impl IntoResponse {
-    Html(r#"<!doctype html>
+pub async fn success_handler(
+    State(state): State<crate::AppState>,
+) -> impl IntoResponse {
+    let test_banner = if state.stripe_test_mode {
+        r#"<div class="test-banner">⚠ Stripe test mode — no real payment was made</div>"#
+    } else {
+        ""
+    };
+
+    Html(format!(r#"<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Payment Successful — Schedula</title>
   <style>
-    *  { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
+    *  {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
       font-family: system-ui, -apple-system, sans-serif;
       background: #0a0f1e; color: #e2e8f0;
       display: flex; align-items: center; justify-content: center;
-      min-height: 100vh;
-    }
-    .card {
+      min-height: 100vh; flex-direction: column; gap: 1rem;
+    }}
+    .test-banner {{
+      background: #422006; border: 1px solid #92400e; color: #fcd34d;
+      padding: .6rem 1.5rem; border-radius: 8px; font-size: .85rem; font-weight: 600;
+    }}
+    .card {{
       background: #131929; border: 1px solid #1e293b; border-radius: 16px;
       padding: 3rem 4rem; text-align: center; max-width: 500px; width: 90%;
-    }
-    .icon  { font-size: 3rem; margin-bottom: 1rem; }
-    h1     { color: #10b981; font-size: 1.75rem; margin-bottom: 1rem; font-weight: 700; }
-    p      { color: #94a3b8; line-height: 1.7; margin-bottom: 1rem; }
-    code   { background: #0f1623; border: 1px solid #1e293b; padding: .2rem .6rem;
-             border-radius: 4px; font-size: .85rem; color: #6366f1; }
-    a      { color: #6366f1; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    }}
+    .icon  {{ font-size: 3rem; margin-bottom: 1rem; }}
+    h1     {{ color: #10b981; font-size: 1.75rem; margin-bottom: 1rem; font-weight: 700; }}
+    p      {{ color: #94a3b8; line-height: 1.7; margin-bottom: 1rem; }}
+    a      {{ color: #6366f1; text-decoration: none; }}
+    a:hover {{ text-decoration: underline; }}
   </style>
 </head>
 <body>
+  {test_banner}
   <div class="card">
     <div class="icon">✓</div>
     <h1>Payment confirmed!</h1>
@@ -340,7 +355,7 @@ pub async fn success_handler() -> impl IntoResponse {
     </p>
   </div>
 </body>
-</html>"#)
+</html>"#))
 }
 
 // ─── Subscription lifecycle ───────────────────────────────────────────────────
