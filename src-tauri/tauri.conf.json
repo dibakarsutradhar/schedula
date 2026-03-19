@@ -37,9 +37,6 @@
     ],
     "externalBin": [
       "binaries/schedula-hub"
-    ],
-    "macOS": {
-      "signingIdentity": null
-    }
+    ]
   }
 }
