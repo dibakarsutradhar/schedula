@@ -24,13 +24,14 @@
 #   make keys-gen       - Generate a new RS256 key pair in license-server/keys/
 #   make deploy-license - Deploy license server to Fly.io
 #   make install        - Install Node dependencies
+#   make reset-data     - Delete all local app data (DBs + Tauri app dir) for a clean slate
 #   make clean          - Clean all build artefacts
 #   make help           - Show this help
 
 .PHONY: dev dev-all tauri hub license landing \
         build build-hub build-hub-sidecar build-license build-all \
         test test-tauri test-hub test-license check \
-        keys-gen deploy-license install clean help
+        keys-gen deploy-license install reset-data clean help
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
@@ -197,6 +198,21 @@ install:
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 
+## Delete all local app data (dev DBs + Tauri app data dir) — use to reproduce clean-slate bugs
+reset-data:
+	@echo "Removing dev databases..."
+	rm -f $(HUB_DB) $(HUB_DB)-shm $(HUB_DB)-wal
+	rm -f $(LICENSE_DB) $(LICENSE_DB)-shm $(LICENSE_DB)-wal
+	@echo "Removing Tauri app data directory..."
+	@if [ "$$(uname)" = "Darwin" ]; then \
+	  rm -rf "$$HOME/Library/Application Support/com.schedula.app"; \
+	elif [ "$$(uname)" = "Linux" ]; then \
+	  rm -rf "$$HOME/.local/share/com.schedula.app"; \
+	else \
+	  echo "  Windows: delete %APPDATA%\\com.schedula.app manually"; \
+	fi
+	@echo "Done — all app data cleared."
+
 ## Remove all build artefacts
 clean:
 	rm -rf node_modules dist
@@ -254,6 +270,7 @@ help:
 	@echo "  Setup"
 	@echo "    make keys-gen        Generate RS256 key pair (invalidates all JWTs)"
 	@echo "    make deploy-license  Deploy license server to Fly.io"
+	@echo "    make reset-data      Delete all local app data (DBs + Tauri app dir)"
 	@echo "    make install         Install Node dependencies"
 	@echo "    make clean           Remove all build artefacts"
 	@echo ""
